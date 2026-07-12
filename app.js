@@ -395,7 +395,7 @@ function updateBusPosition(lat, lng, speed, timestamp) {
   } else {
     stasisCount = 0;
     if (busMarker.getElement()) {
-      busMarker.getElement().className = 'map-marker-bus-container';
+      busMarker.getElement().classList.remove('stasis');
     }
   }
 
@@ -407,7 +407,7 @@ function updateBusPosition(lat, lng, speed, timestamp) {
 
 function triggerStasisWarning(lat, lng) {
   if (busMarker && busMarker.getElement()) {
-    busMarker.getElement().className = 'map-marker-bus map-marker-stasis';
+    busMarker.getElement().classList.add('stasis');
   }
   
   const alertMsg = `STASIS ALERT: Bus stationary at coordinates [${lat.toFixed(5)}, ${lng.toFixed(5)}] for 20 minutes.`;
