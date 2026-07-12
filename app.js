@@ -52,11 +52,46 @@ let buzzerInterval = null;
 let audioCtx = null;
 let logHistory = [];
 
+// Restore state from localStorage on startup
+function restoreTrackingSession() {
+  if (localStorage.getItem('waPhone')) document.getElementById('waPhone').value = localStorage.getItem('waPhone');
+  if (localStorage.getItem('waApikey')) document.getElementById('waApikey').value = localStorage.getItem('waApikey');
+  if (localStorage.getItem('waEnabled')) document.getElementById('waEnabled').checked = localStorage.getItem('waEnabled') === 'true';
+  if (localStorage.getItem('inputUrl')) document.getElementById('urlInput').value = localStorage.getItem('inputUrl');
+
+  const autoResume = localStorage.getItem('autoResume') === 'true';
+  const savedIndex = localStorage.getItem('savedDropPointIndex');
+  
+  if (autoResume) {
+    logToConsole("Restoring previous tracking session...", "alert");
+    const mode = localStorage.getItem('trackingMode');
+    if (mode === 'live') {
+      handleUrlSubmit().then(() => {
+        if (savedIndex !== null) {
+          const idx = parseInt(savedIndex);
+          if (currentRoutePoints[idx]) {
+            selectDropPoint(currentRoutePoints[idx], idx);
+          }
+        }
+      });
+    } else if (mode === 'demo') {
+      loadDemoRoute();
+      if (savedIndex !== null) {
+        const idx = parseInt(savedIndex);
+        if (currentRoutePoints[idx]) {
+          selectDropPoint(currentRoutePoints[idx], idx);
+        }
+      }
+    }
+  }
+}
+
 // Initialize App
 window.addEventListener('DOMContentLoaded', () => {
   initMap(currentRoutePoints);
   populateDropPoints(currentRoutePoints);
   setupEventListeners();
+  restoreTrackingSession();
   logToConsole("System initialized. Paste a trkg.in URL or click 'Start Demo Tracking'.", "success");
 });
 
@@ -158,6 +193,9 @@ function selectDropPoint(point, index) {
   speakVoiceAlert(`Alarm set for ${point.name}.`);
   logToConsole(`Destination Set: ${point.name}. Alarm activated.`, "success");
   
+  // Persist selected dropping destination
+  localStorage.setItem('savedDropPointIndex', index);
+  
   updateHUD();
 }
 
@@ -196,6 +234,11 @@ async function handleUrlSubmit() {
 
   currentTrackingKey = key;
   logToConsole(`Connecting to Trackingo Session Key: ${key}...`, "success");
+  
+  // Save active tracking state
+  localStorage.setItem('inputUrl', urlInput);
+  localStorage.setItem('autoResume', 'true');
+  localStorage.setItem('trackingMode', 'live');
 
   try {
     // Call our CORS proxy backend to load journey details
@@ -237,6 +280,11 @@ async function handleUrlSubmit() {
 function loadDemoRoute() {
   isLiveMode = false;
   currentRoutePoints = [...BRS_ROUTE];
+  
+  // Save active tracking state
+  localStorage.setItem('autoResume', 'true');
+  localStorage.setItem('trackingMode', 'demo');
+
   initMap(currentRoutePoints);
   populateDropPoints(currentRoutePoints);
   startDemoSimulation();
@@ -580,6 +628,7 @@ function stopActiveInterval() {
     clearInterval(buzzerInterval);
     buzzerInterval = null;
   }
+  localStorage.setItem('autoResume', 'false');
 }
 
 function sendWhatsAppAlert(message) {
@@ -623,6 +672,12 @@ function setupEventListeners() {
   });
   document.getElementById('btnStasis').addEventListener('click', toggleStasis);
   document.getElementById('btnStopAlarm').addEventListener('click', stopAlarm);
+  
+  // Save input changes dynamically to localStorage to prevent tab unload resets
+  document.getElementById('waPhone').addEventListener('input', (e) => localStorage.setItem('waPhone', e.target.value.trim()));
+  document.getElementById('waApikey').addEventListener('input', (e) => localStorage.setItem('waApikey', e.target.value.trim()));
+  document.getElementById('waEnabled').addEventListener('change', (e) => localStorage.setItem('waEnabled', e.target.checked));
+  document.getElementById('urlInput').addEventListener('input', (e) => localStorage.setItem('inputUrl', e.target.value.trim()));
   
   // Test Alarm & Speech System
   document.getElementById('btnTestAlarm').addEventListener('click', () => {
