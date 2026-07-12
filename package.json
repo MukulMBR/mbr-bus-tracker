@@ -1,0 +1,11 @@
+{
+  "name": "mbr-bus-tracker",
+  "version": "1.0.0",
+  "description": "Live GPS Bus Tracker with automated voice alerts and WhatsApp notifications.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "Mukul MBR",
+  "license": "ISC"
+}
