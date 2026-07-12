@@ -145,14 +145,20 @@
       </div>
 
       <!-- Card: Simulation Controls -->
-      <div class="cyber-card" style="display: flex; gap: 8px; justify-content: space-between;">
-        <button id="btnStart" class="cyber-btn" style="flex: 1;">Start Demo Tracking</button>
-        <button id="btnStasis" class="cyber-btn-outline" style="flex: 1;" disabled>Simulate Stasis</button>
+      <div class="cyber-card" style="display: flex; gap: 8px; justify-content: space-between; flex-direction: column;">
+        <div style="display: flex; gap: 8px; width: 100%;">
+          <button id="btnStart" class="cyber-btn" style="flex: 1;">Start Demo Tracking</button>
+          <button id="btnStasis" class="cyber-btn-outline" style="flex: 1;" disabled>Simulate Stasis</button>
+        </div>
+        <button id="btnTestAlarm" class="cyber-btn-outline" style="width: 100%; border: 1px solid var(--accent-gold); color: var(--accent-gold); padding: 8px 16px; border-radius: 6px; cursor: pointer;">🔊 Test Alarm & Voice</button>
       </div>
 
       <!-- Card: Stream Console logs -->
       <div class="cyber-card" style="padding: 12px;">
-        <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: bold; margin-bottom: 6px; letter-spacing: 1px; text-transform: uppercase;">System Stream console</div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: bold; margin-bottom: 8px; letter-spacing: 1px; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;">
+          <span>System Stream console</span>
+          <button id="btnDownloadLog" class="cyber-btn-outline" style="padding: 2px 8px; font-size: 0.65rem; border: 1px solid rgba(245, 158, 11, 0.3); color: var(--accent-gold); border-radius: 4px; cursor: pointer; text-transform: none;">Save Logs (.txt)</button>
+        </div>
         <div id="consoleBox" class="console-box">
           <!-- Logs appended via JS -->
         </div>

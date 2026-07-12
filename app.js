@@ -50,6 +50,7 @@ let alarmActive = false;
 let alarmDismissed = false;
 let buzzerInterval = null;
 let audioCtx = null;
+let logHistory = [];
 
 // Initialize App
 window.addEventListener('DOMContentLoaded', () => {
@@ -137,7 +138,25 @@ function selectDropPoint(point, index) {
   if (el) el.classList.add('selected');
   
   document.getElementById('targetValue').textContent = point.name;
-  logToConsole(`Destination Set: ${point.name}`, "success");
+  
+  // Play a brief confirmation chime to unlock AudioContext on mobile
+  try {
+    const actx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = actx.createOscillator();
+    const gain = actx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, actx.currentTime);
+    osc.frequency.setValueAtTime(800, actx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.04, actx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.25);
+    osc.connect(gain);
+    gain.connect(actx.destination);
+    osc.start();
+    osc.stop(actx.currentTime + 0.25);
+  } catch(e) {}
+  
+  speakVoiceAlert(`Alarm set for ${point.name}.`);
+  logToConsole(`Destination Set: ${point.name}. Alarm activated.`, "success");
   
   updateHUD();
 }
@@ -586,10 +605,14 @@ function sendWhatsAppAlert(message) {
 function logToConsole(message, type = "") {
   const box = document.getElementById('consoleBox');
   const div = document.createElement('div');
+  const timestamp = new Date().toLocaleTimeString();
   div.className = `console-line ${type}`;
-  div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+  div.textContent = `[${timestamp}] ${message}`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
+  
+  // Save log locally
+  logHistory.push(`[${timestamp}] [${type.toUpperCase() || "INFO"}] ${message}`);
 }
 
 function setupEventListeners() {
@@ -600,4 +623,42 @@ function setupEventListeners() {
   });
   document.getElementById('btnStasis').addEventListener('click', toggleStasis);
   document.getElementById('btnStopAlarm').addEventListener('click', stopAlarm);
+  
+  // Test Alarm & Speech System
+  document.getElementById('btnTestAlarm').addEventListener('click', () => {
+    logToConsole("Testing alarm and speech systems...", "alert");
+    
+    // Play a brief 1.5 second test of the siren buzzer
+    alarmActive = true;
+    playBuzzerSound();
+    speakVoiceAlert("System Check: MBR Bus Telemetry voice engine is active and ready.");
+    
+    setTimeout(() => {
+      alarmActive = false;
+      if (buzzerInterval) {
+        clearInterval(buzzerInterval);
+        buzzerInterval = null;
+      }
+      logToConsole("Audio and speech system test completed.", "success");
+    }, 1500);
+  });
+
+  // Local log downloader
+  document.getElementById('btnDownloadLog').addEventListener('click', () => {
+    if (logHistory.length === 0) {
+      alert("No logs captured yet.");
+      return;
+    }
+    const logContent = logHistory.join('\r\n');
+    const blob = new Blob([logContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mbr_bus_tracker_log_${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    logToConsole("System logs downloaded locally.", "success");
+  });
 }
