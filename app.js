@@ -34,6 +34,7 @@ let routeLine = null;
 let selectedDropPoint = null;
 let currentRoutePoints = [...BRS_ROUTE];
 let currentTrackingKey = null;
+let currentTrackingDomain = 'trkg.in';
 
 let isLiveMode = false;
 let isSimulationActive = false;
@@ -677,10 +678,19 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// Extract key from trkg.in URL
-function extractKeyFromUrl(url) {
-  const match = url.match(/\/([A-Z0-9]{6,8})(?:\?|$)/i);
-  return match ? match[1] : null;
+// Parse domain and key from tracking URL
+function parseTrackingUrl(url) {
+  // Regex to match tracking domains like: trkg.in, tkbs.in, smvt.in, etc.
+  // And extract the domain and the trailing key (4 to 12 alphanumeric characters)
+  const regex = /https?:\/\/([a-z0-9.-]+\.[a-z]{2,})(?:\/[A-Z0-9_-]+)*\/([A-Z0-9_-]{4,12})/i;
+  const match = url.match(regex);
+  if (match) {
+    return {
+      domain: match[1],
+      key: match[2]
+    };
+  }
+  return null;
 }
 
 // Handle tracking URL submission
@@ -691,14 +701,15 @@ async function handleUrlSubmit() {
     return;
   }
 
-  const key = extractKeyFromUrl(urlInput);
-  if (!key) {
-    alert("Could not extract a valid tracking key from the URL. Ensure it matches 'trkg.in/BITLAA/XXXXXX'");
+  const parsed = parseTrackingUrl(urlInput);
+  if (!parsed) {
+    alert("Could not extract a valid tracking key from the URL. Ensure it matches 'trkg.in/BITLAA/XXXXXX' or 'tkbs.in/XXXX'");
     return;
   }
 
-  currentTrackingKey = key;
-  logToConsole(`Connecting to Trackingo Session Key: ${key}...`, "success");
+  currentTrackingDomain = parsed.domain;
+  currentTrackingKey = parsed.key;
+  logToConsole(`Connecting to ${currentTrackingDomain} Session Key: ${currentTrackingKey}...`, "success");
   
   // Save active tracking state
   localStorage.setItem('inputUrl', urlInput);
@@ -707,7 +718,7 @@ async function handleUrlSubmit() {
 
   try {
     // Call our CORS proxy backend to load journey details
-    const response = await fetch(`/api/track-journey?key=${key}`);
+    const response = await fetch(`/api/track-journey?domain=${currentTrackingDomain}&key=${currentTrackingKey}`);
     const data = await response.json();
 
     if (data.status === 200 && data.journey_details) {
@@ -775,7 +786,7 @@ async function pollLiveGPS() {
   if (!currentTrackingKey) return;
   
   try {
-    const response = await fetch(`/api/track-eta?key=${currentTrackingKey}`);
+    const response = await fetch(`/api/track-eta?domain=${currentTrackingDomain}&key=${currentTrackingKey}`);
     const data = await response.json();
 
     if (data.status === 200 && data.current_status_details) {

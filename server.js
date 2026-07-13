@@ -16,7 +16,7 @@ function proxyRequest(targetUrl, res) {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Accept': 'application/json, text/javascript, */*; q=0.01',
       'Accept-Language': 'en-US,en;q=0.9',
-      'Referer': 'https://trkg.in/customer/track/' + urlObj.searchParams.get('key'),
+      'Referer': 'https://' + urlObj.hostname + '/customer/track/' + urlObj.searchParams.get('key'),
       'X-Requested-With': 'XMLHttpRequest'
     }
   };
@@ -38,11 +38,13 @@ const server = http.createServer((req, res) => {
   const pathname = parsedUrl.pathname;
 
   if (pathname === '/api/track-journey') {
+    const domain = parsedUrl.searchParams.get('domain') || 'trkg.in';
     const key = parsedUrl.searchParams.get('key');
-    proxyRequest(`https://trkg.in/api/live/journey_details?key=${key}&zoom_position=12&platform=mobile`, res);
+    proxyRequest(`https://${domain}/api/live/journey_details?key=${key}&zoom_position=12&platform=mobile`, res);
   } else if (pathname === '/api/track-eta') {
+    const domain = parsedUrl.searchParams.get('domain') || 'trkg.in';
     const key = parsedUrl.searchParams.get('key');
-    proxyRequest(`https://trkg.in/api/live/eta_map?current_status=true&key=${key}`, res);
+    proxyRequest(`https://${domain}/api/live/eta_map?current_status=true&key=${key}`, res);
   } else if (pathname === '/api/send-whatsapp') {
     const phone = parsedUrl.searchParams.get('phone');
     const apikey = parsedUrl.searchParams.get('apikey');
