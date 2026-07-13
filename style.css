@@ -510,3 +510,135 @@ header {
   font-size: 0.8rem;
   color: var(--text-muted);
 }
+
+/* Sticky split-pane on desktop */
+@media (min-width: 993px) {
+  .panel-right {
+    position: sticky;
+    top: 96px;
+    height: calc(100vh - 144px);
+    min-height: auto;
+  }
+}
+
+/* Draggable/collapsible handle (hidden on desktop) */
+.bottom-sheet-handle-container {
+  display: none;
+}
+
+/* HUD Pulsing Placeholder Style */
+.hud-placeholder {
+  font-size: 0.78rem !important;
+  color: rgba(245, 158, 11, 0.45) !important;
+  animation: hudPulse 1.5s infinite alternate;
+  letter-spacing: 0.5px;
+}
+
+@keyframes hudPulse {
+  0% { opacity: 0.35; }
+  100% { opacity: 0.9; }
+}
+
+/* Mobile Bottom Sheet Redesign */
+@media (max-width: 992px) {
+  body {
+    overflow: hidden; /* prevent main body scrolling on mobile */
+  }
+
+  .container {
+    padding: 0;
+    margin: 0;
+    max-width: none;
+    height: 100vh;
+    position: relative;
+    display: block;
+  }
+
+  .panel-right {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+  }
+
+  .panel-left {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    height: 70vh; /* max expand height */
+    background: rgba(10, 8, 6, 0.96);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    z-index: 100;
+    border-top: 2px solid var(--accent-gold);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    /* Collapsed state by default: shifts down to show handle + Telemetry HUD card (~190px visible) */
+    transform: translateY(calc(70vh - 200px));
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.95);
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .panel-left.sheet-expanded {
+    transform: translateY(0) !important;
+  }
+
+  .bottom-sheet-handle-container {
+    display: flex;
+    width: 100%;
+    height: 28px;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    background: transparent;
+    touch-action: none;
+    user-select: none;
+    border-bottom: 1px solid rgba(245, 158, 11, 0.05);
+  }
+
+  .bottom-sheet-handle {
+    width: 50px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(245, 158, 11, 0.35);
+  }
+
+  .bottom-sheet-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Make sure header bar is fixed at top on mobile overlaying the map */
+  header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    z-index: 50;
+    background: rgba(5, 4, 3, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(245, 158, 11, 0.05);
+  }
+}
+
+/* Fallback default style for desktop scroll wrap */
+.bottom-sheet-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}

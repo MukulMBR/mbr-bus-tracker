@@ -38,200 +38,205 @@
     
     <!-- Left panel (Controls, settings, stats, console logs) -->
     <div class="panel-left">
-      <!-- Card: URL Input -->
-      <div class="cyber-card collapsible-card collapsed" id="cardUrl">
-        <div class="cyber-corner corner-tl"></div>
-        <div class="cyber-corner corner-tr"></div>
-        <div class="cyber-corner corner-bl"></div>
-        <div class="cyber-corner corner-br"></div>
-        
-        <div class="collapsible-header" onclick="toggleCard('cardUrl')">
-          <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold; letter-spacing: 0.5px;">1. Connect Tracking URL</h3>
-          <span class="chevron">▼</span>
-        </div>
-        
-        <div class="collapsible-content">
-          <div style="display: flex; gap: 8px;">
-            <input 
-              type="text" 
-              id="urlInput" 
-              class="cyber-input" 
-              style="flex: 1; background: #0e0b08; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 14px; color: var(--text-primary); outline: none;" 
-              placeholder="Paste trkg.in/BITLAA/... link"
-              value="http://trkg.in/BITLAA/FJFYCQ"
-            />
-            <button id="btnSubmitUrl" class="cyber-btn" style="padding: 10px 16px;">Connect</button>
-          </div>
-        </div>
+      <!-- Drag handle for mobile bottom sheet -->
+      <div class="bottom-sheet-handle-container" id="sheetHandle">
+        <div class="bottom-sheet-handle"></div>
       </div>
-
-      <!-- Card: WhatsApp Alert Settings -->
-      <div class="cyber-card collapsible-card collapsed" id="cardWa">
-        <div class="cyber-corner corner-tl"></div>
-        <div class="cyber-corner corner-tr"></div>
-        <div class="cyber-corner corner-bl"></div>
-        <div class="cyber-corner corner-br"></div>
-        
-        <div class="collapsible-header" onclick="toggleCard('cardWa')">
-          <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold;">2. WhatsApp Notification Settings</h3>
-          <span class="chevron">▼</span>
-        </div>
-        
-        <div class="collapsible-content">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <span style="font-size: 0.85rem; color: var(--text-secondary);">Enable Phone Alerts</span>
-            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: normal; cursor: pointer; color: var(--accent-gold);">
-              <input type="checkbox" id="waEnabled" style="cursor: pointer;" /> Enable
-            </label>
+      
+      <div class="bottom-sheet-content">
+        <!-- Card: Live telemetry status HUD (Positioned at the top for sticky collapse visibility) -->
+        <div class="cyber-card glow-gold" id="hudCard">
+          <div class="cyber-corner corner-tl"></div>
+          <div class="cyber-corner corner-tr"></div>
+          <div class="cyber-corner corner-bl"></div>
+          <div class="cyber-corner corner-br"></div>
+          
+          <h3 style="color: var(--accent-gold); font-size: 1.02rem; margin-bottom: 12px; font-weight: bold; letter-spacing: 0.5px;">Live Telemetry HUD</h3>
+          <div class="hud-grid">
+            <div class="hud-item">
+              <span class="hud-label">Current Position</span>
+              <span class="hud-value hud-placeholder" id="gpsValue">Waiting for signal...</span>
+            </div>
+            <div class="hud-item">
+              <span class="hud-label">Current Speed</span>
+              <span class="hud-value hud-placeholder" id="speedValue">Waiting...</span>
+            </div>
+            <div class="hud-item">
+              <span class="hud-label">Distance to Drop</span>
+              <span class="hud-value gold hud-placeholder" id="distValue">Waiting...</span>
+            </div>
+            <div class="hud-item">
+              <span class="hud-label">ETA to Drop</span>
+              <span class="hud-value gold hud-placeholder" id="etaValue">Waiting...</span>
+            </div>
           </div>
           
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            <input 
-              type="text" 
-              id="waPhone" 
-              class="cyber-input" 
-              placeholder="WhatsApp Number (e.g. +919949542497)"
-              style="background: #0e0b08; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 12px; color: var(--text-primary); font-size: 0.85rem;"
-            />
-            <input 
-              type="password" 
-              id="waApikey" 
-              class="cyber-input" 
-              placeholder="CallmeBot API Key"
-              style="background: #0e0b08; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 12px; color: var(--text-primary); font-size: 0.85rem;"
-            />
-            <div style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.3;">
-              Message <strong>"I allow callmebot to send me messages"</strong> to <a href="https://wa.me/34644975014" target="_blank" style="color: var(--accent-gold); text-decoration: underline;">+34 644 97 50 14</a> on WhatsApp to receive your API Key.
+          <div style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted);">
+            <span>Target point: <strong id="targetValue" style="color: var(--accent-gold);">None</strong></span>
+            <span id="timeValue" class="hud-placeholder">Waiting...</span>
+          </div>
+        </div>
+
+        <!-- Card: URL Input -->
+        <div class="cyber-card collapsible-card collapsed" id="cardUrl">
+          <div class="cyber-corner corner-tl"></div>
+          <div class="cyber-corner corner-tr"></div>
+          <div class="cyber-corner corner-bl"></div>
+          <div class="cyber-corner corner-br"></div>
+          
+          <div class="collapsible-header" onclick="toggleCard('cardUrl')">
+            <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold; letter-spacing: 0.5px;">1. Connect Tracking URL</h3>
+            <span class="chevron">▼</span>
+          </div>
+          
+          <div class="collapsible-content">
+            <div style="display: flex; gap: 8px;">
+              <input 
+                type="text" 
+                id="urlInput" 
+                class="cyber-input" 
+                style="flex: 1; background: #0e0b08; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 14px; color: var(--text-primary); outline: none;" 
+                placeholder="Paste trkg.in/BITLAA/... link"
+                value="http://trkg.in/BITLAA/FJFYCQ"
+              />
+              <button id="btnSubmitUrl" class="cyber-btn" style="padding: 10px 16px;">Connect</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: WhatsApp Alert Settings -->
+        <div class="cyber-card collapsible-card collapsed" id="cardWa">
+          <div class="cyber-corner corner-tl"></div>
+          <div class="cyber-corner corner-tr"></div>
+          <div class="cyber-corner corner-bl"></div>
+          <div class="cyber-corner corner-br"></div>
+          
+          <div class="collapsible-header" onclick="toggleCard('cardWa')">
+            <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold;">2. WhatsApp Notification Settings</h3>
+            <span class="chevron">▼</span>
+          </div>
+          
+          <div class="collapsible-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <span style="font-size: 0.85rem; color: var(--text-secondary);">Enable Phone Alerts</span>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: normal; cursor: pointer; color: var(--accent-gold);">
+                <input type="checkbox" id="waEnabled" style="cursor: pointer;" /> Enable
+              </label>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <input 
+                type="text" 
+                id="waPhone" 
+                class="cyber-input" 
+                placeholder="WhatsApp Number (e.g. +919949542497)"
+                style="background: #0e0b08; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 12px; color: var(--text-primary); font-size: 0.85rem;"
+              />
+              <input 
+                type="password" 
+                id="waApikey" 
+                class="cyber-input" 
+                placeholder="CallmeBot API Key"
+                style="background: #0e0b08; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 12px; color: var(--text-primary); font-size: 0.85rem;"
+              />
+              <div style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.3;">
+                Message <strong>"I allow callmebot to send me messages"</strong> to <a href="https://wa.me/34644975014" target="_blank" style="color: var(--accent-gold); text-decoration: underline;">+34 644 97 50 14</a> on WhatsApp to receive your API Key.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Dropping Point selector -->
+        <div class="cyber-card collapsible-card" id="cardDrop">
+          <div class="cyber-corner corner-tl"></div>
+          <div class="cyber-corner corner-tr"></div>
+          <div class="cyber-corner corner-bl"></div>
+          <div class="cyber-corner corner-br"></div>
+          
+          <div class="collapsible-header" onclick="toggleCard('cardDrop')">
+            <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold;">3. Select Dropping Point</h3>
+            <span class="chevron">▲</span>
+          </div>
+          
+          <div class="collapsible-content">
+            <!-- Station Search Box -->
+            <div class="search-container">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="searchDropPoints" class="search-input" placeholder="Search dropping stations..." />
+            </div>
+
+            <!-- Wakeup Alert Configurator -->
+            <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+              <span style="color: var(--text-secondary);">Wakeup Alarm timing:</span>
+              <select id="alarmThreshold" style="background: #0e0b08; border: 1px solid var(--border-color); color: var(--accent-gold); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; outline: none; cursor: pointer; font-family: var(--font-sans);">
+                <option value="5">5 mins before</option>
+                <option value="10">10 mins before</option>
+                <option value="20" selected>20 mins before</option>
+                <option value="30">30 mins before</option>
+                <option value="45">45 mins before</option>
+              </select>
+            </div>
+
+            <!-- Master audio alert toggle -->
+            <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+              <span style="color: var(--text-secondary);">Alarm Sounds & Voice:</span>
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer; color: var(--accent-gold);">
+                <input type="checkbox" id="audioEnabled" checked style="cursor: pointer;" /> Enabled
+              </label>
+            </div>
+
+            <div id="dropPointsList" class="list-container">
+              <!-- Populated dynamically via JS -->
+              <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                Connect a tracking link or start the demo to compile route drop points.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Simulation Controls -->
+        <div class="cyber-card collapsible-card collapsed" id="cardControls">
+          <div class="cyber-corner corner-tl"></div>
+          <div class="cyber-corner corner-tr"></div>
+          <div class="cyber-corner corner-bl"></div>
+          <div class="cyber-corner corner-br"></div>
+          
+          <div class="collapsible-header" onclick="toggleCard('cardControls')">
+            <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold;">4. Demo Simulation & Tests</h3>
+            <span class="chevron">▼</span>
+          </div>
+          
+          <div class="collapsible-content">
+            <div style="display: flex; gap: 8px; width: 100%; margin-bottom: 8px;">
+              <button id="btnStart" class="cyber-btn" style="flex: 1;">Start Demo Tracking</button>
+              <button id="btnStasis" class="cyber-btn-outline" style="flex: 1;" disabled>Simulate Stasis</button>
+            </div>
+            <button id="btnTestAlarm" class="cyber-btn-outline" style="width: 100%; border: 1px solid var(--accent-gold); color: var(--accent-gold); padding: 8px 16px; border-radius: 6px; cursor: pointer;">🔊 Test Alarm & Voice</button>
+          </div>
+        </div>
+
+        <!-- Card: Stream Console logs -->
+        <div class="cyber-card collapsible-card collapsed" id="cardConsole">
+          <div class="cyber-corner corner-tl"></div>
+          <div class="cyber-corner corner-tr"></div>
+          <div class="cyber-corner corner-bl"></div>
+          <div class="cyber-corner corner-br"></div>
+          
+          <div class="collapsible-header" onclick="toggleCard('cardConsole')">
+            <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold; margin: 0;">5. System Console Stream</h3>
+            <div style="display: flex; align-items: center; gap: 8px;" onclick="event.stopPropagation()">
+              <button id="btnDownloadLog" class="cyber-btn-outline" style="padding: 2px 8px; font-size: 0.65rem; border: 1px solid rgba(245, 158, 11, 0.3); color: var(--accent-gold); border-radius: 4px; cursor: pointer; text-transform: none;">Save Logs (.txt)</button>
+              <span class="chevron" onclick="toggleCard('cardConsole')" style="cursor: pointer;">▼</span>
+            </div>
+          </div>
+          
+          <div class="collapsible-content">
+            <div id="consoleBox" class="console-box">
+              <!-- Logs appended via JS -->
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Card: Dropping Point selector -->
-      <div class="cyber-card collapsible-card" id="cardDrop">
-        <div class="cyber-corner corner-tl"></div>
-        <div class="cyber-corner corner-tr"></div>
-        <div class="cyber-corner corner-bl"></div>
-        <div class="cyber-corner corner-br"></div>
-        
-        <div class="collapsible-header" onclick="toggleCard('cardDrop')">
-          <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold;">3. Select Dropping Point</h3>
-          <span class="chevron">▲</span>
-        </div>
-        
-        <div class="collapsible-content">
-          <!-- Station Search Box -->
-          <div class="search-container">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="searchDropPoints" class="search-input" placeholder="Search dropping stations..." />
-          </div>
-
-          <!-- Wakeup Alert Configurator -->
-          <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-            <span style="color: var(--text-secondary);">Wakeup Alarm timing:</span>
-            <select id="alarmThreshold" style="background: #0e0b08; border: 1px solid var(--border-color); color: var(--accent-gold); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; outline: none; cursor: pointer; font-family: var(--font-sans);">
-              <option value="5">5 mins before</option>
-              <option value="10">10 mins before</option>
-              <option value="20" selected>20 mins before</option>
-              <option value="30">30 mins before</option>
-              <option value="45">45 mins before</option>
-            </select>
-          </div>
-
-          <!-- Master audio alert toggle -->
-          <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-            <span style="color: var(--text-secondary);">Alarm Sounds & Voice:</span>
-            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer; color: var(--accent-gold);">
-              <input type="checkbox" id="audioEnabled" checked style="cursor: pointer;" /> Enabled
-            </label>
-          </div>
-
-          <div id="dropPointsList" class="list-container">
-            <!-- Populated dynamically via JS -->
-            <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
-              Connect a tracking link or start the demo to compile route drop points.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Card: Live telemetry status HUD -->
-      <div class="cyber-card glow-gold">
-        <div class="cyber-corner corner-tl"></div>
-        <div class="cyber-corner corner-tr"></div>
-        <div class="cyber-corner corner-bl"></div>
-        <div class="cyber-corner corner-br"></div>
-        
-        <h3 style="color: var(--accent-gold); font-size: 1.02rem; margin-bottom: 12px; font-weight: bold; letter-spacing: 0.5px;">Live Telemetry HUD</h3>
-        <div class="hud-grid">
-          <div class="hud-item">
-            <span class="hud-label">Current Position</span>
-            <span class="hud-value" id="gpsValue">--</span>
-          </div>
-          <div class="hud-item">
-            <span class="hud-label">Current Speed</span>
-            <span class="hud-value" id="speedValue">--</span>
-          </div>
-          <div class="hud-item">
-            <span class="hud-label">Distance to Drop</span>
-            <span class="hud-value gold" id="distValue">--</span>
-          </div>
-          <div class="hud-item">
-            <span class="hud-label">ETA to Drop</span>
-            <span class="hud-value gold" id="etaValue">--</span>
-          </div>
-        </div>
-        
-        <div style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted);">
-          <span>Target point: <strong id="targetValue" style="color: var(--accent-gold);">None</strong></span>
-          <span id="timeValue">--</span>
-        </div>
-      </div>
-
-      <!-- Card: Simulation Controls -->
-      <div class="cyber-card collapsible-card collapsed" id="cardControls">
-        <div class="cyber-corner corner-tl"></div>
-        <div class="cyber-corner corner-tr"></div>
-        <div class="cyber-corner corner-bl"></div>
-        <div class="cyber-corner corner-br"></div>
-        
-        <div class="collapsible-header" onclick="toggleCard('cardControls')">
-          <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold;">4. Demo Simulation & Tests</h3>
-          <span class="chevron">▼</span>
-        </div>
-        
-        <div class="collapsible-content">
-          <div style="display: flex; gap: 8px; width: 100%; margin-bottom: 8px;">
-            <button id="btnStart" class="cyber-btn" style="flex: 1;">Start Demo Tracking</button>
-            <button id="btnStasis" class="cyber-btn-outline" style="flex: 1;" disabled>Simulate Stasis</button>
-          </div>
-          <button id="btnTestAlarm" class="cyber-btn-outline" style="width: 100%; border: 1px solid var(--accent-gold); color: var(--accent-gold); padding: 8px 16px; border-radius: 6px; cursor: pointer;">🔊 Test Alarm & Voice</button>
-        </div>
-      </div>
-
-      <!-- Card: Stream Console logs -->
-      <div class="cyber-card collapsible-card collapsed" id="cardConsole">
-        <div class="cyber-corner corner-tl"></div>
-        <div class="cyber-corner corner-tr"></div>
-        <div class="cyber-corner corner-bl"></div>
-        <div class="cyber-corner corner-br"></div>
-        
-        <div class="collapsible-header" onclick="toggleCard('cardConsole')">
-          <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold; margin: 0;">5. System Console Stream</h3>
-          <div style="display: flex; align-items: center; gap: 8px;" onclick="event.stopPropagation()">
-            <button id="btnDownloadLog" class="cyber-btn-outline" style="padding: 2px 8px; font-size: 0.65rem; border: 1px solid rgba(245, 158, 11, 0.3); color: var(--accent-gold); border-radius: 4px; cursor: pointer; text-transform: none;">Save Logs (.txt)</button>
-            <span class="chevron" onclick="toggleCard('cardConsole')" style="cursor: pointer;">▼</span>
-          </div>
-        </div>
-        
-        <div class="collapsible-content">
-          <div id="consoleBox" class="console-box">
-            <!-- Logs appended via JS -->
-          </div>
-        </div>
-      </div>
-    </div>
-
     </div>
 
     <!-- Right panel (Live Map rendering) -->

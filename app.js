@@ -95,6 +95,7 @@ window.addEventListener('DOMContentLoaded', () => {
   populateDropPoints(currentRoutePoints);
   setupEventListeners();
   restoreTrackingSession();
+  initBottomSheet();
   logToConsole("System initialized. Paste a trkg.in URL or click 'Start Demo Tracking'.", "success");
 });
 
@@ -109,7 +110,8 @@ function initMap(routeData) {
   const avgLng = routeData.reduce((sum, p) => sum + p.lng, 0) / routeData.length;
 
   map = L.map('map', {
-    zoomControl: false
+    zoomControl: false,
+    scrollWheelZoom: false
   }).setView([avgLat, avgLng], 8);
 
   // CartoDB Dark Matter base map tiles (Sleek dark theme)
@@ -118,6 +120,26 @@ function initMap(routeData) {
     subdomains: 'abcd',
     maxZoom: 20
   }).addTo(map);
+
+  // Bounding box lock for route region (Karnataka/Andhra Pradesh) to prevent map drift
+  if (routeData && routeData.length > 0) {
+    const lats = routeData.map(p => p.lat);
+    const lngs = routeData.map(p => p.lng);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
+    
+    // Bounds with 1.5 degrees of padding
+    const bounds = L.latLngBounds(
+      [minLat - 1.5, minLng - 1.5],
+      [maxLat + 1.5, maxLng + 1.5]
+    );
+    map.setMaxBounds(bounds);
+    map.on('drag', () => {
+      map.panInsideBounds(bounds, { animate: false });
+    });
+  }
 
   // Plot stations
   routeData.forEach((pt, index) => {
@@ -499,9 +521,23 @@ function updateBusPosition(lat, lng, speed, timestamp) {
     busIconEl.style.transform = `rotate(${angle}deg)`;
   }
 
-  document.getElementById('gpsValue').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-  document.getElementById('speedValue').textContent = `${speed} km/h`;
-  document.getElementById('timeValue').textContent = timestamp;
+  const gpsEl = document.getElementById('gpsValue');
+  if (gpsEl) {
+    gpsEl.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    gpsEl.classList.remove('hud-placeholder');
+  }
+
+  const speedEl = document.getElementById('speedValue');
+  if (speedEl) {
+    speedEl.textContent = `${speed} km/h`;
+    speedEl.classList.remove('hud-placeholder');
+  }
+
+  const timeEl = document.getElementById('timeValue');
+  if (timeEl) {
+    timeEl.textContent = timestamp;
+    timeEl.classList.remove('hud-placeholder');
+  }
 
   // Stasis checking
   if (lastLat === lat && lastLng === lng) {
@@ -551,8 +587,12 @@ function updateHUD() {
 
   const currentPos = busMarker.getLatLng();
   const dist = getDistance(currentPos.lat, currentPos.lng, selectedDropPoint.lat, selectedDropPoint.lng);
-  
-  document.getElementById('distValue').textContent = `${dist.toFixed(1)} km`;
+
+  const distEl = document.getElementById('distValue');
+  if (distEl) {
+    distEl.textContent = `${dist.toFixed(1)} km`;
+    distEl.classList.remove('hud-placeholder');
+  }
 
   // Estimate ETA based on current speed (or fallback to average 60km/h)
   const speedText = document.getElementById('speedValue').textContent;
@@ -560,7 +600,12 @@ function updateHUD() {
   const currentSpeed = speedVal > 15 ? speedVal : 60;
   
   const etaMins = Math.round((dist / currentSpeed) * 60);
-  document.getElementById('etaValue').textContent = formatDuration(etaMins);
+  
+  const etaEl = document.getElementById('etaValue');
+  if (etaEl) {
+    etaEl.textContent = formatDuration(etaMins);
+    etaEl.classList.remove('hud-placeholder');
+  }
 
   // Trigger wakeup alarm dynamically based on user setting (default 20 mins)
   const alarmThreshold = parseInt(document.getElementById('alarmThreshold').value) || 20;
@@ -690,6 +735,42 @@ function stopActiveInterval() {
     buzzerInterval = null;
   }
   localStorage.setItem('autoResume', 'false');
+
+  // Reset HUD DOM elements back to skeleton placeholders
+  const gpsEl = document.getElementById('gpsValue');
+  if (gpsEl) {
+    gpsEl.textContent = "Waiting for signal...";
+    gpsEl.classList.add('hud-placeholder');
+  }
+
+  const speedEl = document.getElementById('speedValue');
+  if (speedEl) {
+    speedEl.textContent = "Waiting...";
+    speedEl.classList.add('hud-placeholder');
+  }
+
+  const distEl = document.getElementById('distValue');
+  if (distEl) {
+    distEl.textContent = "Waiting...";
+    distEl.classList.add('hud-placeholder');
+  }
+
+  const etaEl = document.getElementById('etaValue');
+  if (etaEl) {
+    etaEl.textContent = "Waiting...";
+    etaEl.classList.add('hud-placeholder');
+  }
+
+  const timeEl = document.getElementById('timeValue');
+  if (timeEl) {
+    timeEl.textContent = "Waiting...";
+    timeEl.classList.add('hud-placeholder');
+  }
+
+  const targetEl = document.getElementById('targetValue');
+  if (targetEl) {
+    targetEl.textContent = "None";
+  }
 }
 
 function sendWhatsAppAlert(message) {
@@ -808,3 +889,54 @@ window.toggleCard = function(cardId) {
     card.querySelector('.chevron').textContent = '▼';
   }
 };
+
+// Initialize mobile bottom sheet gestures and tap interactions
+function initBottomSheet() {
+  const sheet = document.querySelector('.panel-left');
+  const handle = document.getElementById('sheetHandle');
+  if (!sheet || !handle) return;
+  
+  // Slide up/down drawer toggle on clicking handle
+  handle.addEventListener('click', () => {
+    sheet.classList.toggle('sheet-expanded');
+  });
+  
+  // Touch dragging gesture controls for slide-up sheet on mobile
+  let startY = 0;
+  let currentY = 0;
+  let isDragging = false;
+  
+  handle.addEventListener('touchstart', (e) => {
+    startY = e.touches[0].clientY;
+    isDragging = true;
+    sheet.style.transition = 'none';
+  }, { passive: true });
+  
+  document.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    currentY = e.touches[0].clientY;
+    const diff = currentY - startY;
+    
+    // Check offsets dynamically
+    if (diff > 0) { // Dragging drawer down
+      sheet.style.transform = `translateY(${diff}px)`;
+    } else { // Dragging drawer up
+      sheet.style.transform = `translateY(${diff}px)`;
+    }
+  }, { passive: true });
+  
+  document.addEventListener('touchend', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    sheet.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
+    
+    const diff = currentY - startY;
+    sheet.style.transform = ''; // Clear inline styles to let CSS configuration execute
+    
+    if (diff < -60) {
+      sheet.classList.add('sheet-expanded');
+    } else if (diff > 60) {
+      sheet.classList.remove('sheet-expanded');
+    }
+  }, { passive: true });
+}
