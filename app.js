@@ -60,6 +60,7 @@ function restoreTrackingSession() {
   if (localStorage.getItem('waEnabled')) document.getElementById('waEnabled').checked = localStorage.getItem('waEnabled') === 'true';
   if (localStorage.getItem('inputUrl')) document.getElementById('urlInput').value = localStorage.getItem('inputUrl');
   if (localStorage.getItem('alarmThreshold')) document.getElementById('alarmThreshold').value = localStorage.getItem('alarmThreshold');
+  if (localStorage.getItem('audioEnabled')) document.getElementById('audioEnabled').checked = localStorage.getItem('audioEnabled') === 'true';
 
   const autoResume = localStorage.getItem('autoResume') === 'true';
   const savedIndex = localStorage.getItem('savedDropPointIndex');
@@ -311,7 +312,9 @@ async function handleUrlSubmit() {
       // Start live polling loop (every 10 seconds)
       startLiveTrackingLoop();
     } else {
-      logToConsole("Session returned error. Falling back to BRS Travels Demo route...", "alert");
+      const errorMsg = data.message || "Bus reached its final destination. Tracking service is no longer active.";
+      logToConsole(`Alert: ${errorMsg}. Loading BRS Travels Demo route.`, "error");
+      speakVoiceAlert("Notice: The bus has reached its final destination. Active tracking is completed.");
       loadDemoRoute();
     }
   } catch (error) {
@@ -599,6 +602,9 @@ function stopAlarm() {
 
 // Speak voice warning
 function speakVoiceAlert(text) {
+  const audioEnabled = document.getElementById('audioEnabled') ? document.getElementById('audioEnabled').checked : true;
+  if (!audioEnabled) return;
+
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -610,6 +616,9 @@ function speakVoiceAlert(text) {
 
 // Synthesize alarm sound beeps
 function playBuzzerSound() {
+  const audioEnabled = document.getElementById('audioEnabled') ? document.getElementById('audioEnabled').checked : true;
+  if (!audioEnabled) return;
+
   try {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -731,6 +740,7 @@ function setupEventListeners() {
   document.getElementById('waEnabled').addEventListener('change', (e) => localStorage.setItem('waEnabled', e.target.checked));
   document.getElementById('urlInput').addEventListener('input', (e) => localStorage.setItem('inputUrl', e.target.value.trim()));
   document.getElementById('alarmThreshold').addEventListener('change', (e) => localStorage.setItem('alarmThreshold', e.target.value));
+  document.getElementById('audioEnabled').addEventListener('change', (e) => localStorage.setItem('audioEnabled', e.target.checked));
   
   // Search drop points list filter
   document.getElementById('searchDropPoints').addEventListener('input', (e) => {

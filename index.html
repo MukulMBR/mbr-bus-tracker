@@ -11,7 +11,7 @@
         crossorigin=""/>
   
   <!-- Premium Obsidian Custom Styling -->
-  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 
@@ -37,7 +37,8 @@
   <div class="container">
     
     <!-- Left panel (Controls, settings, stats, console logs) -->
-    <div class="panel-left"      <!-- Card: URL Input -->
+    <div class="panel-left">
+      <!-- Card: URL Input -->
       <div class="cyber-card collapsible-card collapsed" id="cardUrl">
         <div class="cyber-corner corner-tl"></div>
         <div class="cyber-corner corner-tr"></div>
@@ -135,6 +136,14 @@
               <option value="30">30 mins before</option>
               <option value="45">45 mins before</option>
             </select>
+          </div>
+
+          <!-- Master audio alert toggle -->
+          <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+            <span style="color: var(--text-secondary);">Alarm Sounds & Voice:</span>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer; color: var(--accent-gold);">
+              <input type="checkbox" id="audioEnabled" checked style="cursor: pointer;" /> Enabled
+            </label>
           </div>
 
           <div id="dropPointsList" class="list-container">
