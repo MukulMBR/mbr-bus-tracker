@@ -1,5 +1,5 @@
 /* Obsidian Gold & Telemetric Map CSS styling */
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 :root {
   --bg-primary: #050403;
@@ -17,7 +17,7 @@
   --border-color: rgba(245, 158, 11, 0.12);
   --border-active: rgba(245, 158, 11, 0.5);
   
-  --font-sans: 'Space Grotesk', -apple-system, sans-serif;
+  --font-sans: 'Outfit', -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
@@ -441,4 +441,72 @@ header {
   max-width: 320px;
   text-align: center;
   box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+}
+
+/* Collapsible layout rules */
+.collapsible-card {
+  transition: all 0.3s ease;
+}
+
+.collapsible-header {
+  display: flex !important;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+}
+
+.collapsible-header h3 {
+  margin: 0 !important;
+}
+
+.collapsible-header .chevron {
+  font-size: 0.8rem;
+  color: var(--accent-gold);
+  transition: transform 0.25s ease;
+}
+
+.collapsible-card.collapsed .collapsible-header .chevron {
+  transform: rotate(-90deg);
+}
+
+.collapsible-content {
+  margin-top: 12px;
+  display: block;
+}
+
+.collapsible-card.collapsed .collapsible-content {
+  display: none !important;
+}
+
+/* Search input style */
+.search-container {
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.search-input {
+  width: 100%;
+  background: #0e0b08;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 12px 8px 30px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: var(--font-sans);
+}
+
+.search-input:focus {
+  border-color: var(--accent-gold);
+  outline: none;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }

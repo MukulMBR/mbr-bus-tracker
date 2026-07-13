@@ -51,6 +51,7 @@ let alarmDismissed = false;
 let buzzerInterval = null;
 let audioCtx = null;
 let logHistory = [];
+let stasisAlertSpoken = false;
 
 // Restore state from localStorage on startup
 function restoreTrackingSession() {
@@ -58,6 +59,7 @@ function restoreTrackingSession() {
   if (localStorage.getItem('waApikey')) document.getElementById('waApikey').value = localStorage.getItem('waApikey');
   if (localStorage.getItem('waEnabled')) document.getElementById('waEnabled').checked = localStorage.getItem('waEnabled') === 'true';
   if (localStorage.getItem('inputUrl')) document.getElementById('urlInput').value = localStorage.getItem('inputUrl');
+  if (localStorage.getItem('alarmThreshold')) document.getElementById('alarmThreshold').value = localStorage.getItem('alarmThreshold');
 
   const autoResume = localStorage.getItem('autoResume') === 'true';
   const savedIndex = localStorage.getItem('savedDropPointIndex');
@@ -109,33 +111,75 @@ function initMap(routeData) {
     zoomControl: false
   }).setView([avgLat, avgLng], 8);
 
-  // Dark Carto Map tiles for premium styling
+  // CartoDB Dark Matter base map tiles (Sleek dark theme)
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 20
   }).addTo(map);
 
-  L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-  // Plot route path
-  const pathPoints = routeData.map(pt => [pt.lat, pt.lng]);
-  routeLine = L.polyline(pathPoints, {
-    color: 'var(--accent-gold)',
-    weight: 3,
-    opacity: 0.6,
-    dashArray: '8, 8'
-  }).addTo(map);
-
-  // Add route point markers
-  routeData.forEach(pt => {
+  // Plot stations
+  routeData.forEach((pt, index) => {
     const isBoarding = pt.type === 'boarding';
+    
     L.circleMarker([pt.lat, pt.lng], {
-      radius: isBoarding ? 5 : 6,
-      fillColor: isBoarding ? '#0d0a07' : '#f59e0b',
-      color: isBoarding ? 'var(--accent-gold)' : '#fff',
-      weight: 1.5,
-      fillOpacity: 1
-    }).bindPopup(`<b>${pt.name}</b> (${pt.type})`).addTo(map);
+      radius: isBoarding ? 8 : 6,
+      fillColor: isBoarding ? '#f59e0b' : '#3b82f6',
+      color: '#fff',
+      weight: 2,
+      opacity: 0.9,
+      fillOpacity: 0.95
+    })
+    .bindPopup(`<strong>${pt.name}</strong><br>${isBoarding ? 'Boarding checkpoint' : 'Dropping destination'}`)
+    .addTo(map);
   });
+
+  // Plot actual highway route geometry via OSRM
+  drawRouteLine(routeData);
+}
+
+// Fetch and draw driving route using OSRM API
+async function drawRouteLine(points) {
+  if (routeLine) {
+    map.removeLayer(routeLine);
+    routeLine = null;
+  }
+  
+  try {
+    // Downsample coordinates to avoid URL length limitations (max 80 points)
+    const maxPoints = 80;
+    let sampledPoints = points;
+    if (points.length > maxPoints) {
+      sampledPoints = [];
+      const step = Math.ceil(points.length / maxPoints);
+      for (let i = 0; i < points.length; i += step) {
+        sampledPoints.push(points[i]);
+      }
+      if (sampledPoints[sampledPoints.length - 1] !== points[points.length - 1]) {
+        sampledPoints.push(points[points.length - 1]);
+      }
+    }
+    
+    const coordsString = sampledPoints.map(p => `${p.lng},${p.lat}`).join(';');
+    const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`);
+    const data = await response.json();
+    
+    if (data.code === 'Ok' && data.routes && data.routes[0]) {
+      const routeGeoJSON = data.routes[0].geometry;
+      const latlngs = routeGeoJSON.coordinates.map(coord => [coord[1], coord[0]]);
+      routeLine = L.polyline(latlngs, { color: 'var(--accent-gold)', weight: 3, opacity: 0.85 }).addTo(map);
+    } else {
+      drawStraightLineRoute(points);
+    }
+  } catch (e) {
+    console.error("OSRM highway pathing failed. Falling back to straight lines.", e);
+    drawStraightLineRoute(points);
+  }
+}
+
+function drawStraightLineRoute(points) {
+  const latlngs = points.map(p => [p.lat, p.lng]);
+  routeLine = L.polyline(latlngs, { color: 'var(--accent-gold)', dashArray: '5, 8', weight: 3 }).addTo(map);
 }
 
 // Populate Drop Points list
@@ -430,6 +474,12 @@ function startDemoSimulation() {
 function updateBusPosition(lat, lng, speed, timestamp) {
   if (!busMarker) {
     busMarker = L.marker([lat, lng], { icon: createBusIcon() }).addTo(map);
+    map.setView([lat, lng], 12);
+  } else {
+    busMarker.setLatLng([lat, lng]);
+    const currentZoom = map.getZoom();
+    const targetZoom = currentZoom < 12 ? 12 : currentZoom;
+    map.setView([lat, lng], targetZoom);
   }
 
   // Calculate movement angle for rotation (bearing in degrees)
@@ -439,9 +489,6 @@ function updateBusPosition(lat, lng, speed, timestamp) {
     const dLat = lat - lastLat;
     angle = Math.atan2(dLng, dLat) * (180 / Math.PI);
   }
-
-  busMarker.setLatLng([lat, lng]);
-  map.panTo([lat, lng]);
 
   // Apply rotation to the SVG element
   const busIconEl = busMarker.getElement() ? busMarker.getElement().querySelector('.bus-icon-glow') : null;
@@ -461,6 +508,7 @@ function updateBusPosition(lat, lng, speed, timestamp) {
     }
   } else {
     stasisCount = 0;
+    stasisAlertSpoken = false; // Reset stasis voice lock when movement resumes
     if (busMarker.getElement()) {
       busMarker.getElement().classList.remove('stasis');
     }
@@ -480,7 +528,10 @@ function triggerStasisWarning(lat, lng) {
   const alertMsg = `STASIS ALERT: Bus stationary at coordinates [${lat.toFixed(5)}, ${lng.toFixed(5)}] for 20 minutes.`;
   logToConsole(alertMsg, "error");
   
-  speakVoiceAlert("Warning: The bus has been stationary for 20 minutes. There may be a traffic delay or breakdown ahead.");
+  if (!stasisAlertSpoken) {
+    speakVoiceAlert("Warning: The bus has been stationary for 20 minutes. There may be a traffic delay or breakdown ahead.");
+    stasisAlertSpoken = true;
+  }
   sendWhatsAppAlert(`STASIS WARNING: Bus is stationary at coordinates [${lat.toFixed(5)}, ${lng.toFixed(5)}] for 20 minutes.`);
 }
 
@@ -508,8 +559,9 @@ function updateHUD() {
   const etaMins = Math.round((dist / currentSpeed) * 60);
   document.getElementById('etaValue').textContent = formatDuration(etaMins);
 
-  // Trigger wakeup alarm when ETA is less than or equal to 20 minutes
-  if (etaMins <= 20 && etaMins > 0 && !alarmActive && !alarmDismissed) {
+  // Trigger wakeup alarm dynamically based on user setting (default 20 mins)
+  const alarmThreshold = parseInt(document.getElementById('alarmThreshold').value) || 20;
+  if (etaMins <= alarmThreshold && etaMins > 0 && !alarmActive && !alarmDismissed) {
     triggerArrivalAlarm(etaMins);
   }
 }
@@ -678,7 +730,21 @@ function setupEventListeners() {
   document.getElementById('waApikey').addEventListener('input', (e) => localStorage.setItem('waApikey', e.target.value.trim()));
   document.getElementById('waEnabled').addEventListener('change', (e) => localStorage.setItem('waEnabled', e.target.checked));
   document.getElementById('urlInput').addEventListener('input', (e) => localStorage.setItem('inputUrl', e.target.value.trim()));
+  document.getElementById('alarmThreshold').addEventListener('change', (e) => localStorage.setItem('alarmThreshold', e.target.value));
   
+  // Search drop points list filter
+  document.getElementById('searchDropPoints').addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase().trim();
+    document.querySelectorAll('#dropPointsList .list-item').forEach(el => {
+      const name = el.querySelector('.item-name').textContent.toLowerCase();
+      if (name.includes(q)) {
+        el.style.display = 'flex';
+      } else {
+        el.style.display = 'none';
+      }
+    });
+  });
+
   // Test Alarm & Speech System
   document.getElementById('btnTestAlarm').addEventListener('click', () => {
     logToConsole("Testing alarm and speech systems...", "alert");
@@ -717,3 +783,18 @@ function setupEventListeners() {
     logToConsole("System logs downloaded locally.", "success");
   });
 }
+
+// Toggle collapsible card accordions
+window.toggleCard = function(cardId) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  
+  const isCollapsed = card.classList.contains('collapsed');
+  if (isCollapsed) {
+    card.classList.remove('collapsed');
+    card.querySelector('.chevron').textContent = '▲';
+  } else {
+    card.classList.add('collapsed');
+    card.querySelector('.chevron').textContent = '▼';
+  }
+};
