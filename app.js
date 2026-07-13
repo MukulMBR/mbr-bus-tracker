@@ -53,6 +53,383 @@ let audioCtx = null;
 let logHistory = [];
 let stasisAlertSpoken = false;
 
+// Geofence circle Leaflet layer reference
+let geofenceCircle = null;
+
+// Multi-language Translation Dictionaries
+const translations = {
+  en: {
+    appTitle: "MBR BUS TELEMETRY",
+    appSubtitle: "GPS TRACKING & AUTOMATED ARRIVAL ALARMS",
+    badgeLabel: "Telemetry Link Active",
+    hudTitle: "Live Telemetry HUD",
+    gpsLabel: "Current Position",
+    speedLabel: "Current Speed",
+    distLabel: "Distance to Drop",
+    etaLabel: "ETA to Drop",
+    targetLabel: "Target point",
+    progressLabel: "Route Progress",
+    waitingSignal: "Waiting for signal...",
+    waiting: "Waiting...",
+    tracking: "Tracking",
+    alerts: "Alerts",
+    dropPoint: "Drop Point",
+    demo: "Demo",
+    console: "Console",
+    history: "History",
+    connectTitle: "Connect Tracking URL",
+    connectBtn: "Connect",
+    waTitle: "WhatsApp Alerts Settings",
+    enableBtn: "Enable",
+    dropPointTitle: "Select Dropping Point",
+    audioLabel: "Alarm Sounds & Voice:",
+    enabledLabel: "Enabled",
+    dropPointEmpty: "Connect a tracking link or start the demo to compile route drop points.",
+    demoTitle: "Demo Simulation & Tests",
+    startDemoBtn: "Start Demo Tracking",
+    stasisBtn: "Simulate Stasis",
+    testAlarmBtn: "🔊 Test Alarm & Voice",
+    consoleTitle: "System Console Stream",
+    saveLogsBtn: "Save Logs (.txt)",
+    historyTitle: "Trip History Log (Last 10)",
+    historyEmpty: "No completed trips in history yet.",
+    shareTrip: "Share Trip",
+    alarmThresholdLabel: "Wakeup Alarm timing:",
+    none: "None"
+  },
+  kn: {
+    appTitle: "ಎಂ.ಬಿ.ಆರ್ ಬಸ್ ಟೆಲಿಮೆಟ್ರಿ",
+    appSubtitle: "ಜಿಪಿಎಸ್ ಟ್ರ್ಯಾಕಿಂಗ್ ಮತ್ತು ಸ್ವಯಂಚಾಲಿತ ಆಗಮನದ ಅಲಾರಂಗಳು",
+    badgeLabel: "ಟೆಲಿಮೆಟ್ರಿ ಲಿಂಕ್ ಸಕ್ರಿಯವಾಗಿದೆ",
+    hudTitle: "ಲೈವ್ ಟೆಲಿಮೆಟ್ರಿ HUD",
+    gpsLabel: "ಪ್ರಸ್ತುತ ಜಿಪಿಎಸ್ ಸ್ಥಳ",
+    speedLabel: "ಪ್ರಸ್ತುತ ವೇಗ",
+    distLabel: "ಇಳಿಯುವ ದೂರ",
+    etaLabel: "ಇಳಿಯುವ ಅಂದಾಜು ಸಮಯ",
+    targetLabel: "ಗುರಿ ನಿಲ್ದಾಣ",
+    progressLabel: "ಪ್ರಯಾಣದ ಪ್ರಗತಿ",
+    waitingSignal: "ಸಿಗ್ನಲ್ಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ...",
+    waiting: "ಕಾಯಲಾಗುತ್ತಿದೆ...",
+    tracking: "ಟ್ರ್ಯಾಕಿಂಗ್",
+    alerts: "ಎಚ್ಚರಿಕೆಗಳು",
+    dropPoint: "ಇಳಿಯುವ ಸ್ಥಳ",
+    demo: "ಡೆಮೊ",
+    console: "ಕನ್ಸೋಲ್",
+    history: "ಇತಿಹಾಸ",
+    connectTitle: "ಟ್ರ್ಯಾಕಿಂಗ್ ಲಿಂಕ್ ಜೋಡಿಸಿ",
+    connectBtn: "ಜೋಡಿಸಿ",
+    waTitle: "ವಾಟ್ಸಾಪ್ ಎಚ್ಚರಿಕೆ ಸೆಟ್ಟಿಂಗ್‌ಗಳು",
+    enableBtn: "ಸಕ್ರಿಯಗೊಳಿಸಿ",
+    dropPointTitle: "ಇಳಿಯುವ ನಿಲ್ದಾಣ ಆಯ್ಕೆಮಾಡಿ",
+    audioLabel: "ಅಲಾರಾಂ ಧ್ವನಿಗಳು ಮತ್ತು ಧ್ವನಿ ಸಹಾಯಕ:",
+    enabledLabel: "ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ",
+    dropPointEmpty: "ನಿಲ್ದಾಣಗಳನ್ನು ಪಡೆಯಲು ಟ್ರ್ಯಾಕಿಂಗ್ ಜೋಡಿಸಿ ಅಥವಾ ಡೆಮೊ ಆರಂಭಿಸಿ.",
+    demoTitle: "ಡೆಮೊ ಸಿಮ್ಯುಲೇಶನ್ ಮತ್ತು ಪರೀಕ್ಷೆಗಳು",
+    startDemoBtn: "ಡೆಮೊ ಆರಂಭಿಸಿ",
+    stasisBtn: "ನಿಲ್ಲಿಸಿ ಸಿಮ್ಯುಲೇಟ್ ಮಾಡಿ",
+    testAlarmBtn: "🔊 ಧ್ವನಿ ಪರೀಕ್ಷಿಸಿ",
+    consoleTitle: "ಸಿಸ್ಟಮ್ ಕನ್ಸೋಲ್ ಸ್ಟ್ರೀಮ್",
+    saveLogsBtn: "ಲಾಗ್‌ಗಳನ್ನು ಉಳಿಸಿ",
+    historyTitle: "ಪ್ರಯಾಣದ ಇತಿಹಾಸ (ಕೊನೆಯ 10)",
+    historyEmpty: "ಇತಿಹಾಸದಲ್ಲಿ ಯಾವುದೇ ಪ್ರಯಾಣಗಳು ಲಭ್ಯವಿಲ್ಲ.",
+    shareTrip: "ಪ್ರಯಾಣ ಹಂಚಿಕೊಳ್ಳಿ",
+    alarmThresholdLabel: "ಅಲಾರಾಂ ಸಮಯದ ಮಿತಿ:",
+    none: "ಯಾವುದೂ ಇಲ್ಲ"
+  },
+  te: {
+    appTitle: "ఎమ్.బి.ఆర్ బస్ టెలిమెట్రీ",
+    appSubtitle: "జిపిఎస్ ట్రాకింగ్ & ఆటోమేటెడ్ రాక అలారాలు",
+    badgeLabel: "టెలిమెట్రీ లింక్ క్రియాశీలంగా ఉంది",
+    hudTitle: "లైవ్ టెలిమెట్రీ HUD",
+    gpsLabel: "ప్రస్తుత స్థానం",
+    speedLabel: "ప్రస్తుత వేగం",
+    distLabel: "దిగే దూరం",
+    etaLabel: "దిగే అంచనా సమయం",
+    targetLabel: "లక్ష్య స్థానం",
+    progressLabel: "ప్రయాణ పురోగతి",
+    waitingSignal: "సిగ్నల్ కోసం వేచి ఉంది...",
+    waiting: "వేచి ఉంది...",
+    tracking: "ట్రాకింగ్",
+    alerts: "హెచ్చరికలు",
+    dropPoint: "దిగే స్థలం",
+    demo: "డెమో",
+    console: "కన్సోల్",
+    history: "చరిత్ర",
+    connectTitle: "ట్రాకింగ్ లింక్ కనెక్ట్ చేయండి",
+    connectBtn: "కనెక్ట్",
+    waTitle: "వాట్సాప్ హెచ్చరిక సెట్టింగులు",
+    enableBtn: "సక్రియం చేయి",
+    dropPointTitle: "దిగే స్థలాన్ని ఎంచుకోండి",
+    audioLabel: "అలారం శబ్దాలు & వాయిస్ అసిస్టెంట్:",
+    enabledLabel: "సక్రియం చేయబడింది",
+    dropPointEmpty: "స్టేషన్లను పొందడానికి ట్రాకింగ్ లింక్ జోడించండి లేదా డెమో ప్రారంభించండి.",
+    demoTitle: "డెమో సిమ్యులేషన్ & టెస్టులు",
+    startDemoBtn: "డెమో ప్రారంభించు",
+    stasisBtn: "నిలుపుదల సిమ్యులేట్ చేయి",
+    testAlarmBtn: "🔊 శబ్దం పరీక్షించండి",
+    consoleTitle: "సిస్టమ్ కన్సోల్ స్ట్రీమ్",
+    saveLogsBtn: "లాగ్స్ సేవ్ చేయి",
+    historyTitle: "ప్రయాణ చరిత్ర (చివరి 10)",
+    historyEmpty: "చరిత్రలో ప్రయాణాలు ఏవీ లేవు.",
+    shareTrip: "ప్రయాణాన్ని షేర్ చేయి",
+    alarmThresholdLabel: "అలారం సమయ పరిమితి:",
+    none: "ఏదీ లేదు"
+  }
+};
+
+let currentLanguage = 'en';
+
+// Change App Interface Language
+window.changeLanguage = function(lang) {
+  if (!translations[lang]) return;
+  currentLanguage = lang;
+  localStorage.setItem('appLang', lang);
+  document.getElementById('langSelect').value = lang;
+  
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (translations[lang][key]) {
+      if (el.tagName === 'INPUT') {
+        el.placeholder = translations[lang][key];
+      } else {
+        const isPlaceholder = el.classList.contains('hud-placeholder');
+        el.textContent = translations[lang][key];
+        if (isPlaceholder) el.classList.add('hud-placeholder');
+      }
+    }
+  });
+  
+  if (!selectedDropPoint) {
+    document.getElementById('targetValue').textContent = translations[lang].none;
+  }
+  
+  logToConsole(`Language changed to ${lang === 'en' ? 'English' : lang === 'kn' ? 'Kannada' : 'Telugu'}.`, "success");
+};
+
+// Web Notifications Fallback API
+function initWebNotifications() {
+  if ("Notification" in window) {
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }
+}
+
+function sendBrowserNotification(title, message) {
+  if ("Notification" in window && Notification.permission === "granted") {
+    try {
+      const notification = new Notification(title, {
+        body: message,
+        icon: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+        tag: "mbr-bus-alarm"
+      });
+      notification.onclick = function() {
+        window.focus();
+        notification.close();
+      };
+    } catch (e) {
+      console.warn("Failed to fire browser notification", e);
+    }
+  }
+}
+
+// Share location read-only parsing parameters
+function checkShareParameters() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('share') === 'true') {
+    logToConsole("Shared trip view active. Settings disabled.", "info");
+    
+    // Hide quick-access row buttons and the bottom tab panel
+    const grid = document.querySelector('.quick-access-grid');
+    if (grid) grid.style.display = 'none';
+    const panel = document.getElementById('accessPanel');
+    if (panel) panel.style.display = 'none';
+    
+    const urlParam = params.get('url');
+    if (urlParam) {
+      document.getElementById('urlInput').value = urlParam;
+      setTimeout(() => {
+        handleUrlSubmit().then(() => {
+          const dropIndex = parseInt(params.get('drop'));
+          if (!isNaN(dropIndex)) {
+            setTimeout(() => {
+              const dropoffPoints = currentRoutePoints.filter(pt => pt.type === 'dropoff');
+              if (dropoffPoints[dropIndex]) {
+                selectDropPoint(dropoffPoints[dropIndex], dropIndex);
+              }
+            }, 1500);
+          }
+        });
+      }, 500);
+    }
+  }
+}
+
+// Color coding app status indicators
+function updateSystemStatus(status) {
+  const badge = document.getElementById('telemetryBadge');
+  const dot = badge ? badge.querySelector('.status-dot') : null;
+  const connectBtn = document.getElementById('btnSubmitUrl');
+  
+  if (!badge || !dot) return;
+  
+  if (status === 'healthy') {
+    badge.style.color = 'var(--status-green)';
+    badge.style.borderColor = 'var(--status-green)';
+    dot.style.background = 'var(--status-green)';
+    if (connectBtn) {
+      connectBtn.style.borderColor = 'var(--status-green)';
+      connectBtn.style.color = 'var(--status-green)';
+    }
+    document.getElementById('badgeText').textContent = translations[currentLanguage].badgeLabel + " (Active)";
+  } else if (status === 'error') {
+    badge.style.color = 'var(--status-red)';
+    badge.style.borderColor = 'var(--status-red)';
+    dot.style.background = 'var(--status-red)';
+    if (connectBtn) {
+      connectBtn.style.borderColor = 'var(--status-red)';
+      connectBtn.style.color = 'var(--status-red)';
+    }
+    document.getElementById('badgeText').textContent = "Signal Disconnected / Error";
+  } else {
+    // pending
+    badge.style.color = 'var(--accent-gold)';
+    badge.style.borderColor = 'var(--border-color)';
+    dot.style.background = 'var(--accent-gold)';
+    if (connectBtn) {
+      connectBtn.style.borderColor = '';
+      connectBtn.style.color = '';
+    }
+    document.getElementById('badgeText').textContent = translations[currentLanguage].badgeLabel;
+  }
+  
+  checkWhatsAppConfiguration();
+}
+
+function checkWhatsAppConfiguration() {
+  const enabled = document.getElementById('waEnabled').checked;
+  const phone = document.getElementById('waPhone').value.trim();
+  const apikey = document.getElementById('waApikey').value.trim();
+  const badge = document.getElementById('telemetryBadge');
+  const dot = badge ? badge.querySelector('.status-dot') : null;
+  
+  if (enabled && (!phone || !apikey)) {
+    logToConsole("Warning: WhatsApp alerts enabled but credentials incomplete.", "error");
+    if (badge && dot) {
+      badge.style.color = 'var(--status-red)';
+      badge.style.borderColor = 'var(--status-red)';
+      dot.style.background = 'var(--status-red)';
+      document.getElementById('badgeText').textContent = "WhatsApp Config Error";
+    }
+  }
+}
+
+// Geofence Circle overlay around selected station
+function updateGeofenceCircle() {
+  if (!map || !selectedDropPoint) {
+    if (geofenceCircle) {
+      map.removeLayer(geofenceCircle);
+      geofenceCircle = null;
+    }
+    return;
+  }
+  
+  if (geofenceCircle) {
+    map.removeLayer(geofenceCircle);
+  }
+  
+  const speedText = document.getElementById('speedValue').textContent;
+  const speedVal = parseFloat(speedText);
+  const currentSpeed = (speedVal > 10) ? speedVal : 60; // fallback to 60 km/h
+  const thresholdMins = parseInt(document.getElementById('alarmThreshold').value) || 20;
+  
+  // Calculate radius in meters based on velocity (speed * 1000 / 60) * thresholdMins
+  const radiusMeters = ((currentSpeed * 1000) / 60) * thresholdMins;
+  
+  geofenceCircle = L.circle([selectedDropPoint.lat, selectedDropPoint.lng], {
+    radius: radiusMeters,
+    color: 'var(--accent-gold)',
+    fillColor: 'var(--accent-gold)',
+    fillOpacity: 0.05,
+    weight: 1.5,
+    dashArray: '5, 5'
+  }).addTo(map);
+}
+
+// Journey progress bar calculations
+function updateProgressBar(currentLat, currentLng) {
+  if (!selectedDropPoint || !currentRoutePoints || currentRoutePoints.length === 0) {
+    document.getElementById('progressContainer').style.display = 'none';
+    return;
+  }
+  
+  const startPt = currentRoutePoints[0];
+  const totalDistance = getDistance(startPt.lat, startPt.lng, selectedDropPoint.lat, selectedDropPoint.lng);
+  const remainingDistance = getDistance(currentLat, currentLng, selectedDropPoint.lat, selectedDropPoint.lng);
+  
+  let progressPercent = 0;
+  if (totalDistance > 0) {
+    progressPercent = Math.max(0, Math.min(100, ((totalDistance - remainingDistance) / totalDistance) * 100));
+  }
+  
+  document.getElementById('progressContainer').style.display = 'block';
+  document.getElementById('progressBar').style.width = `${progressPercent.toFixed(0)}%`;
+  document.getElementById('progressText').textContent = `${progressPercent.toFixed(0)}%`;
+}
+
+// Client-side local trip history
+function saveTripToHistory() {
+  if (!selectedDropPoint) return;
+  
+  const history = JSON.parse(localStorage.getItem('tripHistory') || '[]');
+  const now = new Date();
+  const timestampStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  const newTrip = {
+    date: now.toLocaleDateString(),
+    dropPoint: selectedDropPoint.name,
+    arrival: timestampStr,
+    status: "Arrived Safely"
+  };
+  
+  // Prevent duplicate sequential saves
+  if (history.length > 0 && history[0].dropPoint === newTrip.dropPoint && history[0].date === newTrip.date) {
+    return;
+  }
+  
+  history.unshift(newTrip);
+  if (history.length > 10) history.pop();
+  localStorage.setItem('tripHistory', JSON.stringify(history));
+  renderHistoryList();
+}
+
+function renderHistoryList() {
+  const listEl = document.getElementById('historyList');
+  if (!listEl) return;
+  
+  const history = JSON.parse(localStorage.getItem('tripHistory') || '[]');
+  if (history.length === 0) {
+    listEl.innerHTML = `
+      <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;" data-i18n="historyEmpty">
+        No completed trips in history yet.
+      </div>`;
+    return;
+  }
+  
+  listEl.innerHTML = history.map(item => `
+    <div class="history-item">
+      <div class="history-header">
+        <span>📅 ${item.date}</span>
+        <span style="color: var(--status-green);">● ${item.status}</span>
+      </div>
+      <div class="history-body">
+        <strong>Drop Station:</strong> ${item.dropPoint}<br>
+        <strong>Arrival Time:</strong> ${item.arrival}
+      </div>
+    </div>
+  `).join('');
+}
+
 // Restore state from localStorage on startup
 function restoreTrackingSession() {
   if (localStorage.getItem('waPhone')) document.getElementById('waPhone').value = localStorage.getItem('waPhone');
@@ -72,8 +449,9 @@ function restoreTrackingSession() {
       handleUrlSubmit().then(() => {
         if (savedIndex !== null) {
           const idx = parseInt(savedIndex);
-          if (currentRoutePoints[idx]) {
-            selectDropPoint(currentRoutePoints[idx], idx);
+          const dropoffPoints = currentRoutePoints.filter(pt => pt.type === 'dropoff');
+          if (dropoffPoints[idx]) {
+            selectDropPoint(dropoffPoints[idx], idx);
           }
         }
       });
@@ -81,8 +459,9 @@ function restoreTrackingSession() {
       loadDemoRoute();
       if (savedIndex !== null) {
         const idx = parseInt(savedIndex);
-        if (currentRoutePoints[idx]) {
-          selectDropPoint(currentRoutePoints[idx], idx);
+        const dropoffPoints = currentRoutePoints.filter(pt => pt.type === 'dropoff');
+        if (dropoffPoints[idx]) {
+          selectDropPoint(dropoffPoints[idx], idx);
         }
       }
     }
@@ -96,6 +475,20 @@ window.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
   restoreTrackingSession();
   initBottomSheet();
+
+  // Load language settings
+  const savedLang = localStorage.getItem('appLang') || 'en';
+  changeLanguage(savedLang);
+
+  // Initialize browser notification APIs
+  initWebNotifications();
+
+  // Parse shareable coordinates link
+  checkShareParameters();
+
+  // Render trip log histories
+  renderHistoryList();
+
   logToConsole("System initialized. Paste a trkg.in URL or click 'Start Demo Tracking'.", "success");
 });
 
@@ -264,6 +657,11 @@ function selectDropPoint(point, index) {
   localStorage.setItem('savedDropPointIndex', index);
   
   updateHUD();
+  updateGeofenceCircle();
+  if (busMarker) {
+    const pos = busMarker.getLatLng();
+    updateProgressBar(pos.lat, pos.lng);
+  }
 }
 
 // Calculate distance using Haversine formula
@@ -314,6 +712,7 @@ async function handleUrlSubmit() {
 
     if (data.status === 200 && data.journey_details) {
       logToConsole(`Connected successfully. Service: ${data.journey_details.service_number} (${data.journey_details.operator_name})`, "success");
+      updateSystemStatus('healthy');
       
       // Parse stations
       currentRoutePoints = data.all_service_places.map(pt => ({
@@ -337,11 +736,13 @@ async function handleUrlSubmit() {
       const errorMsg = data.message || "Bus reached its final destination. Tracking service is no longer active.";
       logToConsole(`Alert: ${errorMsg}. Loading BRS Travels Demo route.`, "error");
       speakVoiceAlert("Notice: The bus has reached its final destination. Active tracking is completed.");
+      updateSystemStatus('error');
       loadDemoRoute();
     }
   } catch (error) {
     console.error("CORS Proxy unavailable, loading local BRS Travels Demo route", error);
-    logToConsole("CORS Server unavailable. Initialized local BRS Travels Demo route.", "alert");
+    logToConsole("CORS Proxy Server error. Initialized local BRS Travels Demo route.", "alert");
+    updateSystemStatus('error');
     loadDemoRoute();
   }
 }
@@ -356,6 +757,7 @@ function loadDemoRoute() {
 
   initMap(currentRoutePoints);
   populateDropPoints(currentRoutePoints);
+  updateSystemStatus('healthy');
   startDemoSimulation();
 }
 
@@ -383,10 +785,14 @@ async function pollLiveGPS() {
       const timestamp = data.current_status_details.details.timestamp || "";
 
       logToConsole(`GPS Update: Speed ${speed} km/h - ${locText}`, "success");
+      updateSystemStatus('healthy');
       updateBusPosition(gps[0], gps[1], speed, timestamp);
+    } else {
+      updateSystemStatus('error');
     }
   } catch (e) {
     logToConsole("Error polling live GPS data.", "error");
+    updateSystemStatus('error');
   }
 }
 
@@ -557,6 +963,8 @@ function updateBusPosition(lat, lng, speed, timestamp) {
   lastLng = lng;
 
   updateHUD();
+  updateProgressBar(lat, lng);
+  updateGeofenceCircle();
 }
 
 function triggerStasisWarning(lat, lng) {
@@ -607,6 +1015,11 @@ function updateHUD() {
     etaEl.classList.remove('hud-placeholder');
   }
 
+  // Save trip log on destination arrival
+  if (dist <= 0.1) {
+    saveTripToHistory();
+  }
+
   // Trigger wakeup alarm dynamically based on user setting (default 20 mins)
   const alarmThreshold = parseInt(document.getElementById('alarmThreshold').value) || 20;
   if (etaMins <= alarmThreshold && etaMins > 0 && !alarmActive && !alarmDismissed) {
@@ -622,6 +1035,9 @@ function triggerArrivalAlarm(etaMins) {
   if (alarmDesc) {
     alarmDesc.textContent = `The bus is estimated to arrive at ${selectedDropPoint.name} in ${formatDuration(etaMins)}.`;
   }
+
+  // Web Notification fallback alert
+  sendBrowserNotification("MBR Telemetry: Destination Approaching!", `Estimated arrival at ${selectedDropPoint.name} in ${formatDuration(etaMins)}.`);
 
   playBuzzerSound();
   
@@ -736,6 +1152,18 @@ function stopActiveInterval() {
   }
   localStorage.setItem('autoResume', 'false');
 
+  // Reset status indicators to pending
+  updateSystemStatus('pending');
+
+  // Remove Leaflet geofence circle overlays
+  if (geofenceCircle) {
+    map.removeLayer(geofenceCircle);
+    geofenceCircle = null;
+  }
+
+  // Hide progress bar container
+  document.getElementById('progressContainer').style.display = 'none';
+
   // Reset HUD DOM elements back to skeleton placeholders
   const gpsEl = document.getElementById('gpsValue');
   if (gpsEl) {
@@ -816,11 +1244,23 @@ function setupEventListeners() {
   document.getElementById('btnStopAlarm').addEventListener('click', stopAlarm);
   
   // Save input changes dynamically to localStorage to prevent tab unload resets
-  document.getElementById('waPhone').addEventListener('input', (e) => localStorage.setItem('waPhone', e.target.value.trim()));
-  document.getElementById('waApikey').addEventListener('input', (e) => localStorage.setItem('waApikey', e.target.value.trim()));
-  document.getElementById('waEnabled').addEventListener('change', (e) => localStorage.setItem('waEnabled', e.target.checked));
+  document.getElementById('waPhone').addEventListener('input', (e) => {
+    localStorage.setItem('waPhone', e.target.value.trim());
+    checkWhatsAppConfiguration();
+  });
+  document.getElementById('waApikey').addEventListener('input', (e) => {
+    localStorage.setItem('waApikey', e.target.value.trim());
+    checkWhatsAppConfiguration();
+  });
+  document.getElementById('waEnabled').addEventListener('change', (e) => {
+    localStorage.setItem('waEnabled', e.target.checked);
+    checkWhatsAppConfiguration();
+  });
   document.getElementById('urlInput').addEventListener('input', (e) => localStorage.setItem('inputUrl', e.target.value.trim()));
-  document.getElementById('alarmThreshold').addEventListener('change', (e) => localStorage.setItem('alarmThreshold', e.target.value));
+  document.getElementById('alarmThreshold').addEventListener('change', (e) => {
+    localStorage.setItem('alarmThreshold', e.target.value);
+    updateGeofenceCircle();
+  });
   document.getElementById('audioEnabled').addEventListener('change', (e) => localStorage.setItem('audioEnabled', e.target.checked));
   
   // Search drop points list filter
@@ -833,6 +1273,23 @@ function setupEventListeners() {
       } else {
         el.style.display = 'none';
       }
+    });
+  });
+
+  // Share Live Trip Button Listener
+  document.getElementById('btnShareTrip').addEventListener('click', () => {
+    const urlInput = document.getElementById('urlInput').value.trim();
+    const dropIndex = currentRoutePoints.filter(pt => pt.type === 'dropoff').findIndex(pt => pt.name === (selectedDropPoint ? selectedDropPoint.name : ''));
+    const shareUrl = new URL(window.location.origin + window.location.pathname);
+    shareUrl.searchParams.set('share', 'true');
+    if (urlInput) shareUrl.searchParams.set('url', urlInput);
+    if (dropIndex !== -1) shareUrl.searchParams.set('drop', dropIndex);
+    
+    navigator.clipboard.writeText(shareUrl.toString()).then(() => {
+      logToConsole("Shareable location link copied to clipboard!", "success");
+      alert("Shareable read-only trip link copied to clipboard!");
+    }).catch(() => {
+      alert(`Share link: ${shareUrl.toString()}`);
     });
   });
 

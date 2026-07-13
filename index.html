@@ -23,12 +23,22 @@
           <span style="font-size: 1.25rem;">📡</span>
         </div>
         <div>
-          <span class="brand-title">MBR BUS TELEMETRY</span>
-          <span class="brand-subtitle">GPS TRACKING & AUTOMATED ARRIVAL ALARMS</span>
+          <span class="brand-title" data-i18n="appTitle">MBR BUS TELEMETRY</span>
+          <span class="brand-subtitle" data-i18n="appSubtitle">GPS TRACKING & AUTOMATED ARRIVAL ALARMS</span>
         </div>
       </div>
-      <div style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-gold); border: 1px solid var(--border-color); padding: 4px 12px; border-radius: 20px; background: rgba(245, 158, 11, 0.05);">
-        Telemetry Link Active
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <!-- Language Selector Dropdown -->
+        <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)">
+          <option value="en">English</option>
+          <option value="kn">ಕನ್ನಡ (Kannada)</option>
+          <option value="te">తెలుగు (Telugu)</option>
+        </select>
+        
+        <div id="telemetryBadge" class="telemetry-badge" style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-gold); border: 1px solid var(--border-color); padding: 4px 12px; border-radius: 20px; background: rgba(245, 158, 11, 0.05); display: flex; align-items: center; gap: 6px; transition: all 0.3s ease;">
+          <span class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-gold); display: inline-block; transition: background 0.3s ease;"></span>
+          <span data-i18n="badgeLabel" id="badgeText">Telemetry Link Active</span>
+        </div>
       </div>
     </div>
   </header>
@@ -51,29 +61,44 @@
           <div class="cyber-corner corner-bl"></div>
           <div class="cyber-corner corner-br"></div>
           
-          <h3 style="color: var(--accent-gold); font-size: 1.02rem; margin-bottom: 12px; font-weight: bold; letter-spacing: 0.5px;">Live Telemetry HUD</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="color: var(--accent-gold); font-size: 1.02rem; margin: 0; font-weight: bold; letter-spacing: 0.5px;" data-i18n="hudTitle">Live Telemetry HUD</h3>
+            <button id="btnShareTrip" class="share-btn">🔗 <span data-i18n="shareTrip">Share Trip</span></button>
+          </div>
+          
           <div class="hud-grid">
             <div class="hud-item">
-              <span class="hud-label">Current Position</span>
-              <span class="hud-value hud-placeholder" id="gpsValue">Waiting for signal...</span>
+              <span class="hud-label" data-i18n="gpsLabel">Current Position</span>
+              <span class="hud-value hud-placeholder" id="gpsValue" data-i18n="waitingSignal">Waiting for signal...</span>
             </div>
             <div class="hud-item">
-              <span class="hud-label">Current Speed</span>
-              <span class="hud-value hud-placeholder" id="speedValue">Waiting...</span>
+              <span class="hud-label" data-i18n="speedLabel">Current Speed</span>
+              <span class="hud-value hud-placeholder" id="speedValue" data-i18n="waiting">Waiting...</span>
             </div>
             <div class="hud-item">
-              <span class="hud-label">Distance to Drop</span>
-              <span class="hud-value gold hud-placeholder" id="distValue">Waiting...</span>
+              <span class="hud-label" data-i18n="distLabel">Distance to Drop</span>
+              <span class="hud-value gold hud-placeholder" id="distValue" data-i18n="waiting">Waiting...</span>
             </div>
             <div class="hud-item">
-              <span class="hud-label">ETA to Drop</span>
-              <span class="hud-value gold hud-placeholder" id="etaValue">Waiting...</span>
+              <span class="hud-label" data-i18n="etaLabel">ETA to Drop</span>
+              <span class="hud-value gold hud-placeholder" id="etaValue" data-i18n="waiting">Waiting...</span>
+            </div>
+          </div>
+          
+          <!-- Route Progress Bar Indicator -->
+          <div class="progress-container" id="progressContainer" style="display: none;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 4px;">
+              <span data-i18n="progressLabel">Route Progress</span>
+              <span id="progressText">0%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-bar" id="progressBar"></div>
             </div>
           </div>
           
           <div style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted);">
-            <span>Target point: <strong id="targetValue" style="color: var(--accent-gold);">None</strong></span>
-            <span id="timeValue" class="hud-placeholder">Waiting...</span>
+            <span><span data-i18n="targetLabel">Target point</span>: <strong id="targetValue" style="color: var(--accent-gold);">None</strong></span>
+            <span id="timeValue" class="hud-placeholder" data-i18n="waiting">Waiting...</span>
           </div>
         </div>
 
@@ -81,23 +106,27 @@
         <div class="quick-access-grid">
           <button class="access-btn" id="btnTabUrl" onclick="selectTab('Url')">
             <span class="btn-icon">🔗</span>
-            <span class="btn-label">Tracking</span>
+            <span class="btn-label" data-i18n="tracking">Tracking</span>
           </button>
           <button class="access-btn" id="btnTabWa" onclick="selectTab('Wa')">
             <span class="btn-icon">💬</span>
-            <span class="btn-label">Alerts</span>
+            <span class="btn-label" data-i18n="alerts">Alerts</span>
           </button>
           <button class="access-btn" id="btnTabDrop" onclick="selectTab('Drop')">
             <span class="btn-icon">📍</span>
-            <span class="btn-label">Drop Point</span>
+            <span class="btn-label" data-i18n="dropPoint">Drop Point</span>
           </button>
           <button class="access-btn" id="btnTabControls" onclick="selectTab('Controls')">
             <span class="btn-icon">🧪</span>
-            <span class="btn-label">Demo</span>
+            <span class="btn-label" data-i18n="demo">Demo</span>
           </button>
           <button class="access-btn" id="btnTabConsole" onclick="selectTab('Console')">
             <span class="btn-icon">📟</span>
-            <span class="btn-label">Console</span>
+            <span class="btn-label" data-i18n="console">Console</span>
+          </button>
+          <button class="access-btn" id="btnTabHistory" onclick="selectTab('History')">
+            <span class="btn-icon">📜</span>
+            <span class="btn-label" data-i18n="history">History</span>
           </button>
         </div>
 
@@ -111,7 +140,7 @@
 
           <!-- Panel 1: Connect Tracking URL -->
           <div class="panel-content-item" id="panelUrl" style="display: none;">
-            <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin-bottom: 10px; font-weight: bold;">Connect Tracking URL</h4>
+            <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin-bottom: 10px; font-weight: bold;" data-i18n="connectTitle">Connect Tracking URL</h4>
             <div style="display: flex; gap: 8px;">
               <input 
                 type="text" 
@@ -121,16 +150,16 @@
                 placeholder="Paste trkg.in/BITLAA/... link"
                 value="http://trkg.in/BITLAA/FJFYCQ"
               />
-              <button id="btnSubmitUrl" class="cyber-btn" style="padding: 10px 16px;">Connect</button>
+              <button id="btnSubmitUrl" class="cyber-btn" style="padding: 10px 16px;" data-i18n="connectBtn">Connect</button>
             </div>
           </div>
 
           <!-- Panel 2: WhatsApp Notification Settings -->
           <div class="panel-content-item" id="panelWa" style="display: none;">
             <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin-bottom: 10px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
-              <span>WhatsApp Alerts Settings</span>
+              <span data-i18n="waTitle">WhatsApp Alerts Settings</span>
               <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: normal; cursor: pointer; color: var(--accent-gold);">
-                <input type="checkbox" id="waEnabled" style="cursor: pointer;" /> Enable
+                <input type="checkbox" id="waEnabled" style="cursor: pointer;" /> <span data-i18n="enableBtn">Enable</span>
               </label>
             </h4>
             <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -156,7 +185,7 @@
 
           <!-- Panel 3: Select Dropping Point -->
           <div class="panel-content-item" id="panelDrop" style="display: none;">
-            <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin-bottom: 10px; font-weight: bold;">Select Dropping Point</h4>
+            <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin-bottom: 10px; font-weight: bold;" data-i18n="dropPointTitle">Select Dropping Point</h4>
             <!-- Station Search Box -->
             <div class="search-container">
               <span class="search-icon">🔍</span>
@@ -165,7 +194,7 @@
 
             <!-- Wakeup Alert Configurator -->
             <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-              <span style="color: var(--text-secondary);">Wakeup Alarm timing:</span>
+              <span style="color: var(--text-secondary);" data-i18n="alarmThresholdLabel">Wakeup Alarm timing:</span>
               <select id="alarmThreshold" style="background: #0e0b08; border: 1px solid var(--border-color); color: var(--accent-gold); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; outline: none; cursor: pointer; font-family: var(--font-sans);">
                 <option value="5">5 mins before</option>
                 <option value="10">10 mins before</option>
@@ -177,15 +206,15 @@
 
             <!-- Master audio alert toggle -->
             <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-              <span style="color: var(--text-secondary);">Alarm Sounds & Voice:</span>
+              <span style="color: var(--text-secondary);" data-i18n="audioLabel">Alarm Sounds & Voice:</span>
               <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer; color: var(--accent-gold);">
-                <input type="checkbox" id="audioEnabled" checked style="cursor: pointer;" /> Enabled
+                <input type="checkbox" id="audioEnabled" checked style="cursor: pointer;" /> <span data-i18n="enabledLabel">Enabled</span>
               </label>
             </div>
 
             <div id="dropPointsList" class="list-container">
               <!-- Populated dynamically via JS -->
-              <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+              <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;" data-i18n="dropPointEmpty">
                 Connect a tracking link or start the demo to compile route drop points.
               </div>
             </div>
@@ -193,22 +222,33 @@
 
           <!-- Panel 4: Demo Simulation & Tests -->
           <div class="panel-content-item" id="panelControls" style="display: none;">
-            <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin-bottom: 10px; font-weight: bold;">Demo Simulation & Tests</h4>
+            <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin-bottom: 10px; font-weight: bold;" data-i18n="demoTitle">Demo Simulation & Tests</h4>
             <div style="display: flex; gap: 8px; width: 100%; margin-bottom: 8px;">
-              <button id="btnStart" class="cyber-btn" style="flex: 1;">Start Demo Tracking</button>
-              <button id="btnStasis" class="cyber-btn-outline" style="flex: 1;" disabled>Simulate Stasis</button>
+              <button id="btnStart" class="cyber-btn" style="flex: 1;" data-i18n="startDemoBtn">Start Demo Tracking</button>
+              <button id="btnStasis" class="cyber-btn-outline" style="flex: 1;" disabled data-i18n="stasisBtn">Simulate Stasis</button>
             </div>
-            <button id="btnTestAlarm" class="cyber-btn-outline" style="width: 100%; border: 1px solid var(--accent-gold); color: var(--accent-gold); padding: 8px 16px; border-radius: 6px; cursor: pointer;">🔊 Test Alarm & Voice</button>
+            <button id="btnTestAlarm" class="cyber-btn-outline" style="width: 100%; border: 1px solid var(--accent-gold); color: var(--accent-gold); padding: 8px 16px; border-radius: 6px; cursor: pointer;"><span data-i18n="testAlarmBtn">🔊 Test Alarm & Voice</span></button>
           </div>
 
           <!-- Panel 5: System Console Stream -->
           <div class="panel-content-item" id="panelConsole" style="display: none;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-              <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin: 0; font-weight: bold;">System Console Stream</h4>
-              <button id="btnDownloadLog" class="cyber-btn-outline" style="padding: 2px 8px; font-size: 0.65rem; border: 1px solid rgba(245, 158, 11, 0.3); color: var(--accent-gold); border-radius: 4px; cursor: pointer; text-transform: none;">Save Logs (.txt)</button>
+              <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin: 0; font-weight: bold;" data-i18n="consoleTitle">System Console Stream</h4>
+              <button id="btnDownloadLog" class="cyber-btn-outline" style="padding: 2px 8px; font-size: 0.65rem; border: 1px solid rgba(245, 158, 11, 0.3); color: var(--accent-gold); border-radius: 4px; cursor: pointer; text-transform: none;" data-i18n="saveLogsBtn">Save Logs (.txt)</button>
             </div>
             <div id="consoleBox" class="console-box">
               <!-- Logs appended via JS -->
+            </div>
+          </div>
+
+          <!-- Panel 6: Client-Side Trip History Log -->
+          <div class="panel-content-item" id="panelHistory" style="display: none;">
+            <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin-bottom: 10px; font-weight: bold;" data-i18n="historyTitle">Trip History Log (Last 10)</h4>
+            <div id="historyList" class="history-list">
+              <!-- History items compiled client-side -->
+              <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;" data-i18n="historyEmpty">
+                No completed trips in history yet.
+              </div>
             </div>
           </div>
         </div>
