@@ -35,6 +35,7 @@ let selectedDropPoint = null;
 let currentRoutePoints = [...BRS_ROUTE];
 let currentTrackingKey = null;
 let currentTrackingDomain = 'trkg.in';
+let audioEnabled = true;
 
 let isLiveMode = false;
 let isSimulationActive = false;
@@ -438,7 +439,14 @@ function restoreTrackingSession() {
   if (localStorage.getItem('waEnabled')) document.getElementById('waEnabled').checked = localStorage.getItem('waEnabled') === 'true';
   if (localStorage.getItem('inputUrl')) document.getElementById('urlInput').value = localStorage.getItem('inputUrl');
   if (localStorage.getItem('alarmThreshold')) document.getElementById('alarmThreshold').value = localStorage.getItem('alarmThreshold');
-  if (localStorage.getItem('audioEnabled')) document.getElementById('audioEnabled').checked = localStorage.getItem('audioEnabled') === 'true';
+  
+  const savedAudio = localStorage.getItem('audioEnabled');
+  if (savedAudio !== null) {
+    audioEnabled = savedAudio === 'true';
+  } else {
+    audioEnabled = true;
+  }
+  updateSoundButtonUI();
 
   const autoResume = localStorage.getItem('autoResume') === 'true';
   const savedIndex = localStorage.getItem('savedDropPointIndex');
@@ -490,7 +498,10 @@ window.addEventListener('DOMContentLoaded', () => {
   // Render trip log histories
   renderHistoryList();
 
-  logToConsole("System initialized. Paste a trkg.in URL or click 'Start Demo Tracking'.", "success");
+  // Run URL Parser test cases suite to log verification
+  runUrlParserTests();
+
+  logToConsole("System initialized. Paste a tracking URL or click 'Start Demo Tracking'.", "success");
 });
 
 // Initialize Leaflet Map
@@ -504,8 +515,8 @@ function initMap(routeData) {
   const avgLng = routeData.reduce((sum, p) => sum + p.lng, 0) / routeData.length;
 
   map = L.map('map', {
-    zoomControl: false,
-    scrollWheelZoom: false
+    zoomControl: true,
+    scrollWheelZoom: true
   }).setView([avgLat, avgLng], 8);
 
   // CartoDB Dark Matter base map tiles (Sleek dark theme)
@@ -678,19 +689,71 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// Parse domain and key from tracking URL
-function parseTrackingUrl(url) {
-  // Regex to match tracking domains like: trkg.in, tkbs.in, smvt.in, etc.
-  // And extract the domain and the trailing key (4 to 12 alphanumeric characters)
-  const regex = /https?:\/\/([a-z0-9.-]+\.[a-z]{2,})(?:\/[A-Z0-9_-]+)*\/([A-Z0-9_-]{4,12})/i;
-  const match = url.match(regex);
-  if (match) {
-    return {
-      domain: match[1],
-      key: match[2]
-    };
+// Provider adapter list for future operator extensions
+const PROVIDER_ADAPTERS = [
+  {
+    name: "QueryParamsTracker",
+    match: (host) => host.includes('special-tracker.com'),
+    extract: (urlObj) => urlObj.searchParams.get('id') || urlObj.searchParams.get('key')
+  }
+];
+
+// Generic tracking URL parser
+function parseTrackingUrl(urlStr) {
+  let cleanUrl = urlStr.trim();
+  if (!cleanUrl) return null;
+  
+  // Prepend protocol if missing to allow valid URL parsing
+  if (!/^https?:\/\//i.test(cleanUrl)) {
+    cleanUrl = 'http://' + cleanUrl;
+  }
+  
+  try {
+    const urlObj = new URL(cleanUrl);
+    const host = urlObj.hostname;
+    
+    // 1. Check custom provider adapters
+    for (const adapter of PROVIDER_ADAPTERS) {
+      if (adapter.match(host)) {
+        const key = adapter.extract(urlObj);
+        if (key) return { domain: host, key };
+      }
+    }
+    
+    // 2. Default fallback: extract last non-empty path segment as the key
+    const paths = urlObj.pathname.split('/').filter(Boolean);
+    if (paths.length > 0) {
+      const key = paths[paths.length - 1];
+      return { domain: host, key };
+    }
+  } catch (e) {
+    console.error("Failed to parse URL", e);
   }
   return null;
+}
+
+// Automated parser test suite
+function runUrlParserTests() {
+  const tests = [
+    { input: "http://trkg.in/BITLAA/FJFYCQ", expectedDomain: "trkg.in", expectedKey: "FJFYCQ" },
+    { input: "https://tkbs.in/QHgT", expectedDomain: "tkbs.in", expectedKey: "QHgT" },
+    { input: "https://some-travels.com/track/route/K3J2H1", expectedDomain: "some-travels.com", expectedKey: "K3J2H1" },
+    { input: "smvt.in/abc12", expectedDomain: "smvt.in", expectedKey: "abc12" },
+    { input: "http://www.trkg.in/BITLAA/FJFYCQ?zoom=12", expectedDomain: "www.trkg.in", expectedKey: "FJFYCQ" }
+  ];
+  
+  logToConsole("=== RUNNING URL PARSER TESTS ===", "info");
+  let passed = 0;
+  tests.forEach((t, i) => {
+    const res = parseTrackingUrl(t.input);
+    if (res && res.domain === t.expectedDomain && res.key === t.expectedKey) {
+      logToConsole(`Test ${i + 1} PASSED: ${t.input} -> domain: ${res.domain}, key: ${res.key}`, "success");
+      passed++;
+    } else {
+      logToConsole(`Test ${i + 1} FAILED: ${t.input} -> Expected domain: ${t.expectedDomain}, key: ${t.expectedKey}.`, "error");
+    }
+  });
+  logToConsole(`=== TEST SUMMARY: ${passed}/${tests.length} PASSED ===`, "info");
 }
 
 // Handle tracking URL submission
@@ -703,7 +766,7 @@ async function handleUrlSubmit() {
 
   const parsed = parseTrackingUrl(urlInput);
   if (!parsed) {
-    alert("Could not extract a valid tracking key from the URL. Ensure it matches 'trkg.in/BITLAA/XXXXXX' or 'tkbs.in/XXXX'");
+    alert("Could not extract a valid tracking key from the URL.");
     return;
   }
 
@@ -744,15 +807,17 @@ async function handleUrlSubmit() {
       // Start live polling loop (every 10 seconds)
       startLiveTrackingLoop();
     } else {
-      const errorMsg = data.message || "Bus reached its final destination. Tracking service is no longer active.";
-      logToConsole(`Alert: ${errorMsg}. Loading BRS Travels Demo route.`, "error");
-      speakVoiceAlert("Notice: The bus has reached its final destination. Active tracking is completed.");
+      const errorMsg = "This tracking link couldn't be found or is no longer active.";
+      logToConsole(errorMsg, "error");
+      alert(errorMsg);
       updateSystemStatus('error');
       loadDemoRoute();
     }
   } catch (error) {
-    console.error("CORS Proxy unavailable, loading local BRS Travels Demo route", error);
-    logToConsole("CORS Proxy Server error. Initialized local BRS Travels Demo route.", "alert");
+    console.error("CORS Proxy fetch failed", error);
+    const errorMsg = "This tracking link couldn't be found or is no longer active.";
+    logToConsole(errorMsg, "error");
+    alert(errorMsg);
     updateSystemStatus('error');
     loadDemoRoute();
   }
@@ -1074,7 +1139,6 @@ function stopAlarm() {
 
 // Speak voice warning
 function speakVoiceAlert(text) {
-  const audioEnabled = document.getElementById('audioEnabled') ? document.getElementById('audioEnabled').checked : true;
   if (!audioEnabled) return;
 
   if ('speechSynthesis' in window) {
@@ -1088,7 +1152,6 @@ function speakVoiceAlert(text) {
 
 // Synthesize alarm sound beeps
 function playBuzzerSound() {
-  const audioEnabled = document.getElementById('audioEnabled') ? document.getElementById('audioEnabled').checked : true;
   if (!audioEnabled) return;
 
   try {
@@ -1272,7 +1335,31 @@ function setupEventListeners() {
     localStorage.setItem('alarmThreshold', e.target.value);
     updateGeofenceCircle();
   });
-  document.getElementById('audioEnabled').addEventListener('change', (e) => localStorage.setItem('audioEnabled', e.target.checked));
+  
+  // Global Sound Mute Toggle Listener
+  document.getElementById('btnSoundToggle').addEventListener('click', () => {
+    audioEnabled = !audioEnabled;
+    localStorage.setItem('audioEnabled', audioEnabled);
+    updateSoundButtonUI();
+    logToConsole(`Sound toggle: ${audioEnabled ? 'UNMUTED' : 'MUTED'}`, "success");
+    
+    // Play a brief confirmation beep if unmuted
+    if (audioEnabled) {
+      try {
+        const actx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = actx.createOscillator();
+        const gain = actx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, actx.currentTime);
+        gain.gain.setValueAtTime(0.04, actx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(actx.destination);
+        osc.start();
+        osc.stop(actx.currentTime + 0.2);
+      } catch (e) {}
+    }
+  });
   
   // Search drop points list filter
   document.getElementById('searchDropPoints').addEventListener('input', (e) => {
@@ -1424,4 +1511,21 @@ function initBottomSheet() {
       sheet.classList.remove('sheet-expanded');
     }
   }, { passive: true });
+}
+
+// Sound button UI update helper
+function updateSoundButtonUI() {
+  const btn = document.getElementById('btnSoundToggle');
+  if (!btn) return;
+  if (audioEnabled) {
+    btn.textContent = "🔊";
+    btn.style.borderColor = "var(--accent-gold)";
+    btn.style.color = "var(--accent-gold)";
+    btn.title = "Mute alarm sounds";
+  } else {
+    btn.textContent = "🔇";
+    btn.style.borderColor = "var(--border-color)";
+    btn.style.color = "var(--text-muted)";
+    btn.title = "Unmute alarm sounds";
+  }
 }

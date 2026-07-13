@@ -870,3 +870,25 @@ header {
 .lang-select:focus {
   border-color: var(--accent-gold);
 }
+
+/* Sound Toggle Button */
+.sound-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--accent-gold);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  height: 28px;
+  width: 32px;
+}
+
+.sound-toggle-btn:hover {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: var(--accent-gold);
+}

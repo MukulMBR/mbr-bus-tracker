@@ -35,6 +35,9 @@
           <option value="te">తెలుగు (Telugu)</option>
         </select>
         
+        <!-- Global Sound Mute Toggle -->
+        <button id="btnSoundToggle" class="sound-toggle-btn" title="Toggle Alarm Sounds">🔊</button>
+        
         <div id="telemetryBadge" class="telemetry-badge" style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-gold); border: 1px solid var(--border-color); padding: 4px 12px; border-radius: 20px; background: rgba(245, 158, 11, 0.05); display: flex; align-items: center; gap: 6px; transition: all 0.3s ease;">
           <span class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-gold); display: inline-block; transition: background 0.3s ease;"></span>
           <span data-i18n="badgeLabel" id="badgeText">Telemetry Link Active</span>
@@ -204,13 +207,7 @@
               </select>
             </div>
 
-            <!-- Master audio alert toggle -->
-            <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-              <span style="color: var(--text-secondary);" data-i18n="audioLabel">Alarm Sounds & Voice:</span>
-              <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer; color: var(--accent-gold);">
-                <input type="checkbox" id="audioEnabled" checked style="cursor: pointer;" /> <span data-i18n="enabledLabel">Enabled</span>
-              </label>
-            </div>
+
 
             <div id="dropPointsList" class="list-container">
               <!-- Populated dynamically via JS -->
