@@ -77,53 +77,62 @@
           </div>
         </div>
 
-        <!-- Card: URL Input -->
-        <div class="cyber-card collapsible-card collapsed" id="cardUrl">
+        <!-- Quick Access Icon Grid Buttons -->
+        <div class="quick-access-grid">
+          <button class="access-btn" id="btnTabUrl" onclick="selectTab('Url')">
+            <span class="btn-icon">🔗</span>
+            <span class="btn-label">Tracking</span>
+          </button>
+          <button class="access-btn" id="btnTabWa" onclick="selectTab('Wa')">
+            <span class="btn-icon">💬</span>
+            <span class="btn-label">Alerts</span>
+          </button>
+          <button class="access-btn" id="btnTabDrop" onclick="selectTab('Drop')">
+            <span class="btn-icon">📍</span>
+            <span class="btn-label">Drop Point</span>
+          </button>
+          <button class="access-btn" id="btnTabControls" onclick="selectTab('Controls')">
+            <span class="btn-icon">🧪</span>
+            <span class="btn-label">Demo</span>
+          </button>
+          <button class="access-btn" id="btnTabConsole" onclick="selectTab('Console')">
+            <span class="btn-icon">📟</span>
+            <span class="btn-label">Console</span>
+          </button>
+        </div>
+
+        <!-- Expansion Tab Panel Container -->
+        <div class="quick-access-panel" id="accessPanel" style="display: none;">
+          <!-- Card Corner telemetric decorations -->
           <div class="cyber-corner corner-tl"></div>
           <div class="cyber-corner corner-tr"></div>
           <div class="cyber-corner corner-bl"></div>
           <div class="cyber-corner corner-br"></div>
-          
-          <div class="collapsible-header" onclick="toggleCard('cardUrl')">
-            <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold; letter-spacing: 0.5px;">1. Connect Tracking URL</h3>
-            <span class="chevron">▼</span>
-          </div>
-          
-          <div class="collapsible-content">
+
+          <!-- Panel 1: Connect Tracking URL -->
+          <div class="panel-content-item" id="panelUrl" style="display: none;">
+            <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin-bottom: 10px; font-weight: bold;">Connect Tracking URL</h4>
             <div style="display: flex; gap: 8px;">
               <input 
                 type="text" 
                 id="urlInput" 
                 class="cyber-input" 
-                style="flex: 1; background: #0e0b08; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 14px; color: var(--text-primary); outline: none;" 
+                style="flex: 1; background: #0e0b08; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 14px; color: var(--text-primary); outline: none; font-size: 0.85rem;" 
                 placeholder="Paste trkg.in/BITLAA/... link"
                 value="http://trkg.in/BITLAA/FJFYCQ"
               />
               <button id="btnSubmitUrl" class="cyber-btn" style="padding: 10px 16px;">Connect</button>
             </div>
           </div>
-        </div>
 
-        <!-- Card: WhatsApp Alert Settings -->
-        <div class="cyber-card collapsible-card collapsed" id="cardWa">
-          <div class="cyber-corner corner-tl"></div>
-          <div class="cyber-corner corner-tr"></div>
-          <div class="cyber-corner corner-bl"></div>
-          <div class="cyber-corner corner-br"></div>
-          
-          <div class="collapsible-header" onclick="toggleCard('cardWa')">
-            <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold;">2. WhatsApp Notification Settings</h3>
-            <span class="chevron">▼</span>
-          </div>
-          
-          <div class="collapsible-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-              <span style="font-size: 0.85rem; color: var(--text-secondary);">Enable Phone Alerts</span>
+          <!-- Panel 2: WhatsApp Notification Settings -->
+          <div class="panel-content-item" id="panelWa" style="display: none;">
+            <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin-bottom: 10px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+              <span>WhatsApp Alerts Settings</span>
               <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: normal; cursor: pointer; color: var(--accent-gold);">
                 <input type="checkbox" id="waEnabled" style="cursor: pointer;" /> Enable
               </label>
-            </div>
-            
+            </h4>
             <div style="display: flex; flex-direction: column; gap: 8px;">
               <input 
                 type="text" 
@@ -144,21 +153,10 @@
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Card: Dropping Point selector -->
-        <div class="cyber-card collapsible-card" id="cardDrop">
-          <div class="cyber-corner corner-tl"></div>
-          <div class="cyber-corner corner-tr"></div>
-          <div class="cyber-corner corner-bl"></div>
-          <div class="cyber-corner corner-br"></div>
-          
-          <div class="collapsible-header" onclick="toggleCard('cardDrop')">
-            <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold;">3. Select Dropping Point</h3>
-            <span class="chevron">▲</span>
-          </div>
-          
-          <div class="collapsible-content">
+          <!-- Panel 3: Select Dropping Point -->
+          <div class="panel-content-item" id="panelDrop" style="display: none;">
+            <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin-bottom: 10px; font-weight: bold;">Select Dropping Point</h4>
             <!-- Station Search Box -->
             <div class="search-container">
               <span class="search-icon">🔍</span>
@@ -166,7 +164,7 @@
             </div>
 
             <!-- Wakeup Alert Configurator -->
-            <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+            <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
               <span style="color: var(--text-secondary);">Wakeup Alarm timing:</span>
               <select id="alarmThreshold" style="background: #0e0b08; border: 1px solid var(--border-color); color: var(--accent-gold); padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; outline: none; cursor: pointer; font-family: var(--font-sans);">
                 <option value="5">5 mins before</option>
@@ -178,7 +176,7 @@
             </div>
 
             <!-- Master audio alert toggle -->
-            <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+            <div style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
               <span style="color: var(--text-secondary);">Alarm Sounds & Voice:</span>
               <label style="display: flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer; color: var(--accent-gold);">
                 <input type="checkbox" id="audioEnabled" checked style="cursor: pointer;" /> Enabled
@@ -192,45 +190,23 @@
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Card: Simulation Controls -->
-        <div class="cyber-card collapsible-card collapsed" id="cardControls">
-          <div class="cyber-corner corner-tl"></div>
-          <div class="cyber-corner corner-tr"></div>
-          <div class="cyber-corner corner-bl"></div>
-          <div class="cyber-corner corner-br"></div>
-          
-          <div class="collapsible-header" onclick="toggleCard('cardControls')">
-            <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold;">4. Demo Simulation & Tests</h3>
-            <span class="chevron">▼</span>
-          </div>
-          
-          <div class="collapsible-content">
+          <!-- Panel 4: Demo Simulation & Tests -->
+          <div class="panel-content-item" id="panelControls" style="display: none;">
+            <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin-bottom: 10px; font-weight: bold;">Demo Simulation & Tests</h4>
             <div style="display: flex; gap: 8px; width: 100%; margin-bottom: 8px;">
               <button id="btnStart" class="cyber-btn" style="flex: 1;">Start Demo Tracking</button>
               <button id="btnStasis" class="cyber-btn-outline" style="flex: 1;" disabled>Simulate Stasis</button>
             </div>
             <button id="btnTestAlarm" class="cyber-btn-outline" style="width: 100%; border: 1px solid var(--accent-gold); color: var(--accent-gold); padding: 8px 16px; border-radius: 6px; cursor: pointer;">🔊 Test Alarm & Voice</button>
           </div>
-        </div>
 
-        <!-- Card: Stream Console logs -->
-        <div class="cyber-card collapsible-card collapsed" id="cardConsole">
-          <div class="cyber-corner corner-tl"></div>
-          <div class="cyber-corner corner-tr"></div>
-          <div class="cyber-corner corner-bl"></div>
-          <div class="cyber-corner corner-br"></div>
-          
-          <div class="collapsible-header" onclick="toggleCard('cardConsole')">
-            <h3 style="color: var(--text-primary); font-size: 1.02rem; font-weight: bold; margin: 0;">5. System Console Stream</h3>
-            <div style="display: flex; align-items: center; gap: 8px;" onclick="event.stopPropagation()">
+          <!-- Panel 5: System Console Stream -->
+          <div class="panel-content-item" id="panelConsole" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <h4 style="color: var(--accent-gold); font-size: 0.95rem; margin: 0; font-weight: bold;">System Console Stream</h4>
               <button id="btnDownloadLog" class="cyber-btn-outline" style="padding: 2px 8px; font-size: 0.65rem; border: 1px solid rgba(245, 158, 11, 0.3); color: var(--accent-gold); border-radius: 4px; cursor: pointer; text-transform: none;">Save Logs (.txt)</button>
-              <span class="chevron" onclick="toggleCard('cardConsole')" style="cursor: pointer;">▼</span>
             </div>
-          </div>
-          
-          <div class="collapsible-content">
             <div id="consoleBox" class="console-box">
               <!-- Logs appended via JS -->
             </div>

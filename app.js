@@ -875,18 +875,35 @@ function setupEventListeners() {
   });
 }
 
-// Toggle collapsible card accordions
-window.toggleCard = function(cardId) {
-  const card = document.getElementById(cardId);
-  if (!card) return;
+// Toggle and select quick-access tabs
+window.selectTab = function(tabId) {
+  const panel = document.getElementById('accessPanel');
+  const targetPanel = document.getElementById(`panel${tabId}`);
+  const targetBtn = document.getElementById(`btnTab${tabId}`);
   
-  const isCollapsed = card.classList.contains('collapsed');
-  if (isCollapsed) {
-    card.classList.remove('collapsed');
-    card.querySelector('.chevron').textContent = '▲';
+  if (!panel || !targetPanel || !targetBtn) return;
+  
+  const isCurrentlyActive = targetBtn.classList.contains('active');
+  
+  // 1. Deactivate all buttons
+  document.querySelectorAll('.access-btn').forEach(btn => btn.classList.remove('active'));
+  // 2. Hide all content panels
+  document.querySelectorAll('.panel-content-item').forEach(p => p.style.display = 'none');
+  
+  if (isCurrentlyActive) {
+    // Toggle off the main wrapper
+    panel.style.display = 'none';
   } else {
-    card.classList.add('collapsed');
-    card.querySelector('.chevron').textContent = '▼';
+    // Toggle on the main wrapper & show selected panel
+    panel.style.display = 'block';
+    targetPanel.style.display = 'block';
+    targetBtn.classList.add('active');
+    
+    // Auto-expand mobile bottom sheet drawer if it's currently collapsed so user sees the panel contents
+    const sheet = document.querySelector('.panel-left');
+    if (sheet && !sheet.classList.contains('sheet-expanded') && window.innerWidth <= 992) {
+      sheet.classList.add('sheet-expanded');
+    }
   }
 };
 
