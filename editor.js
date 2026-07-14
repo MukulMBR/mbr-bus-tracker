@@ -953,6 +953,9 @@ document.querySelector('.timeline-tracks').addEventListener('click', (e) => {
   }
 });
 
+// Play/Pause button click event listener
+btnPlayPause.addEventListener('click', togglePlayPause);
+
 // Speaker mute
 btnMute.addEventListener('click', () => {
   isMuted = !isMuted;
