@@ -1,4 +1,7 @@
-// Advanced Reels Video Composer Engine - Cut & Insert Workflow
+// Advanced Reels Video Composer Engine - Simple & Advanced Workflows
+
+// Editor Mode State
+let editorMode = 'simple'; // 'simple' or 'advanced'
 
 // State variables
 let clip1 = { file: null, element: null, duration: 0 }; // Main Video
@@ -21,9 +24,18 @@ let clip2 = { file: null, type: 'video', element: null, duration: 5 }; // Primar
 // Additional Cuts Array
 let additionalCuts = [];
 
-// Captions Array
+// Captions Array (Advanced)
 let captions = [];
 let activeCaptionId = null;
+
+// Simple Caption State (Simple Mode)
+let simpleCaption = {
+  text: '',
+  color: '#ffffff',
+  size: 28,
+  showAt: 1.0,
+  hideAt: 8.0
+};
 
 // Playback and Render State
 let isPlaying = false;
@@ -31,14 +43,6 @@ let currentTime = 0;
 let totalDuration = 10;
 let animationFrameId = null;
 let isExporting = false;
-
-// Web Audio Context variables for mixing during export
-let audioCtx = null;
-let audioDest = null;
-let mainAudioSource = null;
-let bgmAudioSource = null;
-let mainGainNode = null;
-let bgmGainNode = null;
 
 // Segment List calculated dynamically
 let timelineSegments = [];
@@ -82,6 +86,13 @@ const captionAnimation = document.getElementById('captionAnimation');
 const captionStart = document.getElementById('captionStart');
 const captionEnd = document.getElementById('captionEnd');
 
+// Simple Caption DOM
+const simpleOverlayText = document.getElementById('simpleOverlayText');
+const simpleTextColor = document.getElementById('simpleTextColor');
+const simpleTextSize = document.getElementById('simpleTextSize');
+const simpleTxtStart = document.getElementById('simpleTxtStart');
+const simpleTxtEnd = document.getElementById('simpleTxtEnd');
+
 // Log logger
 function logToEditorConsole(message, type = "info") {
   const box = document.getElementById('editorConsole');
@@ -100,79 +111,157 @@ function formatTime(secs) {
   return `${m}:${s}`;
 }
 
+// Switch between simple and advanced modes
+function setEditorMode(mode) {
+  editorMode = mode;
+  logToEditorConsole(`Switched to ${mode.toUpperCase()} mode.`);
+
+  // Toggle active styling on buttons
+  const btnSimple = document.getElementById('btnSimpleMode');
+  const btnAdv = document.getElementById('btnAdvancedMode');
+  if (mode === 'simple') {
+    btnSimple.classList.add('active-solo');
+    btnAdv.classList.remove('active-solo');
+    
+    // Hide Advanced Cards
+    document.getElementById('advTrimControls').style.display = 'none';
+    document.getElementById('cardAdditionalCuts').style.display = 'none';
+    document.getElementById('cardCaptionLayers').style.display = 'none';
+    document.getElementById('cardBgm').style.display = 'none';
+    
+    // Show Simple Cards
+    document.getElementById('cardSimpleCaption').style.display = 'block';
+  } else {
+    btnSimple.classList.remove('active-solo');
+    btnAdv.classList.add('active-solo');
+    
+    // Show Advanced Cards
+    document.getElementById('advTrimControls').style.display = 'block';
+    document.getElementById('cardAdditionalCuts').style.display = 'block';
+    document.getElementById('cardCaptionLayers').style.display = 'block';
+    document.getElementById('cardBgm').style.display = 'block';
+    
+    // Hide Simple Cards
+    document.getElementById('cardSimpleCaption').style.display = 'none';
+  }
+
+  // Sync timeline variables
+  if (mode === 'simple' && clip1.element) {
+    trimStart = 0;
+    trimEnd = clip1.duration;
+  }
+
+  recalculateTimeline();
+  renderCanvas(isMuted);
+}
+
 // Build sequential segments based on Main Video Trim and Cuts List
 function buildTimelineSegments() {
   timelineSegments = [];
   if (!clip1.element) return;
 
-  // Gather all valid cuts
-  const allCuts = [];
-  if (clip2.file) {
-    allCuts.push({
-      id: 'primary',
-      cutStart: cutStart,
-      cutEnd: cutEnd,
-      clip: clip2
-    });
-  }
-  additionalCuts.forEach(c => {
-    if (c.clip.file) {
-      allCuts.push(c);
-    }
-  });
-
-  // Sort cuts by start times
-  allCuts.sort((a, b) => a.cutStart - b.cutStart);
-
-  let currentMainPos = trimStart;
-
-  allCuts.forEach(cut => {
-    // Clamp values to bounds and push forwards to avoid overlap overlaps
-    if (cut.cutStart < currentMainPos) {
-      cut.cutStart = currentMainPos;
-    }
-    if (cut.cutEnd < cut.cutStart) {
-      cut.cutEnd = cut.cutStart;
-    }
-
-    if (cut.cutStart < trimEnd) {
-      // Main segment before cut
-      const mainSegmentDur = cut.cutStart - currentMainPos;
-      if (mainSegmentDur > 0.05) {
-        timelineSegments.push({
-          type: 'main',
-          start: currentMainPos,
-          end: cut.cutStart,
-          duration: mainSegmentDur
-        });
-      }
-
-      // Insertion segment
-      const endOfCut = Math.min(cut.cutEnd, trimEnd);
+  if (editorMode === 'simple') {
+    // Simple Mode: ONLY uses trimStart=0, trimEnd=clip1.duration, and primary cut
+    trimStart = 0;
+    trimEnd = clip1.duration;
+    
+    if (clip2.file) {
+      timelineSegments.push({
+        type: 'main',
+        start: 0,
+        end: cutStart,
+        duration: cutStart
+      });
       timelineSegments.push({
         type: 'insert',
-        id: cut.id,
-        clip: cut.clip,
-        cutStart: cut.cutStart,
-        cutEnd: endOfCut,
-        duration: cut.clip.duration
+        id: 'primary',
+        clip: clip2,
+        cutStart: cutStart,
+        cutEnd: cutEnd,
+        duration: clip2.duration
       });
-
-      currentMainPos = endOfCut;
+      if (cutEnd < clip1.duration) {
+        timelineSegments.push({
+          type: 'main',
+          start: cutEnd,
+          end: clip1.duration,
+          duration: clip1.duration - cutEnd
+        });
+      }
+    } else {
+      // Just play the full main video
+      timelineSegments.push({
+        type: 'main',
+        start: 0,
+        end: clip1.duration,
+        duration: clip1.duration
+      });
     }
-  });
-
-  // Main segment after last cut
-  if (currentMainPos < trimEnd) {
-    timelineSegments.push({
-      type: 'main',
-      start: currentMainPos,
-      end: trimEnd,
-      duration: trimEnd - currentMainPos
+  } else {
+    // Advanced Mode: uses trimStart, trimEnd, and additionalCuts
+    const allCuts = [];
+    if (clip2.file) {
+      allCuts.push({
+        id: 'primary',
+        cutStart: cutStart,
+        cutEnd: cutEnd,
+        clip: clip2
+      });
+    }
+    additionalCuts.forEach(c => {
+      if (c.clip.file) {
+        allCuts.push(c);
+      }
     });
+
+    // Sort cuts by start times
+    allCuts.sort((a, b) => a.cutStart - b.cutStart);
+
+    let currentMainPos = trimStart;
+
+    allCuts.forEach(cut => {
+      if (cut.cutStart < currentMainPos) {
+        cut.cutStart = currentMainPos;
+      }
+      if (cut.cutEnd < cut.cutStart) {
+        cut.cutEnd = cut.cutStart;
+      }
+
+      if (cut.cutStart < trimEnd) {
+        const mainSegmentDur = cut.cutStart - currentMainPos;
+        if (mainSegmentDur > 0.05) {
+          timelineSegments.push({
+            type: 'main',
+            start: currentMainPos,
+            end: cut.cutStart,
+            duration: mainSegmentDur
+          });
+        }
+
+        const endOfCut = Math.min(cut.cutEnd, trimEnd);
+        timelineSegments.push({
+          type: 'insert',
+          id: cut.id,
+          clip: cut.clip,
+          cutStart: cut.cutStart,
+          cutEnd: endOfCut,
+          duration: cut.clip.duration
+        });
+
+        currentMainPos = endOfCut;
+      }
+    });
+
+    if (currentMainPos < trimEnd) {
+      timelineSegments.push({
+        type: 'main',
+        start: currentMainPos,
+        end: trimEnd,
+        duration: trimEnd - currentMainPos
+      });
+    }
   }
 
-  // Calculate total composed duration
   totalDuration = timelineSegments.reduce((sum, s) => sum + s.duration, 0);
   if (totalDuration < 0.1) totalDuration = 0.1;
 }
@@ -215,25 +304,29 @@ function recalculateTimeline() {
   const blockInsert = document.getElementById('blockInsert');
   const blockText = document.getElementById('blockText');
 
-  // Find primary cut segment metrics
-  const primCutSeg = timelineSegments.find(s => s.type === 'insert' && s.id === 'primary');
   let accumTime = 0;
+
+  // Initialize track display blocks
+  if (blockA) { blockA.style.display = 'none'; }
+  if (blockCut) { blockCut.style.display = 'none'; }
+  if (blockC) { blockC.style.display = 'none'; }
+  if (blockInsert) { blockInsert.style.display = 'none'; }
 
   timelineSegments.forEach(s => {
     if (s.type === 'main') {
-      // Map Segment A (part before primary cut or first segment)
       if (accumTime === 0 && blockA) {
         const pctA = (s.duration / totalDuration) * 100;
         blockA.style.width = `${pctA}%`;
         blockA.style.left = '0%';
         blockA.textContent = `Main Part A (${s.duration.toFixed(1)}s)`;
+        blockA.style.display = 'flex';
       }
-      // Map Segment C (part after primary cut or last segment)
       else if (blockC) {
         const pctC = (s.duration / totalDuration) * 100;
         blockC.style.width = `${pctC}%`;
         blockC.style.left = `${(accumTime / totalDuration) * 100}%`;
         blockC.textContent = `Main Part C (${s.duration.toFixed(1)}s)`;
+        blockC.style.display = 'flex';
       }
     } else if (s.id === 'primary') {
       const pctInsert = (s.duration / totalDuration) * 100;
@@ -243,30 +336,45 @@ function recalculateTimeline() {
         blockInsert.style.width = `${pctInsert}%`;
         blockInsert.style.left = `${leftPct}%`;
         blockInsert.textContent = clip2.file ? `Insert (${s.duration.toFixed(1)}s)` : 'Insertion Clip';
+        blockInsert.style.display = 'flex';
       }
 
       if (blockCut) {
         blockCut.style.width = `${pctInsert}%`;
         blockCut.style.left = `${leftPct}%`;
+        blockCut.style.display = 'flex';
       }
     }
     accumTime += s.duration;
   });
 
-  // Highlight active selected caption on timeline ruler
+  // Track Caption layer visualization on timeline
   if (blockText) {
-    const activeCap = captions.find(c => c.id === activeCaptionId);
-    if (activeCap) {
-      const textStart = activeCap.showAt;
-      const textEnd = Math.min(activeCap.hideAt, totalDuration);
-      const textLen = Math.max(0, textEnd - textStart);
-      
-      blockText.style.width = `${(textLen / totalDuration) * 100}%`;
-      blockText.style.left = `${(textStart / totalDuration) * 100}%`;
-      blockText.textContent = `Text: "${activeCap.text}"`;
-      blockText.style.display = 'block';
+    if (editorMode === 'simple') {
+      const textVal = simpleOverlayText.value;
+      if (textVal) {
+        const textLen = Math.max(0, simpleCaption.hideAt - simpleCaption.showAt);
+        blockText.style.width = `${(textLen / totalDuration) * 100}%`;
+        blockText.style.left = `${(simpleCaption.showAt / totalDuration) * 100}%`;
+        blockText.textContent = `Text: "${textVal}"`;
+        blockText.style.display = 'block';
+      } else {
+        blockText.style.display = 'none';
+      }
     } else {
-      blockText.style.display = 'none';
+      const activeCap = captions.find(c => c.id === activeCaptionId);
+      if (activeCap) {
+        const textStart = activeCap.showAt;
+        const textEnd = Math.min(activeCap.hideAt, totalDuration);
+        const textLen = Math.max(0, textEnd - textStart);
+        
+        blockText.style.width = `${(textLen / totalDuration) * 100}%`;
+        blockText.style.left = `${(textStart / totalDuration) * 100}%`;
+        blockText.textContent = `Text: "${activeCap.text}"`;
+        blockText.style.display = 'block';
+      } else {
+        blockText.style.display = 'none';
+      }
     }
   }
 
@@ -275,6 +383,9 @@ function recalculateTimeline() {
   mainTrimEnd.max = clip1.duration;
   c1Start.max = clip1.duration;
   c1End.max = clip1.duration;
+  
+  simpleTxtStart.max = totalDuration;
+  simpleTxtEnd.max = totalDuration;
 }
 
 // Draw a centered cropped video frame to 9:16 vertical ratio
@@ -314,50 +425,59 @@ function drawFrame(mediaElement, type = 'video') {
   ctx.drawImage(mediaElement, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
 }
 
-// Mute inactive clips and apply volume/mute/solo properties to active playing clips
+// Mute/Pause inactive clips and apply volume/mute/solo properties to active playing clips during preview (Simple/Advanced)
 function syncMixerLevels(activeSource) {
   if (!isPlaying || isExporting) return;
 
-  // Determine Solo state overrides
+  let finalMainVol = mainAudioVolume;
+  let finalBgmVol = bgMusic.volume;
+
+  if (editorMode === 'simple') {
+    // Simple Mode: Just unmute the playing element and mute the other
+    if (clip1.element) {
+      clip1.element.volume = isMuted ? 0 : 1.0;
+      clip1.element.muted = (activeSource !== clip1.element || isMuted);
+    }
+    if (clip2.element && clip2.type === 'video') {
+      clip2.element.volume = isMuted ? 0 : 1.0;
+      clip2.element.muted = (activeSource !== clip2.element || isMuted);
+    }
+    return;
+  }
+
+  // Advanced Mode: Apply full original mixer sliders + BGM + Solo overrides
   const isMainSoloActive = mainAudioSolo;
   const isBgmSoloActive = bgMusic.isSolo;
   const anySoloActive = isMainSoloActive || isBgmSoloActive;
 
-  // 1. Calculate Main Video Audio Vol
-  let finalMainVol = mainAudioVolume;
   if (mainAudioMuted) finalMainVol = 0;
   if (anySoloActive && !isMainSoloActive) finalMainVol = 0;
 
-  // 2. Calculate BGM Audio Vol
-  let finalBgmVol = bgMusic.volume;
   if (bgMusic.isMuted) finalBgmVol = 0;
   if (anySoloActive && !isBgmSoloActive) finalBgmVol = 0;
 
-  // Apply to elements
   if (clip1.element) {
-    clip1.element.volume = finalMainVol;
-    clip1.element.muted = (activeSource !== clip1.element || finalMainVol === 0);
+    clip1.element.volume = isMuted ? 0 : finalMainVol;
+    clip1.element.muted = (activeSource !== clip1.element || isMuted || finalMainVol === 0);
   }
 
   if (bgMusic.element) {
-    bgMusic.element.volume = finalBgmVol;
-    bgMusic.element.muted = (finalBgmVol === 0);
+    bgMusic.element.volume = isMuted ? 0 : finalBgmVol;
+    bgMusic.element.muted = (isMuted || finalBgmVol === 0);
   }
 
-  // Handle addition insertion clips audio state
   additionalCuts.forEach(c => {
     if (c.clip.element && c.clip.type === 'video') {
       const isThisActive = (activeSource === c.clip.element);
-      c.clip.element.volume = finalMainVol;
-      c.clip.element.muted = (!isThisActive || finalMainVol === 0);
+      c.clip.element.volume = isMuted ? 0 : finalMainVol;
+      c.clip.element.muted = (!isThisActive || isMuted || finalMainVol === 0);
     }
   });
 
-  // Handle primary insertion clip audio state
   if (clip2.element && clip2.type === 'video') {
     const isThisActive = (activeSource === clip2.element);
-    clip2.element.volume = finalMainVol;
-    clip2.element.muted = (!isThisActive || finalMainVol === 0);
+    clip2.element.volume = isMuted ? 0 : finalMainVol;
+    clip2.element.muted = (!isThisActive || isMuted || finalMainVol === 0);
   }
 }
 
@@ -400,7 +520,6 @@ function renderCanvas(isMutedState = false) {
 
   // Synchronize playing states and volumes
   if (isPlaying && !isExporting) {
-    // Pause other videos
     if (activeSource !== clip1.element && clip1.element) clip1.element.pause();
     if (activeSource !== clip2.element && clip2.element && clip2.type === 'video') clip2.element.pause();
     additionalCuts.forEach(c => {
@@ -414,65 +533,82 @@ function renderCanvas(isMutedState = false) {
   drawCaptions();
 }
 
-// Render active captions with animated presets
+// Render active captions (Simple / Advanced)
 function drawCaptions() {
-  captions.forEach(c => {
-    const age = currentTime - c.showAt;
-    if (age >= 0 && currentTime <= c.hideAt && c.text) {
+  if (editorMode === 'simple') {
+    const textVal = simpleOverlayText.value;
+    const age = currentTime - simpleCaption.showAt;
+    if (age >= 0 && currentTime <= simpleCaption.hideAt && textVal) {
       ctx.save();
-      
-      // Font settings
-      ctx.fillStyle = c.color;
-      ctx.font = `${c.weight} ${c.size}px ${c.fontFamily}`;
+      ctx.fillStyle = simpleCaption.color;
+      ctx.font = `bold ${simpleCaption.size}px Outfit, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       
-      // Get position coords
-      let x = canvas.width / 2;
-      let y = canvas.height * 0.82;
+      const x = canvas.width / 2;
+      const y = canvas.height * 0.82;
       
-      if (c.positionMode === 'preset') {
-        if (c.presetPosition === 'top') {
-          y = canvas.height * 0.15;
-        } else if (c.presetPosition === 'center') {
-          y = canvas.height * 0.5;
-        } else {
-          y = canvas.height * 0.82;
-        }
-      } else {
-        x = c.customX;
-        y = c.customY;
-      }
-      
-      // Entrance animation progression (first 0.5 seconds)
-      const animDuration = 0.5;
-      if (age < animDuration && c.animation !== 'none') {
-        const t = age / animDuration;
-        if (c.animation === 'fade') {
-          ctx.globalAlpha = t;
-        } else if (c.animation === 'slide') {
-          const offsetY = (1 - t) * 45;
-          y += offsetY;
-        }
-      }
-      
-      // Shadow stroke outline
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 4;
-      ctx.strokeText(c.text, x, y);
-      ctx.fillText(c.text, x, y);
-      
-      // Draw indicator box around active caption for drag visual confirmation
-      if (c.id === activeCaptionId && !isExporting) {
-        ctx.strokeStyle = '#3797f0';
-        ctx.lineWidth = 2;
-        const textWidth = ctx.measureText(c.text).width;
-        ctx.strokeRect(x - textWidth / 2 - 10, y - c.size / 2 - 6, textWidth + 20, c.size + 12);
-      }
-      
+      ctx.strokeText(textVal, x, y);
+      ctx.fillText(textVal, x, y);
       ctx.restore();
     }
-  });
+  } else {
+    // Advanced caption layers
+    captions.forEach(c => {
+      const age = currentTime - c.showAt;
+      if (age >= 0 && currentTime <= c.hideAt && c.text) {
+        ctx.save();
+        
+        ctx.fillStyle = c.color;
+        ctx.font = `${c.weight} ${c.size}px ${c.fontFamily}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        let x = canvas.width / 2;
+        let y = canvas.height * 0.82;
+        
+        if (c.positionMode === 'preset') {
+          if (c.presetPosition === 'top') {
+            y = canvas.height * 0.15;
+          } else if (c.presetPosition === 'center') {
+            y = canvas.height * 0.5;
+          } else {
+            y = canvas.height * 0.82;
+          }
+        } else {
+          x = c.customX;
+          y = c.customY;
+        }
+        
+        const animDuration = 0.5;
+        if (age < animDuration && c.animation !== 'none') {
+          const t = age / animDuration;
+          if (c.animation === 'fade') {
+            ctx.globalAlpha = t;
+          } else if (c.animation === 'slide') {
+            const offsetY = (1 - t) * 45;
+            y += offsetY;
+          }
+        }
+        
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 4;
+        ctx.strokeText(c.text, x, y);
+        ctx.fillText(c.text, x, y);
+        
+        if (c.id === activeCaptionId && !isExporting) {
+          ctx.strokeStyle = '#3797f0';
+          ctx.lineWidth = 2;
+          const textWidth = ctx.measureText(c.text).width;
+          ctx.strokeRect(x - textWidth / 2 - 10, y - c.size / 2 - 6, textWidth + 20, c.size + 12);
+        }
+        
+        ctx.restore();
+      }
+    });
+  }
 }
 
 // Playback frame loop
@@ -497,11 +633,10 @@ function playbackLoop(timestamp) {
   }
 
   // Sync background music element
-  if (bgMusic.element) {
+  if (editorMode === 'advanced' && bgMusic.element) {
     if (bgMusic.element.paused) {
       try { bgMusic.element.play(); } catch(e) {}
     }
-    // Correct minor audio drifts
     if (Math.abs(bgMusic.element.currentTime - currentTime) > 0.3) {
       bgMusic.element.currentTime = currentTime;
     }
@@ -557,44 +692,10 @@ function togglePlayPause() {
     lastTime = 0;
     animationFrameId = requestAnimationFrame(playbackLoop);
     logToEditorConsole("Playback started.");
-    
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
   }
 }
 
-// Initialize Web Audio routes for mixing
-function initAudioPipeline() {
-  if (audioCtx) return;
-
-  try {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    audioDest = audioCtx.createMediaStreamDestination();
-
-    if (clip1.element) {
-      mainAudioSource = audioCtx.createMediaElementSource(clip1.element);
-      mainGainNode = audioCtx.createGain();
-      mainAudioSource.connect(mainGainNode);
-      mainGainNode.connect(audioCtx.destination);
-      mainGainNode.connect(audioDest);
-    }
-
-    if (bgMusic.element) {
-      bgmAudioSource = audioCtx.createMediaElementSource(bgMusic.element);
-      bgmGainNode = audioCtx.createGain();
-      bgmAudioSource.connect(bgmGainNode);
-      bgmGainNode.connect(audioCtx.destination);
-      bgmGainNode.connect(audioDest);
-    }
-    
-    logToEditorConsole("Web Audio mixer connection pipeline initialized.", "success");
-  } catch (e) {
-    console.warn("AudioContext setup failed:", e);
-  }
-}
-
-// Setup Event Listeners for file selections and slider inputs
+// Main Video File selection handler
 document.getElementById('clip1File').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -644,7 +745,6 @@ document.getElementById('clip1File').addEventListener('change', (e) => {
     logToEditorConsole(`Main video loaded. Length: ${video.duration.toFixed(1)}s`, "success");
     recalculateTimeline();
     renderCanvas(isMuted);
-    initAudioPipeline();
   });
 });
 
@@ -688,7 +788,6 @@ document.getElementById('clip2File').addEventListener('change', (e) => {
       document.getElementById('c2DurVal').textContent = `${video.duration.toFixed(1)}s`;
       recalculateTimeline();
       renderCanvas(isMuted);
-      initAudioPipeline();
     });
   }
 });
@@ -696,9 +795,6 @@ document.getElementById('clip2File').addEventListener('change', (e) => {
 // Original Audio Volume / Mute / Solo selectors
 mainVolume.addEventListener('input', (e) => {
   mainAudioVolume = parseFloat(e.target.value);
-  if (mainGainNode && audioCtx) {
-    mainGainNode.gain.setValueAtTime(mainAudioVolume, audioCtx.currentTime);
-  }
 });
 
 btnMuteMain.addEventListener('click', () => {
@@ -917,7 +1013,6 @@ function renderAdditionalCutsList() {
           durSlider.value = video.duration;
           recalculateTimeline();
           renderCanvas(isMuted);
-          initAudioPipeline();
         });
       }
     });
@@ -934,7 +1029,7 @@ function renderAdditionalCutsList() {
   });
 }
 
-// BGM selection and levels controls
+// BGM selection uploader
 bgmFile.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
@@ -953,15 +1048,11 @@ bgmFile.addEventListener('change', (e) => {
     bgMusic.element = audio;
     bgMusic.duration = audio.duration;
     logToEditorConsole(`BGM Audio loaded successfully.`, "success");
-    initAudioPipeline();
   });
 });
 
 bgmVolume.addEventListener('input', (e) => {
   bgMusic.volume = parseFloat(e.target.value);
-  if (bgmGainNode && audioCtx) {
-    bgmGainNode.gain.setValueAtTime(bgMusic.volume, audioCtx.currentTime);
-  }
 });
 
 btnMuteBgm.addEventListener('click', () => {
@@ -980,7 +1071,48 @@ btnSoloBgm.addEventListener('click', () => {
   logToEditorConsole(`BGM Audio Solo: ${bgMusic.isSolo}`);
 });
 
-// Captions Multi-Layer Manager Panel
+// Simple Caption Event bindings
+simpleOverlayText.addEventListener('input', (e) => {
+  simpleCaption.text = e.target.value;
+  recalculateTimeline();
+  renderCanvas(isMuted);
+});
+
+simpleTextColor.addEventListener('input', (e) => {
+  simpleCaption.color = e.target.value;
+  renderCanvas(isMuted);
+});
+
+simpleTextSize.addEventListener('input', (e) => {
+  simpleCaption.size = parseInt(e.target.value);
+  renderCanvas(isMuted);
+});
+
+simpleTxtStart.addEventListener('input', (e) => {
+  const val = parseFloat(e.target.value);
+  if (val >= simpleCaption.hideAt) {
+    simpleTxtStart.value = simpleCaption.hideAt - 0.1;
+    return;
+  }
+  simpleCaption.showAt = val;
+  document.getElementById('simpleTxtStartVal').textContent = `${val.toFixed(1)}s`;
+  recalculateTimeline();
+  renderCanvas(isMuted);
+});
+
+simpleTxtEnd.addEventListener('input', (e) => {
+  const val = parseFloat(e.target.value);
+  if (val <= simpleCaption.showAt) {
+    simpleTxtEnd.value = simpleCaption.showAt + 0.1;
+    return;
+  }
+  simpleCaption.hideAt = val;
+  document.getElementById('simpleTxtEndVal').textContent = `${val.toFixed(1)}s`;
+  recalculateTimeline();
+  renderCanvas(isMuted);
+});
+
+// Captions Multi-Layer Manager Panel (Advanced)
 document.getElementById('btnAddCaption').addEventListener('click', () => {
   const id = Date.now();
   const newCap = {
@@ -1203,7 +1335,6 @@ function setupCanvasDragging() {
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
     const clientY = e.clientY || (e.touches && e.touches[0].clientY);
     
-    // Scale client X/Y to absolute 720x1280 canvas size
     const x = ((clientX - rect.left) / rect.width) * canvas.width;
     const y = ((clientY - rect.top) / rect.height) * canvas.height;
     return { x, y };
@@ -1211,6 +1342,8 @@ function setupCanvasDragging() {
 
   const handleStart = (e) => {
     if (!clip1.element) return;
+    if (editorMode === 'simple') return; // Canvas dragging only enabled in Advanced Mode
+
     const { x, y } = getCanvasCoords(e);
 
     // Check hit collision box for any active caption
@@ -1355,7 +1488,7 @@ function setupTimelineDragging() {
     const id = activeDrag.element.id;
 
     if (id === 'blockMainPart1') {
-      if (activeDrag.action === 'left') {
+      if (activeDrag.action === 'left' && editorMode === 'advanced') {
         let val = vals.trimStart + deltaTime;
         if (val < 0) val = 0;
         if (val >= cutStart) val = cutStart - 0.1;
@@ -1372,7 +1505,7 @@ function setupTimelineDragging() {
       }
     } 
     else if (id === 'blockMainPart2') {
-      if (activeDrag.action === 'right') {
+      if (activeDrag.action === 'right' && editorMode === 'advanced') {
         let val = vals.trimEnd + deltaTime;
         if (val <= cutEnd) val = cutEnd + 0.1;
         if (val > clip1.duration) val = clip1.duration;
@@ -1463,23 +1596,25 @@ function setupTimelineDragging() {
       }
     } 
     else if (id === 'blockText') {
-      const activeCap = captions.find(x => x.id === activeCaptionId);
-      if (activeCap) {
-        // Dragging caption blocks on timeline shifts show/hide boundaries
-        const startShow = activeCap.showAt;
-        const startHide = activeCap.hideAt;
+      if (editorMode === 'simple') {
+        const startShow = simpleCaption.showAt;
+        const startHide = simpleCaption.hideAt;
         const capDuration = startHide - startShow;
 
         if (activeDrag.action === 'left') {
           let val = startShow + deltaTime;
           if (val < 0) val = 0;
           if (val >= startHide) val = startHide - 0.1;
-          activeCap.showAt = val;
+          simpleCaption.showAt = val;
+          simpleTxtStart.value = val;
+          document.getElementById('simpleTxtStartVal').textContent = `${val.toFixed(1)}s`;
         } else if (activeDrag.action === 'right') {
           let val = startHide + deltaTime;
           if (val <= startShow) val = startShow + 0.1;
           if (val > totalDuration) val = totalDuration;
-          activeCap.hideAt = val;
+          simpleCaption.hideAt = val;
+          simpleTxtEnd.value = val;
+          document.getElementById('simpleTxtEndVal').textContent = `${val.toFixed(1)}s`;
         } else {
           let newShow = startShow + deltaTime;
           let newHide = newShow + capDuration;
@@ -1491,10 +1626,46 @@ function setupTimelineDragging() {
             newHide = totalDuration;
             newShow = newHide - capDuration;
           }
-          activeCap.showAt = newShow;
-          activeCap.hideAt = newHide;
+          simpleCaption.showAt = newShow;
+          simpleCaption.hideAt = newHide;
+          simpleTxtStart.value = newShow;
+          simpleTxtEnd.value = newHide;
+          document.getElementById('simpleTxtStartVal').textContent = `${newShow.toFixed(1)}s`;
+          document.getElementById('simpleTxtEndVal').textContent = `${newHide.toFixed(1)}s`;
         }
-        selectCaption(activeCap.id);
+      } else {
+        const activeCap = captions.find(x => x.id === activeCaptionId);
+        if (activeCap) {
+          const startShow = activeCap.showAt;
+          const startHide = activeCap.hideAt;
+          const capDuration = startHide - startShow;
+
+          if (activeDrag.action === 'left') {
+            let val = startShow + deltaTime;
+            if (val < 0) val = 0;
+            if (val >= startHide) val = startHide - 0.1;
+            activeCap.showAt = val;
+          } else if (activeDrag.action === 'right') {
+            let val = startHide + deltaTime;
+            if (val <= startShow) val = startShow + 0.1;
+            if (val > totalDuration) val = totalDuration;
+            activeCap.hideAt = val;
+          } else {
+            let newShow = startShow + deltaTime;
+            let newHide = newShow + capDuration;
+            if (newShow < 0) {
+              newShow = 0;
+              newHide = capDuration;
+            }
+            if (newHide > totalDuration) {
+              newHide = totalDuration;
+              newShow = newHide - capDuration;
+            }
+            activeCap.showAt = newShow;
+            activeCap.hideAt = newHide;
+          }
+          selectCaption(activeCap.id);
+        }
       }
     }
 
@@ -1516,7 +1687,7 @@ function setupTimelineDragging() {
   window.addEventListener('touchend', endHandler);
 }
 
-// 🚀 EXPORT COMPILATION ENGINE WITH MIXED BGM
+// 🚀 EXPORT COMPILATION ENGINE (Simple & Advanced Audio pipelines)
 btnExport.addEventListener('click', async () => {
   if (isExporting) return;
   
@@ -1544,20 +1715,47 @@ btnExport.addEventListener('click', async () => {
   let mixedStream = new MediaStream();
   canvasStream.getVideoTracks().forEach(track => mixedStream.addTrack(track));
 
-  // Connect BGM and Original Audio volume gains before record
-  if (audioCtx && audioDest) {
-    audioDest.stream.getAudioTracks().forEach(track => mixedStream.addTrack(track));
-    
-    // Set mixer gains based on Mute/Solo settings
-    const isMainSoloActive = mainAudioSolo;
-    const isBgmSoloActive = bgMusic.isSolo;
-    const anySoloActive = isMainSoloActive || isBgmSoloActive;
+  // Initialize temporary AudioContext ONLY during export to prevent startup audio-blocks
+  let exportAudioCtx = null;
+  let exportAudioDest = null;
+  let exportSource1 = null;
+  let exportSource2 = null;
+  let exportSourceBgm = null;
+  
+  if (editorMode === 'advanced' && (clip1.element || bgMusic.element)) {
+    try {
+      exportAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      exportAudioDest = exportAudioCtx.createMediaStreamDestination();
+      
+      const isMainSoloActive = mainAudioSolo;
+      const isBgmSoloActive = bgMusic.isSolo;
+      const anySoloActive = isMainSoloActive || isBgmSoloActive;
 
-    const mainMixVol = (mainAudioMuted || (anySoloActive && !isMainSoloActive)) ? 0 : mainAudioVolume;
-    const bgmMixVol = (bgMusic.isMuted || (anySoloActive && !isBgmSoloActive)) ? 0 : bgMusic.volume;
+      const mainMixVol = (mainAudioMuted || (anySoloActive && !isMainSoloActive)) ? 0 : mainAudioVolume;
+      const bgmMixVol = (bgMusic.isMuted || (anySoloActive && !isBgmSoloActive)) ? 0 : bgMusic.volume;
 
-    if (mainGainNode) mainGainNode.gain.setValueAtTime(mainMixVol, audioCtx.currentTime);
-    if (bgmGainNode) bgmGainNode.gain.setValueAtTime(bgmMixVol, audioCtx.currentTime);
+      if (clip1.element) {
+        exportSource1 = exportAudioCtx.createMediaElementSource(clip1.element);
+        const gainNode = exportAudioCtx.createGain();
+        gainNode.gain.value = mainMixVol;
+        exportSource1.connect(gainNode);
+        gainNode.connect(exportAudioCtx.destination);
+        gainNode.connect(exportAudioDest);
+      }
+
+      if (bgMusic.element) {
+        exportSourceBgm = exportAudioCtx.createMediaElementSource(bgMusic.element);
+        const gainNode = exportAudioCtx.createGain();
+        gainNode.gain.value = bgmMixVol;
+        exportSourceBgm.connect(gainNode);
+        gainNode.connect(exportAudioCtx.destination);
+        gainNode.connect(exportAudioDest);
+      }
+
+      exportAudioDest.stream.getAudioTracks().forEach(track => mixedStream.addTrack(track));
+    } catch (e) {
+      console.warn("Export Web Audio pipeline failed:", e);
+    }
   }
 
   let options = { mimeType: 'video/webm;codecs=vp9,opus' };
@@ -1587,9 +1785,10 @@ btnExport.addEventListener('click', async () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    // Restore volume gains
-    if (mainGainNode && audioCtx) mainGainNode.gain.setValueAtTime(mainAudioVolume, audioCtx.currentTime);
-    if (bgmGainNode && audioCtx) bgmGainNode.gain.setValueAtTime(bgMusic.volume, audioCtx.currentTime);
+    // Close export AudioContext safely
+    if (exportAudioCtx) {
+      exportAudioCtx.close();
+    }
 
     overlay.style.display = 'none';
     isExporting = false;
@@ -1598,8 +1797,7 @@ btnExport.addEventListener('click', async () => {
     logToEditorConsole("Video exported and downloaded successfully!", "success");
   };
 
-  // Start BGM playback if loaded
-  if (bgMusic.element) {
+  if (editorMode === 'advanced' && bgMusic.element) {
     bgMusic.element.currentTime = 0;
     try { bgMusic.element.play(); } catch(e) {}
   }
@@ -1628,7 +1826,7 @@ btnExport.addEventListener('click', async () => {
 
     currentTime += 1 / fps;
     
-    // Render frame and sync audio volumes (but mute preview outputs to avoid echoes)
+    // Render frame
     const result = getSegmentAtTime(currentTime);
     if (result && result.segment) {
       const { segment, offset } = result;
@@ -1650,7 +1848,7 @@ btnExport.addEventListener('click', async () => {
           if (Math.abs(activeSource.currentTime - seekTime) > 0.2) {
             activeSource.currentTime = seekTime;
           }
-          activeSource.muted = true; // prevent double echo in speakers while exporting
+          activeSource.muted = true; // Mute active playing element speaker output during export
           if (activeSource.paused) {
             try { activeSource.play(); } catch(e) {}
           }
@@ -1676,7 +1874,9 @@ window.addEventListener('DOMContentLoaded', () => {
   ctx.textAlign = 'center';
   ctx.fillText('Composer Screen (9:16)', canvas.width / 2, canvas.height / 2);
   
-  recalculateTimeline();
+  // Set default mode on start
+  setEditorMode('simple');
+  
   setupTimelineDragging();
   setupCanvasDragging();
 });

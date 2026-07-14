@@ -43,8 +43,18 @@
     <!-- Sidebar: Media Controls -->
     <section class="editor-sidebar">
       
+      <!-- Editor Mode Selector -->
+      <div class="sidebar-card" style="border: 1px solid var(--accent-blue); background: rgba(55, 151, 240, 0.05); padding: 12px;">
+        <h3>🛠️ Editor Mode</h3>
+        <p class="desc" style="margin-bottom: 8px;">Select your preferred editing workflow.</p>
+        <div style="display: flex; gap: 8px;">
+          <button id="btnSimpleMode" class="mini-toggle-btn active-solo" style="flex: 1; padding: 6px; font-weight: bold;" onclick="setEditorMode('simple')">🟢 Simple Mode</button>
+          <button id="btnAdvancedMode" class="mini-toggle-btn" style="flex: 1; padding: 6px; font-weight: bold;" onclick="setEditorMode('advanced')">🔵 Advanced Mode</button>
+        </div>
+      </div>
+
       <!-- Step 1: Upload Main Video -->
-      <div class="sidebar-card">
+      <div class="sidebar-card" id="cardMainVideo">
         <h3>🎬 1. Upload Main Video</h3>
         <p class="desc">Select the primary video you want to edit.</p>
         <div class="file-input-wrapper">
@@ -54,25 +64,29 @@
         <div id="clip1Details" class="media-details" style="display: none;">
           <span class="filename" id="clip1Name"></span>
           <span style="font-size: 0.75rem; color: var(--text-secondary);">Original Length: <strong id="clip1DurationText">0.0s</strong></span>
-          <div class="slider-group" style="margin-top: 8px;">
-            <div class="slider-labels">
-              <span>Trim Start: <strong id="mainTrimStartVal">0.0s</strong></span>
-              <span>Trim End: <strong id="mainTrimEndVal">15.0s</strong></span>
+          
+          <!-- Advanced Trim and Audio Mixer controls (Hidden in Simple Mode) -->
+          <div id="advTrimControls" style="display: none; margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 8px;">
+            <div class="slider-group">
+              <div class="slider-labels">
+                <span>Trim Start: <strong id="mainTrimStartVal">0.0s</strong></span>
+                <span>Trim End: <strong id="mainTrimEndVal">15.0s</strong></span>
+              </div>
+              <input type="range" id="mainTrimStart" min="0" max="30" step="0.1" value="0" />
+              <input type="range" id="mainTrimEnd" min="1" max="30" step="0.1" value="15" />
             </div>
-            <input type="range" id="mainTrimStart" min="0" max="30" step="0.1" value="0" />
-            <input type="range" id="mainTrimEnd" min="1" max="30" step="0.1" value="15" />
-          </div>
-          <div class="audio-control-row" style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 0.72rem; color: var(--text-secondary);">Video Vol:</span>
-            <input type="range" id="mainVolume" min="0" max="1" step="0.05" value="1" style="flex: 1;" />
-            <button id="btnMuteMain" class="mini-toggle-btn" title="Mute Original Audio">🔇</button>
-            <button id="btnSoloMain" class="mini-toggle-btn" title="Solo Original Audio">S</button>
+            <div class="audio-control-row" style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 0.72rem; color: var(--text-secondary);">Video Vol:</span>
+              <input type="range" id="mainVolume" min="0" max="1" step="0.05" value="1" style="flex: 1;" />
+              <button id="btnMuteMain" class="mini-toggle-btn" title="Mute Original Audio">🔇</button>
+              <button id="btnSoloMain" class="mini-toggle-btn" title="Solo Original Audio">S</button>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Step 2: Define Cut Zone -->
-      <div class="sidebar-card">
+      <div class="sidebar-card" id="cardCutZone">
         <h3>✂️ 2. Select Clip to Remove</h3>
         <p class="desc">Specify the start and end seconds to cut out.</p>
         <div class="slider-group">
@@ -89,7 +103,7 @@
       </div>
 
       <!-- Step 3: Upload Insertion Video -->
-      <div class="sidebar-card">
+      <div class="sidebar-card" id="cardInsertClip">
         <h3>📥 3. Upload Insertion Clip</h3>
         <p class="desc">This video/photo will replace the removed clip.</p>
         <div class="file-input-wrapper">
@@ -107,16 +121,41 @@
         </div>
       </div>
 
-      <!-- Additional Cut Zones -->
-      <div class="sidebar-card">
+      <!-- Additional Cut Zones (Advanced Mode Only) -->
+      <div class="sidebar-card" id="cardAdditionalCuts" style="display: none;">
         <h3>➕ Additional cuts</h3>
         <p class="desc">Add more cut-and-replace slots on the timeline.</p>
         <div id="additionalCutsList" style="display: flex; flex-direction: column; gap: 8px;"></div>
         <button id="btnAddCut" class="file-label" style="background: #262628; border: 1px dashed var(--border-color); color: var(--text-primary); cursor: pointer; width: 100%; margin-top: 8px;">➕ Add Cut Zone</button>
       </div>
 
-      <!-- Caption Layers Panel -->
-      <div class="sidebar-card">
+      <!-- Simple Caption Card (Simple Mode Only) -->
+      <div class="sidebar-card" id="cardSimpleCaption">
+        <h3>🔤 4. Caption Text</h3>
+        <p class="desc">Overlay text on your final Reels output.</p>
+        <input type="text" id="simpleOverlayText" placeholder="Enter text here..." class="text-input" />
+        <div class="settings-grid">
+          <div>
+            <label>Color</label>
+            <input type="color" id="simpleTextColor" value="#ffffff" />
+          </div>
+          <div>
+            <label>Size</label>
+            <input type="range" id="simpleTextSize" min="16" max="64" value="28" />
+          </div>
+        </div>
+        <div class="slider-group" style="margin-top: 12px;">
+          <div class="slider-labels">
+            <span>Show: <strong id="simpleTxtStartVal">1.0s</strong></span>
+            <span>Hide: <strong id="simpleTxtEndVal">8.0s</strong></span>
+          </div>
+          <input type="range" id="simpleTxtStart" min="0" max="30" step="0.1" value="1" />
+          <input type="range" id="simpleTxtEnd" min="1" max="30" step="0.1" value="8" />
+        </div>
+      </div>
+
+      <!-- Caption Layers Panel (Advanced Mode Only) -->
+      <div class="sidebar-card" id="cardCaptionLayers" style="display: none;">
         <h3>🔤 Caption Layers</h3>
         <p class="desc">Add and style multiple text overlays.</p>
         <div id="captionsList" class="captions-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;"></div>
@@ -185,8 +224,8 @@
         </div>
       </div>
 
-      <!-- Step 5: Background Music -->
-      <div class="sidebar-card">
+      <!-- Step 5: Background Music (Advanced Mode Only) -->
+      <div class="sidebar-card" id="cardBgm" style="display: none;">
         <h3>🎵 5. Background Music (BGM)</h3>
         <p class="desc">Mix an MP3 or WAV audio track into your Reels.</p>
         <div class="file-input-wrapper">
