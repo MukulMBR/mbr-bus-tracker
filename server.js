@@ -2,8 +2,36 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const PORT = 3050;
+
+// Resolve yt-dlp executable path depending on platform (Windows local vs Linux Render container)
+let ytdlpPath = 'yt-dlp';
+
+if (process.platform === 'win32') {
+  ytdlpPath = 'C:\\Users\\motak\\.gemini\\antigravity-ide\\brain\\e4fa1d1d-76bd-4781-ba16-880dfeb5c54e\\scratch\\yt-dlp.exe';
+} else {
+  const localYtdlp = path.join(__dirname, 'yt-dlp');
+  if (fs.existsSync(localYtdlp)) {
+    ytdlpPath = localYtdlp;
+  } else {
+    try {
+      execSync('which yt-dlp');
+      ytdlpPath = 'yt-dlp';
+    } catch (e) {
+      console.log('yt-dlp not found globally. Downloading Linux binary on Render startup...');
+      try {
+        execSync(`curl -L -o "${localYtdlp}" https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp`);
+        execSync(`chmod +x "${localYtdlp}"`);
+        ytdlpPath = localYtdlp;
+        console.log('yt-dlp downloaded and made executable successfully!');
+      } catch (err) {
+        console.error('Failed to download yt-dlp on Render:', err);
+      }
+    }
+  }
+}
 
 // Helper to proxy JSON requests to trackingo with browser headers
 function proxyRequest(targetUrl, res) {
@@ -65,9 +93,19 @@ const server = http.createServer((req, res) => {
     });
 
     const { spawn } = require('child_process');
-    const ytdlpPath = 'C:\\Users\\motak\\.gemini\\antigravity-ide\\brain\\e4fa1d1d-76bd-4781-ba16-880dfeb5c54e\\scratch\\yt-dlp.exe';
-    
-    const child = spawn(ytdlpPath, ['-o', '-', videoUrl]);
+    let child;
+    try {
+      child = spawn(ytdlpPath, ['-o', '-', videoUrl]);
+    } catch (err) {
+      console.error('Failed to spawn child process:', err);
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+      res.end('Failed to spawn video downloader');
+      return;
+    }
+
+    child.on('error', (err) => {
+      console.error('yt-dlp process error:', err);
+    });
 
     child.stdout.pipe(res);
 
