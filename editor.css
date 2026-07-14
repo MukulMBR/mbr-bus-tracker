@@ -814,3 +814,44 @@ input[type="range"]::-webkit-slider-thumb {
     padding: 16px;
   }
 }
+
+/* Timeline Ruler Grid ticks styling */
+.ruler-grid {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.ruler-tick-mark {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-color);
+}
+
+.ruler-tick-mark.minor {
+  height: 6px;
+  background: #3c3c3e;
+}
+
+.ruler-tick-mark.major {
+  height: 12px;
+  background: #8e8e93;
+}
+
+.tick-label-text {
+  position: absolute;
+  top: -14px;
+  transform: translateX(-50%);
+  font-size: 0.62rem;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+}
+
+/* BGM Track & Block styling */
+.block-bgm {
+  background: rgba(52, 211, 153, 0.15);
+  border: 1px solid var(--accent-green);
+  color: var(--accent-green);
+}
+

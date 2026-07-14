@@ -63,6 +63,9 @@ let aspectRatio = '9:16';
 let panX = 0;
 let panY = 0;
 let isPanning = false;
+let isResizingCaption = false;
+let startResizeSize = 32;
+let startDistance = 100;
 let startPanMouseX = 0;
 let startPanMouseY = 0;
 let startPanOffsetX = 0;
@@ -294,12 +297,27 @@ function recalculateTimeline() {
   }
 
   const rulerGrid = document.querySelector('.ruler-grid');
-  if (rulerGrid) {
+  if (rulerGrid && totalDuration > 0) {
     rulerGrid.innerHTML = '';
-    for (let i = 0; i <= 5; i++) {
-      const tick = document.createElement('span');
-      tick.className = 'ruler-tick';
-      tick.textContent = `${((i / 5) * totalDuration).toFixed(1)}s`;
+    
+    // Select subdivisions based on total duration length
+    let majorStep = 1;
+    let minorStep = 0.5;
+    if (totalDuration > 15) { majorStep = 5; minorStep = 1; }
+    if (totalDuration > 60) { majorStep = 10; minorStep = 5; }
+
+    for (let t = 0; t <= totalDuration; t += minorStep) {
+      const isMajor = Math.abs(t % majorStep) < 0.01;
+      const tick = document.createElement('div');
+      tick.className = `ruler-tick-mark ${isMajor ? 'major' : 'minor'}`;
+      tick.style.left = `${(t / totalDuration) * 100}%`;
+      
+      if (isMajor) {
+        const label = document.createElement('span');
+        label.className = 'tick-label-text';
+        label.textContent = `${t.toFixed(0)}s`;
+        tick.appendChild(label);
+      }
       rulerGrid.appendChild(tick);
     }
   }
@@ -372,20 +390,49 @@ function drawCaptions() {
     if (caption.position === 'center') y = canvas.height * 0.5;
     y -= ((lines.length - 1) * lineHeight) / 2;
 
+    // Elastic pop-in bounce animation (0.35s duration)
+    const age = currentTime - caption.showAt;
+    let scaleVal = 1;
+    let opacity = 1;
+    if (age < 0.35) {
+      const p = age / 0.35;
+      scaleVal = Math.sin(p * Math.PI * 0.65) * 1.15;
+      opacity = p;
+    }
+
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
     ctx.lineWidth = Math.max(4, caption.size * 0.14);
+    
     lines.forEach((line, index) => {
       const lineY = y + index * lineHeight;
-      ctx.strokeText(line, canvas.width / 2, lineY);
-      ctx.fillText(line, canvas.width / 2, lineY);
+      ctx.save();
+      ctx.translate(canvas.width / 2, lineY);
+      ctx.scale(scaleVal, scaleVal);
+      ctx.globalAlpha = opacity;
+      ctx.strokeText(line, 0, 0);
+      ctx.fillText(line, 0, 0);
+      ctx.restore();
     });
 
     if (caption.id === activeCaptionId && !isExporting) {
       const width = Math.max(...lines.map(line => ctx.measureText(line).width));
       const height = lines.length * lineHeight;
+      const rightX = canvas.width / 2 + width / 2 + 16;
+      const bottomY = y + (lines.length - 1) * lineHeight + caption.size / 2 + 8;
+      
+      // Draw selected boundary border
       ctx.strokeStyle = '#3797f0';
       ctx.lineWidth = 3;
       ctx.strokeRect(canvas.width / 2 - width / 2 - 16, y - caption.size / 2 - 8, width + 32, height + 16);
+
+      // Draw resizing target circle handle at the bottom-right corner
+      ctx.fillStyle = '#3797f0';
+      ctx.beginPath();
+      ctx.arc(rightX, bottomY, 10, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
     }
     ctx.restore();
   });
@@ -403,48 +450,168 @@ function drawEmptyScreen(message = 'Choose a main video') {
   ctx.restore();
 }
 
+function getFrameStateAtTime(time) {
+  let accumulated = 0;
+  for (let i = 0; i < timelineSegments.length; i++) {
+    const s = timelineSegments[i];
+    const segStart = accumulated;
+    const segEnd = accumulated + s.duration;
+    accumulated += s.duration;
+
+    // Check transition crossfade with next segment
+    const nextSeg = timelineSegments[i + 1];
+    if (nextSeg) {
+      const transitionWindow = 0.4; // 0.4s crossfade transition duration
+      const boundary = segEnd;
+      if (time >= boundary - transitionWindow / 2 && time <= boundary + transitionWindow / 2) {
+        const progress = (time - (boundary - transitionWindow / 2)) / transitionWindow;
+        
+        // Outgoing segment details
+        let outSource = null, outType = 'video', outSeek = 0;
+        if (s.type === 'main') {
+          outSource = clip1.element;
+          outSeek = s.start + (s.duration - (boundary - time));
+        } else if (s.type === 'insert') {
+          outSource = clip2.element;
+          outType = clip2.type;
+          outSeek = s.duration - (boundary - time);
+        }
+
+        // Incoming segment details
+        let inSource = null, inType = 'video', inSeek = 0;
+        if (nextSeg.type === 'main') {
+          inSource = clip1.element;
+          inSeek = nextSeg.start + (time - boundary);
+        } else if (nextSeg.type === 'insert') {
+          inSource = clip2.element;
+          inType = clip2.type;
+          inSeek = time - boundary;
+        }
+
+        return {
+          isTransition: true,
+          progress,
+          outSource, outType, outSeek,
+          inSource, inType, inSeek
+        };
+      }
+    }
+
+    if (time <= segEnd) {
+      let activeSource = null;
+      let activeType = 'video';
+      let seekTime = 0;
+      if (s.type === 'main') {
+        activeSource = clip1.element;
+        seekTime = s.start + (time - segStart);
+      } else if (s.type === 'insert') {
+        activeSource = clip2.element;
+        activeType = clip2.type;
+        seekTime = time - segStart;
+      }
+      return {
+        isTransition: false,
+        activeSource, activeType, seekTime
+      };
+    }
+  }
+
+  // Fallback to last segment frame
+  const last = timelineSegments[timelineSegments.length - 1];
+  if (last) {
+    let activeSource = null;
+    let activeType = 'video';
+    let seekTime = 0;
+    if (last.type === 'main') {
+      activeSource = clip1.element;
+      seekTime = last.end;
+    } else if (last.type === 'insert') {
+      activeSource = clip2.element;
+      activeType = clip2.type;
+      seekTime = last.duration;
+    }
+    return {
+      isTransition: false,
+      activeSource, activeType, seekTime
+    };
+  }
+
+  return null;
+}
+
 function renderCanvas() {
   if (!clip1.element || !timelineSegments.length) {
     drawEmptyScreen();
     return;
   }
 
-  const result = getSegmentAtTime(currentTime);
-  if (!result) return;
-  const { segment, offset } = result;
-  let activeSource = null;
-  let activeType = 'video';
-  let seekTime = 0;
+  const state = getFrameStateAtTime(currentTime);
+  if (!state) return;
 
-  if (segment.type === 'main') {
-    activeSource = clip1.element;
-    seekTime = segment.start + offset;
-  } else if (segment.type === 'insert') {
-    activeSource = clip2.element;
-    activeType = clip2.type;
-    seekTime = offset;
-  }
-
-  if (activeSource) {
-    if (activeType === 'video') {
-      const tolerance = isPlaying ? 0.35 : 0.06;
-      if (Math.abs(activeSource.currentTime - seekTime) > tolerance) {
-        activeSource.currentTime = clamp(seekTime, 0, activeSource.duration || seekTime);
+  if (state.isTransition) {
+    // 1. Draw outgoing frame first
+    if (state.outSource) {
+      if (state.outType === 'video') {
+        const tolerance = isPlaying ? 0.35 : 0.06;
+        if (Math.abs(state.outSource.currentTime - state.outSeek) > tolerance) {
+          state.outSource.currentTime = clamp(state.outSeek, 0, state.outSource.duration || state.outSeek);
+        }
+        if (isPlaying && !isExporting && state.outSource.paused) {
+          state.outSource.play().catch(() => {});
+        }
       }
-      if (isPlaying && !isExporting && activeSource.paused) {
-        activeSource.play().catch(() => {});
-      }
+      ctx.save();
+      drawFrame(state.outSource, state.outType);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    drawFrame(activeSource, activeType);
-  } else {
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
 
-  if (isPlaying && !isExporting) {
-    if (activeSource !== clip1.element && clip1.element) clip1.element.pause();
-    if (activeSource !== clip2.element && clip2.element && clip2.type === 'video') clip2.element.pause();
-    syncAudioMixer(activeSource);
+    // 2. Draw incoming frame on top with globalAlpha = progress
+    if (state.inSource) {
+      if (state.inType === 'video') {
+        const tolerance = isPlaying ? 0.35 : 0.06;
+        if (Math.abs(state.inSource.currentTime - state.inSeek) > tolerance) {
+          state.inSource.currentTime = clamp(state.inSeek, 0, state.inSource.duration || state.inSeek);
+        }
+        if (isPlaying && !isExporting && state.inSource.paused) {
+          state.inSource.play().catch(() => {});
+        }
+      }
+      ctx.save();
+      ctx.globalAlpha = state.progress;
+      drawFrame(state.inSource, state.inType);
+      ctx.restore();
+    }
+
+    if (isPlaying && !isExporting) {
+      syncAudioMixer(state.inSource || state.outSource);
+    }
+  } else {
+    // Normal single-source rendering
+    const { activeSource, activeType, seekTime } = state;
+    if (activeSource) {
+      if (activeType === 'video') {
+        const tolerance = isPlaying ? 0.35 : 0.06;
+        if (Math.abs(activeSource.currentTime - seekTime) > tolerance) {
+          activeSource.currentTime = clamp(seekTime, 0, activeSource.duration || seekTime);
+        }
+        if (isPlaying && !isExporting && activeSource.paused) {
+          activeSource.play().catch(() => {});
+        }
+      }
+      drawFrame(activeSource, activeType);
+    } else {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    if (isPlaying && !isExporting) {
+      if (activeSource !== clip1.element && clip1.element) clip1.element.pause();
+      if (activeSource !== clip2.element && clip2.element && clip2.type === 'video') clip2.element.pause();
+      syncAudioMixer(activeSource);
+    }
   }
 
   drawCaptions();
@@ -622,6 +789,50 @@ function removeReplacement() {
   logToEditorConsole('Replacement removed.');
 }
 
+function renderBgmWaveform(audioBuffer) {
+  const canvasWave = document.getElementById('bgmWaveformCanvas');
+  if (!canvasWave) return;
+  
+  const width = canvasWave.clientWidth || 600;
+  const height = canvasWave.clientHeight || 40;
+  canvasWave.width = width;
+  canvasWave.height = height;
+  
+  const ctxWave = canvasWave.getContext('2d');
+  ctxWave.clearRect(0, 0, width, height);
+  
+  const rawData = audioBuffer.getChannelData(0); // get first channel
+  const samples = Math.floor(width / 3); // Draw bars with spaces
+  const blockSize = Math.floor(rawData.length / samples);
+  const filteredData = [];
+  
+  for (let i = 0; i < samples; i++) {
+    let blockStart = blockSize * i;
+    let sum = 0;
+    for (let j = 0; j < blockSize; j++) {
+      sum = sum + Math.abs(rawData[blockStart + j]);
+    }
+    filteredData.push(sum / blockSize);
+  }
+  
+  // Normalize peaks
+  const max = Math.max(...filteredData) || 1;
+  const normalizedData = filteredData.map(val => val / max);
+  
+  // Draw waveform
+  ctxWave.fillStyle = 'rgba(52, 211, 153, 0.4)';
+  const barWidth = 2;
+  const gap = 1;
+  
+  for (let i = 0; i < samples; i++) {
+    const val = normalizedData[i] || 0;
+    const barHeight = val * (height * 0.7);
+    const x = i * (barWidth + gap);
+    const y = (height - barHeight) / 2;
+    ctxWave.fillRect(x, y, barWidth, barHeight);
+  }
+}
+
 function handleBgm(file) {
   if (bgMusic.element) bgMusic.element.pause();
   if (bgMusic.url) URL.revokeObjectURL(bgMusic.url);
@@ -629,7 +840,25 @@ function handleBgm(file) {
   bgMusic.url = URL.createObjectURL(file);
   setText('bgmName', file.name);
   byId('bgmDetails').style.display = 'block';
-  logToEditorConsole(`Loading background music: ${file.name}...`);
+  
+  const bgmTrackRow = byId('bgmTrackRow');
+  if (bgmTrackRow) bgmTrackRow.style.display = 'flex';
+
+  logToEditorConsole(`Loading BGM: ${file.name}...`);
+
+  // Decode audio data for visual waveform
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const arrayBuffer = e.target.result;
+    const offlineCtx = new (window.AudioContext || window.webkitAudioContext)();
+    offlineCtx.decodeAudioData(arrayBuffer).then(audioBuffer => {
+      renderBgmWaveform(audioBuffer);
+      logToEditorConsole("BGM waveform rendered successfully.", "success");
+    }).catch(err => {
+      console.warn("Waveform decode failed:", err);
+    });
+  };
+  reader.readAsArrayBuffer(file);
 
   const audio = document.createElement('audio');
   audio.src = bgMusic.url;
@@ -1078,6 +1307,40 @@ window.addEventListener('resize', updatePlayhead);
 
 wrapper.addEventListener('mousedown', e => {
   if (!clip1.element) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const canvasX = ((e.clientX - rect.left) / rect.width) * canvas.width;
+  const canvasY = ((e.clientY - rect.top) / rect.height) * canvas.height;
+
+  // Check if click hit active caption's resize handle
+  const activeCap = captions.find(c => c.id === activeCaptionId);
+  if (activeCap && currentTime >= activeCap.showAt && currentTime <= activeCap.hideAt) {
+    ctx.save();
+    ctx.font = `bold ${activeCap.size}px Outfit, Arial, sans-serif`;
+    const lines = getWrappedLines(activeCap.text || 'Reels Text', canvas.width * 0.86);
+    const lineHeight = activeCap.size * 1.18;
+    let y = canvas.height * 0.82;
+    if (activeCap.position === 'top') y = canvas.height * 0.16;
+    if (activeCap.position === 'center') y = canvas.height * 0.5;
+    y -= ((lines.length - 1) * lineHeight) / 2;
+    
+    const width = Math.max(...lines.map(line => ctx.measureText(line).width));
+    const height = lines.length * lineHeight;
+    const rightX = canvas.width / 2 + width / 2 + 16;
+    const bottomY = y + (lines.length - 1) * lineHeight + activeCap.size / 2 + 8;
+    ctx.restore();
+
+    const distToHandle = Math.hypot(canvasX - rightX, canvasY - bottomY);
+    if (distToHandle < 30) {
+      isResizingCaption = true;
+      startResizeSize = activeCap.size;
+      const textCenterY = y + ((lines.length - 1) * lineHeight) / 2;
+      startDistance = Math.hypot(canvasX - canvas.width / 2, canvasY - textCenterY) || 1;
+      e.preventDefault();
+      return;
+    }
+  }
+
   isPanning = true;
   startPanMouseX = e.clientX;
   startPanMouseY = e.clientY;
@@ -1085,7 +1348,36 @@ wrapper.addEventListener('mousedown', e => {
   startPanOffsetY = panY;
   e.preventDefault();
 });
+
 window.addEventListener('mousemove', e => {
+  if (isResizingCaption) {
+    const activeCap = captions.find(c => c.id === activeCaptionId);
+    if (activeCap) {
+      const rect = canvas.getBoundingClientRect();
+      const canvasX = ((e.clientX - rect.left) / rect.width) * canvas.width;
+      const canvasY = ((e.clientY - rect.top) / rect.height) * canvas.height;
+
+      ctx.save();
+      ctx.font = `bold ${activeCap.size}px Outfit, Arial, sans-serif`;
+      const lines = getWrappedLines(activeCap.text || 'Reels Text', canvas.width * 0.86);
+      const lineHeight = activeCap.size * 1.18;
+      let y = canvas.height * 0.82;
+      if (activeCap.position === 'top') y = canvas.height * 0.16;
+      if (activeCap.position === 'center') y = canvas.height * 0.5;
+      y -= ((lines.length - 1) * lineHeight) / 2;
+      const textCenterY = y + ((lines.length - 1) * lineHeight) / 2;
+      ctx.restore();
+
+      const dist = Math.hypot(canvasX - canvas.width / 2, canvasY - textCenterY);
+      const newSize = clamp(Math.round(startResizeSize * (dist / startDistance)), 16, 80);
+      activeCap.size = newSize;
+      
+      els.captionSize.value = newSize;
+      renderCanvas();
+    }
+    return;
+  }
+
   if (!isPanning) return;
   const scaleX = canvas.width / wrapper.clientWidth;
   const scaleY = canvas.height / wrapper.clientHeight;
@@ -1093,31 +1385,124 @@ window.addEventListener('mousemove', e => {
   panY = startPanOffsetY + ((e.clientY - startPanMouseY) * scaleY);
   renderCanvas();
 });
+
 window.addEventListener('mouseup', () => {
-  if (!isPanning) return;
-  isPanning = false;
-  logToEditorConsole(`Crop offset: ${panX.toFixed(0)}, ${panY.toFixed(0)}`);
+  if (isResizingCaption) {
+    isResizingCaption = false;
+    logToEditorConsole(`Caption resized to ${els.captionSize.value}px.`);
+    return;
+  }
+  if (isPanning) {
+    isPanning = false;
+    logToEditorConsole(`Crop offset: ${panX.toFixed(0)}, ${panY.toFixed(0)}`);
+  }
 });
+
 wrapper.addEventListener('touchstart', e => {
   if (!clip1.element || !e.touches.length) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const canvasX = ((e.touches[0].clientX - rect.left) / rect.width) * canvas.width;
+  const canvasY = ((e.touches[0].clientY - rect.top) / rect.height) * canvas.height;
+
+  const activeCap = captions.find(c => c.id === activeCaptionId);
+  if (activeCap && currentTime >= activeCap.showAt && currentTime <= activeCap.hideAt) {
+    ctx.save();
+    ctx.font = `bold ${activeCap.size}px Outfit, Arial, sans-serif`;
+    const lines = getWrappedLines(activeCap.text || 'Reels Text', canvas.width * 0.86);
+    const lineHeight = activeCap.size * 1.18;
+    let y = canvas.height * 0.82;
+    if (activeCap.position === 'top') y = canvas.height * 0.16;
+    if (activeCap.position === 'center') y = canvas.height * 0.5;
+    y -= ((lines.length - 1) * lineHeight) / 2;
+    
+    const width = Math.max(...lines.map(line => ctx.measureText(line).width));
+    const height = lines.length * lineHeight;
+    const rightX = canvas.width / 2 + width / 2 + 16;
+    const bottomY = y + (lines.length - 1) * lineHeight + activeCap.size / 2 + 8;
+    ctx.restore();
+
+    const distToHandle = Math.hypot(canvasX - rightX, canvasY - bottomY);
+    if (distToHandle < 35) {
+      isResizingCaption = true;
+      startResizeSize = activeCap.size;
+      const textCenterY = y + ((lines.length - 1) * lineHeight) / 2;
+      startDistance = Math.hypot(canvasX - canvas.width / 2, canvasY - textCenterY) || 1;
+      return;
+    }
+  }
+
   isPanning = true;
   startPanMouseX = e.touches[0].clientX;
   startPanMouseY = e.touches[0].clientY;
   startPanOffsetX = panX;
   startPanOffsetY = panY;
-}, { passive: true });
+});
+
 window.addEventListener('touchmove', e => {
-  if (!isPanning || !e.touches.length) return;
+  if (!e.touches.length) return;
+
+  if (isResizingCaption) {
+    const activeCap = captions.find(c => c.id === activeCaptionId);
+    if (activeCap) {
+      const rect = canvas.getBoundingClientRect();
+      const canvasX = ((e.touches[0].clientX - rect.left) / rect.width) * canvas.width;
+      const canvasY = ((e.touches[0].clientY - rect.top) / rect.height) * canvas.height;
+
+      ctx.save();
+      ctx.font = `bold ${activeCap.size}px Outfit, Arial, sans-serif`;
+      const lines = getWrappedLines(activeCap.text || 'Reels Text', canvas.width * 0.86);
+      const lineHeight = activeCap.size * 1.18;
+      let y = canvas.height * 0.82;
+      if (activeCap.position === 'top') y = canvas.height * 0.16;
+      if (activeCap.position === 'center') y = canvas.height * 0.5;
+      y -= ((lines.length - 1) * lineHeight) / 2;
+      const textCenterY = y + ((lines.length - 1) * lineHeight) / 2;
+      ctx.restore();
+
+      const dist = Math.hypot(canvasX - canvas.width / 2, canvasY - textCenterY);
+      const newSize = clamp(Math.round(startResizeSize * (dist / startDistance)), 16, 80);
+      activeCap.size = newSize;
+      
+      els.captionSize.value = newSize;
+      renderCanvas();
+    }
+    return;
+  }
+
+  if (!isPanning) return;
   const scaleX = canvas.width / wrapper.clientWidth;
   const scaleY = canvas.height / wrapper.clientHeight;
   panX = startPanOffsetX + ((e.touches[0].clientX - startPanMouseX) * scaleX);
   panY = startPanOffsetY + ((e.touches[0].clientY - startPanMouseY) * scaleY);
   renderCanvas();
-}, { passive: true });
-window.addEventListener('touchend', () => { isPanning = false; });
+});
+
+window.addEventListener('touchend', () => {
+  isPanning = false;
+  isResizingCaption = false;
+});
 
 window.addEventListener('DOMContentLoaded', () => {
   setAspectRatio('9:16');
   recalculateTimeline();
   drawEmptyScreen();
+
+  // Mock upload testing helper
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('mock_upload') || urlParams.get('video')) {
+    logToEditorConsole("Running automated mock upload sequence...");
+    fetch('/downloaded_video.mp4')
+      .then(res => {
+        if (!res.ok) throw new Error("Test video asset not found on server");
+        return res.blob();
+      })
+      .then(blob => {
+        const file = new File([blob], "downloaded_video.mp4", { type: "video/mp4" });
+        handleMainVideo(file);
+      })
+      .catch(err => {
+        logToEditorConsole(`Mock video load failed: ${err.message}`, "error");
+      });
+  }
 });
