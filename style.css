@@ -948,6 +948,72 @@ header {
   box-sizing: border-box;
 }
 
+/* Modal Card with Instagram Styling */
+.insta-modal-card {
+  width: 90%;
+  max-width: 420px;
+  background: #1c1c1e !important; /* Instagram dark mode card background */
+  border: 1px solid #363636 !important;
+  border-radius: 12px;
+  padding: 24px;
+  position: relative;
+  box-sizing: border-box;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Instagram Primary Action Button (Brand Gradient) */
+.insta-btn-primary {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 0.88rem;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 4px 12px rgba(220, 39, 67, 0.25);
+  transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.insta-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.insta-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.insta-btn-primary:disabled {
+  background: #363636 !important;
+  color: #a8a8a8 !important;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Instagram Secondary Action Button */
+.insta-btn-secondary {
+  background: #262626 !important;
+  border: 1px solid #363636 !important;
+  color: #ffffff !important;
+  transition: background 0.2s ease;
+}
+
+.insta-btn-secondary:hover {
+  background: #363636 !important;
+}
+
+/* Instagram Loader Spinner */
+.insta-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(220, 39, 67, 0.1);
+  border-top-color: #dc2743;
+  border-radius: 50%;
+  animation: dl-spin 1s infinite linear;
+}
+
 @keyframes dl-spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }

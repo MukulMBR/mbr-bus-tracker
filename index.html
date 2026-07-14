@@ -274,32 +274,38 @@
 
   <!-- Video Downloader Modal Dialog -->
   <div id="dlModal" class="dl-modal" style="display: none;">
-    <div class="dl-modal-card cyber-card">
-      <div class="cyber-corner corner-tl"></div>
-      <div class="cyber-corner corner-tr"></div>
-      <div class="cyber-corner corner-bl"></div>
-      <div class="cyber-corner corner-br"></div>
-      
-      <div class="dl-modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
-        <h3 style="color: var(--accent-gold); font-size: 1.1rem; margin: 0; font-weight: bold;">🎥 Video Downloader</h3>
-        <button id="btnDlClose" class="dl-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; line-height: 1;">&times;</button>
+    <div class="dl-modal-card insta-modal-card">
+      <div class="dl-modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 10px;">
+        <h3 style="background: -webkit-linear-gradient(45deg, #f09433, #dc2743, #cc2366, #bc1888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.15rem; margin: 0; font-weight: bold; font-family: var(--font-sans);">🎥 Video Downloader</h3>
+        <button id="btnDlClose" class="dl-close-btn" style="background: transparent; border: none; color: #a8a8a8; font-size: 1.5rem; cursor: pointer; line-height: 1; outline: none;">&times;</button>
       </div>
       
       <div class="dl-modal-body">
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+        <p style="font-size: 0.8rem; color: #a8a8a8; margin-bottom: 14px; line-height: 1.4; font-family: var(--font-sans);">
           Paste a video or Reels URL below to download it directly. Supported platforms: Instagram, YouTube, Facebook, Twitter, and more.
         </p>
-        <div class="dl-input-wrapper" style="margin-bottom: 12px;">
-          <input type="text" id="dlUrlInput" class="cyber-input" placeholder="Paste URL here (e.g. https://instagram.com/...)" style="width: 100%; box-sizing: border-box; background: #0e0b08; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 14px; color: var(--text-primary); outline: none; font-size: 0.85rem;" />
+        
+        <!-- Input controls flex wrapper -->
+        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; position: relative;">
+          <div style="position: relative; flex: 1; display: flex; align-items: center;">
+            <input 
+              type="text" 
+              id="dlUrlInput" 
+              placeholder="Paste video URL here..." 
+              style="width: 100%; box-sizing: border-box; background: #121212; border: 1px solid #363636; border-radius: 8px; padding: 10px 32px 10px 14px; color: #ffffff; outline: none; font-size: 0.85rem; font-family: var(--font-sans); transition: border-color 0.2s;" 
+            />
+            <button id="btnDlClear" style="position: absolute; right: 10px; background: transparent; border: none; color: #a8a8a8; font-size: 0.85rem; cursor: pointer; outline: none; display: none; padding: 4px;">✕</button>
+          </div>
+          <button id="btnDlPaste" class="insta-btn-secondary" style="padding: 10px 14px; border: 1px solid #363636; border-radius: 8px; font-size: 0.8rem; font-weight: bold; cursor: pointer; white-space: nowrap; outline: none; font-family: var(--font-sans);">📋 Paste</button>
         </div>
         
         <!-- Loading state -->
         <div id="dlLoading" class="dl-loading-spinner" style="display: none; flex-direction: column; align-items: center; justify-content: center; margin: 15px 0;">
-          <div class="spinner" style="width: 28px; height: 28px; border: 3px solid rgba(245, 158, 11, 0.1); border-top-color: var(--accent-gold); border-radius: 50%; animation: dl-spin 1s infinite linear;"></div>
-          <span style="font-size: 0.78rem; color: var(--accent-gold); margin-top: 8px; font-weight: bold;">Preparing download stream... Please wait.</span>
+          <div class="insta-spinner"></div>
+          <span style="font-size: 0.78rem; color: #e6683c; margin-top: 8px; font-weight: bold; font-family: var(--font-sans);">Preparing download stream... Please wait.</span>
         </div>
         
-        <button id="btnDlSubmit" class="cyber-btn" style="width: 100%; box-sizing: border-box; padding: 10px 16px; border: 1px solid var(--accent-gold); border-radius: 6px; background: rgba(245, 158, 11, 0.15); color: var(--accent-gold); font-size: 0.88rem; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease;">Download Video</button>
+        <button id="btnDlSubmit" class="insta-btn-primary" style="font-family: var(--font-sans);">Download Video</button>
       </div>
     </div>
   </div>

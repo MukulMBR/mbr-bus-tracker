@@ -1436,11 +1436,14 @@ function setupEventListeners() {
   const btnDlSubmit = document.getElementById('btnDlSubmit');
   const dlUrlInput = document.getElementById('dlUrlInput');
   const dlLoading = document.getElementById('dlLoading');
+  const btnDlClear = document.getElementById('btnDlClear');
+  const btnDlPaste = document.getElementById('btnDlPaste');
 
   if (btnDlOpen && dlModal) {
     btnDlOpen.addEventListener('click', () => {
       dlModal.style.display = 'flex';
       dlUrlInput.value = '';
+      if (btnDlClear) btnDlClear.style.display = 'none';
       dlUrlInput.focus();
     });
   }
@@ -1461,6 +1464,34 @@ function setupEventListeners() {
     });
   }
 
+  // Clear button toggle visibility
+  if (dlUrlInput && btnDlClear) {
+    dlUrlInput.addEventListener('input', () => {
+      btnDlClear.style.display = dlUrlInput.value.trim() ? 'block' : 'none';
+    });
+
+    btnDlClear.addEventListener('click', () => {
+      dlUrlInput.value = '';
+      btnDlClear.style.display = 'none';
+      dlUrlInput.focus();
+    });
+  }
+
+  // Auto-paste from system clipboard
+  if (btnDlPaste && dlUrlInput) {
+    btnDlPaste.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        dlUrlInput.value = text.trim();
+        if (btnDlClear) btnDlClear.style.display = dlUrlInput.value ? 'block' : 'none';
+        logToConsole("Pasted link from clipboard", "info");
+      } catch (err) {
+        console.warn("Failed to read clipboard:", err);
+        alert("Please paste the link manually or grant clipboard permission in your browser.");
+      }
+    });
+  }
+
   if (btnDlSubmit) {
     btnDlSubmit.addEventListener('click', () => {
       const url = dlUrlInput.value.trim();
@@ -1472,7 +1503,6 @@ function setupEventListeners() {
       logToConsole(`Initializing video download: ${url}`, "info");
       dlLoading.style.display = 'flex';
       btnDlSubmit.disabled = true;
-      btnDlSubmit.style.opacity = '0.5';
       btnDlSubmit.textContent = 'Processing...';
 
       // Set window.location.href to download API (triggers native file download prompt)
@@ -1482,7 +1512,6 @@ function setupEventListeners() {
       setTimeout(() => {
         dlLoading.style.display = 'none';
         btnDlSubmit.disabled = false;
-        btnDlSubmit.style.opacity = '1';
         btnDlSubmit.textContent = 'Download Video';
       }, 8000);
     });
