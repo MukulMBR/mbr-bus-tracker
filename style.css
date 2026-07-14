@@ -1023,3 +1023,77 @@ header {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* Modal opening bounce/scale effect */
+.insta-modal-card {
+  animation: dl-scale-up 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes dl-scale-up {
+  from { transform: scale(0.88); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Downloader History Row Items */
+.dl-history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #121212;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.74rem;
+  color: #e3e3e3;
+  transition: background 0.2s;
+  font-family: var(--font-sans);
+}
+
+.dl-history-row:hover {
+  background: #1c1c1e;
+  border-color: #363636;
+}
+
+.dl-history-url {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+  color: #a8a8a8;
+  text-decoration: none;
+}
+
+.dl-history-url:hover {
+  color: #ffffff;
+}
+
+.dl-history-dl-btn {
+  background: transparent;
+  border: none;
+  color: #e6683c;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  outline: none;
+  transition: transform 0.1s;
+}
+
+.dl-history-dl-btn:active {
+  transform: scale(0.9);
+}
+
+/* Glowing pulsating circle geofence on Map */
+@keyframes geofence-pulse {
+  0% { stroke-width: 1.5px; stroke-opacity: 0.8; fill-opacity: 0.03; }
+  50% { stroke-width: 3.5px; stroke-opacity: 0.4; fill-opacity: 0.08; }
+  100% { stroke-width: 1.5px; stroke-opacity: 0.8; fill-opacity: 0.03; }
+}
+
+.glowing-geofence {
+  animation: geofence-pulse 2.2s infinite ease-in-out;
+}
+
+.glowing-geofence.danger {
+  animation: geofence-pulse 1s infinite ease-in-out;
+}

@@ -341,20 +341,25 @@ function updateGeofenceCircle() {
   }
   
   const speedText = document.getElementById('speedValue').textContent;
-  const speedVal = parseFloat(speedText);
+  const speedVal = parseFloat(speedText) || 0;
   const currentSpeed = (speedVal > 10) ? speedVal : 60; // fallback to 60 km/h
   const thresholdMins = parseInt(document.getElementById('alarmThreshold').value) || 20;
   
   // Calculate radius in meters based on velocity (speed * 1000 / 60) * thresholdMins
   const radiusMeters = ((currentSpeed * 1000) / 60) * thresholdMins;
   
+  const isDanger = speedVal > 60;
+  const fenceClass = isDanger ? 'glowing-geofence danger' : 'glowing-geofence';
+  const fenceColor = isDanger ? 'var(--status-red)' : 'var(--accent-gold)';
+  
   geofenceCircle = L.circle([selectedDropPoint.lat, selectedDropPoint.lng], {
     radius: radiusMeters,
-    color: 'var(--accent-gold)',
-    fillColor: 'var(--accent-gold)',
-    fillOpacity: 0.05,
+    color: fenceColor,
+    fillColor: fenceColor,
+    fillOpacity: 0.04,
     weight: 1.5,
-    dashArray: '5, 5'
+    dashArray: '5, 5',
+    className: fenceClass
   }).addTo(map);
 }
 
@@ -1438,13 +1443,102 @@ function setupEventListeners() {
   const dlLoading = document.getElementById('dlLoading');
   const btnDlClear = document.getElementById('btnDlClear');
   const btnDlPaste = document.getElementById('btnDlPaste');
+  const dlAutoDetectTooltip = document.getElementById('dlAutoDetectTooltip');
+  const btnDlAutoPaste = document.getElementById('btnDlAutoPaste');
+  const btnDlClearHistory = document.getElementById('btnDlClearHistory');
+
+  // Download History Helper Functions
+  function saveUrlToHistory(url) {
+    let history = JSON.parse(localStorage.getItem('instaDlHistory') || '[]');
+    // Filter out duplicates
+    history = history.filter(item => item !== url);
+    history.unshift(url);
+    if (history.length > 5) history.pop();
+    localStorage.setItem('instaDlHistory', JSON.stringify(history));
+    renderDlHistory();
+  }
+
+  function renderDlHistory() {
+    const container = document.getElementById('dlHistoryContainer');
+    const list = document.getElementById('dlHistoryList');
+    if (!container || !list) return;
+
+    const history = JSON.parse(localStorage.getItem('instaDlHistory') || '[]');
+    if (history.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'block';
+    list.innerHTML = '';
+
+    history.forEach(url => {
+      const row = document.createElement('div');
+      row.className = 'dl-history-row';
+      row.innerHTML = `
+        <span class="dl-history-url" title="${url}">${url}</span>
+        <button class="dl-history-dl-btn" data-url="${url}" title="Re-download">📥 Download</button>
+      `;
+
+      // Attach re-download click event to row download button
+      row.querySelector('.dl-history-dl-btn').addEventListener('click', (e) => {
+        const targetUrl = e.target.getAttribute('data-url');
+        dlUrlInput.value = targetUrl;
+        if (btnDlClear) btnDlClear.style.display = 'block';
+        if (dlAutoDetectTooltip) dlAutoDetectTooltip.style.display = 'none';
+        btnDlSubmit.click();
+      });
+
+      list.appendChild(row);
+    });
+  }
+
+  // Clear History
+  if (btnDlClearHistory) {
+    btnDlClearHistory.addEventListener('click', () => {
+      localStorage.removeItem('instaDlHistory');
+      renderDlHistory();
+      logToConsole("Download history cleared.", "success");
+    });
+  }
+
+  // Render history on page startup
+  renderDlHistory();
 
   if (btnDlOpen && dlModal) {
-    btnDlOpen.addEventListener('click', () => {
+    btnDlOpen.addEventListener('click', async () => {
       dlModal.style.display = 'flex';
       dlUrlInput.value = '';
       if (btnDlClear) btnDlClear.style.display = 'none';
+      if (dlAutoDetectTooltip) dlAutoDetectTooltip.style.display = 'none';
       dlUrlInput.focus();
+
+      // Attempt clipboard auto-detection
+      try {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          const clipText = await navigator.clipboard.readText();
+          const cleanText = clipText.trim();
+          
+          // Basic pattern matching common video hosts
+          const isVideoUrl = /(instagram\.com|youtube\.com|youtu\.be|facebook\.com|twitter\.com|x\.com|tiktok\.com|reel)/i.test(cleanText);
+          
+          if (isVideoUrl && dlAutoDetectTooltip && btnDlAutoPaste) {
+            dlAutoDetectTooltip.style.display = 'flex';
+            
+            // Re-bind click trigger to avoid multiple click events stacking up
+            btnDlAutoPaste.replaceWith(btnDlAutoPaste.cloneNode(true));
+            const newBtn = document.getElementById('btnDlAutoPaste');
+            newBtn.addEventListener('click', () => {
+              dlUrlInput.value = cleanText;
+              if (btnDlClear) btnDlClear.style.display = 'block';
+              dlAutoDetectTooltip.style.display = 'none';
+              logToConsole("Auto-filled link from clipboard", "info");
+            });
+          }
+        }
+      } catch (err) {
+        console.log("Clipboard read blocked or unsupported: ", err);
+      }
     });
   }
 
@@ -1484,6 +1578,7 @@ function setupEventListeners() {
         const text = await navigator.clipboard.readText();
         dlUrlInput.value = text.trim();
         if (btnDlClear) btnDlClear.style.display = dlUrlInput.value ? 'block' : 'none';
+        if (dlAutoDetectTooltip) dlAutoDetectTooltip.style.display = 'none';
         logToConsole("Pasted link from clipboard", "info");
       } catch (err) {
         console.warn("Failed to read clipboard:", err);
@@ -1504,6 +1599,11 @@ function setupEventListeners() {
       dlLoading.style.display = 'flex';
       btnDlSubmit.disabled = true;
       btnDlSubmit.textContent = 'Processing...';
+
+      // Save to local history
+      saveUrlToHistory(url);
+
+      if (dlAutoDetectTooltip) dlAutoDetectTooltip.style.display = 'none';
 
       // Set window.location.href to download API (triggers native file download prompt)
       window.location.href = `/api/download-video?url=${encodeURIComponent(url)}`;
