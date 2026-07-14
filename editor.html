@@ -3,58 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🎥 Reels Editor - Cut & Insert</title>
-  <!-- Google Fonts: Outfit -->
+  <title>MBR Reels Video Composer</title>
+  
+  <!-- Premium Obsidian Dark Theme styling -->
+  <link rel="stylesheet" href="editor.css?v=10">
+  
+  <!-- Google Font Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="editor.css">
 </head>
 <body>
 
-  <!-- App Header -->
-  <header class="editor-header">
-    <div class="header-left">
-      <a href="/" class="back-btn">⬅ Back to Tracker</a>
-    </div>
-    <div class="header-center">
-      <h1 class="logo-text">
-        <svg viewBox="0 0 24 24" width="22" height="22" style="display: inline-block; vertical-align: middle; margin-right: 6px;">
-          <defs>
-            <linearGradient id="headerInsta" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stop-color="#f09433" />
-              <stop offset="25%" stop-color="#e6683c" />
-              <stop offset="50%" stop-color="#dc2743" />
-              <stop offset="75%" stop-color="#cc2366" />
-              <stop offset="100%" stop-color="#bc1888" />
-            </linearGradient>
-          </defs>
-          <path fill="url(#headerInsta)" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051C.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
-        </svg>
-        Reels Editor (Cut & Insert)
-      </h1>
-    </div>
-    <div class="header-right">
-      <button id="btnExport" class="export-btn">🚀 Export Video</button>
+  <!-- Navigation Header bar -->
+  <header>
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">
+          <span style="font-size: 1.25rem;">🎬</span>
+        </div>
+        <div>
+          <span class="brand-title">MBR REELS COMPOSER</span>
+          <span class="brand-subtitle">CLIENT-SIDE VIDEO TRIMMER, FILTER & CAPTIONS</span>
+        </div>
+      </div>
+      <div>
+        <a href="/" class="back-link" title="Return to Bus Tracker Map">📡 Back to Tracker</a>
+      </div>
     </div>
   </header>
 
-  <!-- Main Workspace -->
+  <!-- Main Workspace Layout -->
   <main class="editor-workspace">
     
-    <!-- Sidebar: Media Controls -->
+    <!-- Sidebar Controls -->
     <section class="editor-sidebar">
       
-      <!-- Editor Mode Selector -->
-      <div class="sidebar-card" style="border: 1px solid var(--accent-blue); background: rgba(55, 151, 240, 0.05); padding: 12px;">
-        <h3>🛠️ Editor Mode</h3>
-        <p class="desc" style="margin-bottom: 8px;">Select your preferred editing workflow.</p>
-        <div style="display: flex; gap: 8px;">
-          <button id="btnSimpleMode" class="mini-toggle-btn active-solo" style="flex: 1; padding: 6px; font-weight: bold;" onclick="setEditorMode('simple')">🟢 Simple Mode</button>
-          <button id="btnAdvancedMode" class="mini-toggle-btn" style="flex: 1; padding: 6px; font-weight: bold;" onclick="setEditorMode('advanced')">🔵 Advanced Mode</button>
-        </div>
-      </div>
-
-      <!-- Step 1: Upload Main Video -->
-      <div class="sidebar-card" id="cardMainVideo">
+      <!-- 1. Upload Main Video -->
+      <div class="sidebar-card">
         <h3>🎬 1. Upload Main Video</h3>
         <p class="desc">Select the primary video you want to edit.</p>
         <div class="file-input-wrapper">
@@ -63,209 +49,186 @@
         </div>
         <div id="clip1Details" class="media-details" style="display: none;">
           <span class="filename" id="clip1Name"></span>
-          <span style="font-size: 0.75rem; color: var(--text-secondary);">Original Length: <strong id="clip1DurationText">0.0s</strong></span>
+          <span class="dur-badge">Duration: <strong id="clip1DurationText">0.0s</strong></span>
           
-          <!-- Advanced Trim and Audio Mixer controls (Hidden in Simple Mode) -->
-          <div id="advTrimControls" style="display: none; margin-top: 10px; border-top: 1px dashed var(--border-color); padding-top: 8px;">
-            <div class="slider-group">
-              <div class="slider-labels">
-                <span>Trim Start: <strong id="mainTrimStartVal">0.0s</strong></span>
-                <span>Trim End: <strong id="mainTrimEndVal">15.0s</strong></span>
-              </div>
-              <input type="range" id="mainTrimStart" min="0" max="30" step="0.1" value="0" />
-              <input type="range" id="mainTrimEnd" min="1" max="30" step="0.1" value="15" />
+          <div class="slider-group" style="margin-top: 10px;">
+            <div class="slider-labels">
+              <span>Trim Start: <strong id="mainTrimStartVal">0.0s</strong></span>
+              <span>Trim End: <strong id="mainTrimEndVal">15.0s</strong></span>
             </div>
-            <div class="audio-control-row" style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 0.72rem; color: var(--text-secondary);">Video Vol:</span>
-              <input type="range" id="mainVolume" min="0" max="1" step="0.05" value="1" style="flex: 1;" />
-              <button id="btnMuteMain" class="mini-toggle-btn" title="Mute Original Audio">🔇</button>
-              <button id="btnSoloMain" class="mini-toggle-btn" title="Solo Original Audio">S</button>
-            </div>
+            <input type="range" id="mainTrimStart" min="0" max="30" step="0.1" value="0" />
+            <input type="range" id="mainTrimEnd" min="1" max="30" step="0.1" value="15" />
           </div>
         </div>
       </div>
 
-      <!-- Step 2: Define Cut Zone -->
-      <div class="sidebar-card" id="cardCutZone">
-        <h3>✂️ 2. Select Clip to Remove</h3>
-        <p class="desc">Specify the start and end seconds to cut out.</p>
+      <!-- 2. Cut & Replace Zone -->
+      <div class="sidebar-card">
+        <h3>✂️ 2. Middle Cut & Replace</h3>
+        <p class="desc">Define a segment to cut out and replace with a custom clip/photo.</p>
         <div class="slider-group">
           <div class="slider-labels">
-            <span>Cut Starts: <strong id="cutStartVal">0.0s</strong></span>
-            <span>Cut Ends: <strong id="cutEndVal">5.0s</strong></span>
+            <span>Cut Starts: <strong id="cutStartVal">2.0s</strong></span>
+            <span>Cut Ends: <strong id="cutEndVal">6.0s</strong></span>
           </div>
-          <input type="range" id="c1Start" min="0" max="30" step="0.1" value="0" disabled />
-          <input type="range" id="c1End" min="1" max="30" step="0.1" value="5" disabled />
+          <input type="range" id="c1Start" min="0" max="30" step="0.1" value="2" disabled />
+          <input type="range" id="c1End" min="1" max="30" step="0.1" value="6" disabled />
         </div>
-        <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 8px;">
-          Total Cut Duration: <strong id="totalCutVal" style="color: #ff3b30;">0.0s</strong>
-        </div>
-      </div>
-
-      <!-- Step 3: Upload Insertion Video -->
-      <div class="sidebar-card" id="cardInsertClip">
-        <h3>📥 3. Upload Insertion Clip</h3>
-        <p class="desc">This video/photo will replace the removed clip.</p>
-        <div class="file-input-wrapper">
-          <input type="file" id="clip2File" accept="video/*,image/*" class="file-input" />
-          <label for="clip2File" class="file-label">Choose Insertion Clip</label>
+        
+        <div class="file-input-wrapper" style="margin-top: 10px;">
+          <input type="file" id="clip2File" accept="video/*,image/*" class="file-input" disabled />
+          <label for="clip2File" class="file-label disabled" id="clip2FileLabel">Choose Replacement file</label>
         </div>
         <div id="clip2Details" class="media-details" style="display: none;">
           <span class="filename" id="clip2Name"></span>
           <div class="slider-group">
             <div class="slider-labels">
-              <span>Insert Length: <strong id="c2DurVal">5.0s</strong></span>
+              <span>Replacement Length: <strong id="c2DurVal">4.0s</strong></span>
             </div>
-            <input type="range" id="c2Duration" min="1" max="15" step="0.1" value="5" />
+            <input type="range" id="c2Duration" min="1" max="15" step="0.1" value="4" />
           </div>
         </div>
       </div>
 
-      <!-- Additional Cut Zones (Advanced Mode Only) -->
-      <div class="sidebar-card" id="cardAdditionalCuts" style="display: none;">
-        <h3>➕ Additional cuts</h3>
-        <p class="desc">Add more cut-and-replace slots on the timeline.</p>
-        <div id="additionalCutsList" style="display: flex; flex-direction: column; gap: 8px;"></div>
-        <button id="btnAddCut" class="file-label" style="background: #262628; border: 1px dashed var(--border-color); color: var(--text-primary); cursor: pointer; width: 100%; margin-top: 8px;">➕ Add Cut Zone</button>
+      <!-- 3. Aspect Ratio & Crop/Pan -->
+      <div class="sidebar-card">
+        <h3>📐 3. Aspect Ratio & Pan</h3>
+        <p class="desc">Select target format and drag on screen to crop.</p>
+        <div class="aspect-ratio-buttons">
+          <button id="btnRatioVertical" class="aspect-btn active" onclick="setAspectRatio('9:16')">Vertical (9:16)</button>
+          <button id="btnRatioSquare" class="aspect-btn" onclick="setAspectRatio('1:1')">Square (1:1)</button>
+          <button id="btnRatioHorizontal" class="aspect-btn" onclick="setAspectRatio('16:9')">Widescreen (16:9)</button>
+        </div>
+        <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 8px; line-height: 1.3;">
+          ℹ️ Drag or swipe on the preview screen to adjust video positioning/cropping.
+        </div>
       </div>
 
-      <!-- Simple Caption Card (Simple Mode Only) -->
-      <div class="sidebar-card" id="cardSimpleCaption">
-        <h3>🔤 4. Caption Text</h3>
-        <p class="desc">Overlay text on your final Reels output.</p>
-        <input type="text" id="simpleOverlayText" placeholder="Enter text here..." class="text-input" />
-        <div class="settings-grid">
-          <div>
-            <label>Color</label>
-            <input type="color" id="simpleTextColor" value="#ffffff" />
-          </div>
-          <div>
-            <label>Size</label>
-            <input type="range" id="simpleTextSize" min="16" max="64" value="28" />
-          </div>
-        </div>
-        <div class="slider-group" style="margin-top: 12px;">
+      <!-- 4. Filter Adjustments -->
+      <div class="sidebar-card">
+        <h3>🎨 4. Video Filters</h3>
+        <p class="desc">Adjust basic color parameters of your composition.</p>
+        <div class="slider-group">
           <div class="slider-labels">
-            <span>Show: <strong id="simpleTxtStartVal">1.0s</strong></span>
-            <span>Hide: <strong id="simpleTxtEndVal">8.0s</strong></span>
+            <span>Brightness</span>
+            <strong id="valBrightness">100%</strong>
           </div>
-          <input type="range" id="simpleTxtStart" min="0" max="30" step="0.1" value="1" />
-          <input type="range" id="simpleTxtEnd" min="1" max="30" step="0.1" value="8" />
+          <input type="range" id="sliderBrightness" min="50" max="150" value="100" />
+        </div>
+        <div class="slider-group" style="margin-top: 8px;">
+          <div class="slider-labels">
+            <span>Contrast</span>
+            <strong id="valContrast">100%</strong>
+          </div>
+          <input type="range" id="sliderContrast" min="50" max="150" value="100" />
+        </div>
+        <div class="slider-group" style="margin-top: 8px;">
+          <div class="slider-labels">
+            <span>Saturation</span>
+            <strong id="valSaturation">100%</strong>
+          </div>
+          <input type="range" id="sliderSaturation" min="0" max="200" value="100" />
         </div>
       </div>
 
-      <!-- Caption Layers Panel (Advanced Mode Only) -->
-      <div class="sidebar-card" id="cardCaptionLayers" style="display: none;">
-        <h3>🔤 Caption Layers</h3>
-        <p class="desc">Add and style multiple text overlays.</p>
-        <div id="captionsList" class="captions-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;"></div>
-        <button id="btnAddCaption" class="file-label" style="background: #262628; border: 1px dashed var(--border-color); color: var(--text-primary); cursor: pointer; width: 100%;">➕ Add Caption Layer</button>
+      <!-- 5. Dual-Track Audio Mixer -->
+      <div class="sidebar-card">
+        <h3>🔊 5. Audio mixer</h3>
+        <p class="desc">Control track volumes and add background music.</p>
         
-        <!-- Caption Editor Sub-panel -->
-        <div id="captionEditorPanel" class="media-details" style="display: none; border-top: 1px solid var(--border-color); margin-top: 10px; padding-top: 10px;">
-          <input type="text" id="captionText" placeholder="Enter caption text..." class="text-input" />
+        <div class="slider-group">
+          <div class="slider-labels">
+            <span>Original Audio Vol</span>
+            <strong id="valMainVolume">100%</strong>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="range" id="mainVolume" min="0" max="1" step="0.05" value="1" style="flex: 1;" />
+            <button id="btnMuteMain" class="toggle-btn" title="Mute Original Video">M</button>
+            <button id="btnSoloMain" class="toggle-btn" title="Solo Original Video">S</button>
+          </div>
+        </div>
+
+        <div style="border-top: 1px dashed var(--border-color); margin-top: 10px; padding-top: 10px;">
+          <div class="file-input-wrapper">
+            <input type="file" id="bgmFile" accept="audio/*" class="file-input" />
+            <label for="bgmFile" class="file-label" style="background: #1c1c1e; border-color: var(--border-color);">➕ Add Background Music (BGM)</label>
+          </div>
+          <div id="bgmDetails" class="media-details" style="display: none;">
+            <span class="filename" id="bgmName"></span>
+            <div class="slider-group">
+              <div class="slider-labels">
+                <span>BGM Vol</span>
+                <strong id="valBgmVolume">50%</strong>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="range" id="bgmVolume" min="0" max="1" step="0.05" value="0.5" style="flex: 1;" />
+                <button id="btnMuteBgm" class="toggle-btn" title="Mute BGM">M</button>
+                <button id="btnSoloBgm" class="toggle-btn" title="Solo BGM">S</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. Multiple Captions Layers -->
+      <div class="sidebar-card">
+        <h3>🔤 6. Captions Layers</h3>
+        <p class="desc">Create and timing-overlay multiple text layers.</p>
+        <div id="captionsList" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;"></div>
+        <button id="btnAddCaption" class="file-label" style="background: #262628; border: 1px dashed var(--border-color); cursor: pointer;" disabled>➕ Add Caption Layer</button>
+
+        <div id="captionEditorPanel" class="media-details" style="display: none; border-top: 1px solid var(--border-color); margin-top: 8px; padding-top: 8px;">
+          <input type="text" id="captionText" placeholder="Enter text..." class="text-input" />
           <div class="settings-grid">
             <div>
-              <label>Color</label>
+              <label>Text Color</label>
               <input type="color" id="captionColor" value="#ffffff" />
             </div>
             <div>
-              <label>Size</label>
-              <input type="range" id="captionSize" min="12" max="64" value="28" />
+              <label>Text Size</label>
+              <input type="range" id="captionSize" min="16" max="64" value="28" />
             </div>
           </div>
-          <div class="settings-grid" style="margin-top: 8px;">
-            <div>
-              <label>Font Family</label>
-              <select id="captionFontFamily" class="text-input" style="padding: 5px;">
-                <option value="Outfit, sans-serif">Outfit</option>
-                <option value="Arial, sans-serif">Arial</option>
-                <option value="Georgia, serif">Georgia</option>
-                <option value="Courier New, monospace">Courier</option>
-                <option value="Impact, Charcoal, sans-serif">Impact</option>
-              </select>
-            </div>
-            <div>
-              <label>Weight</label>
-              <select id="captionFontWeight" class="text-input" style="padding: 5px;">
-                <option value="bold">Bold</option>
-                <option value="normal">Normal</option>
-              </select>
-            </div>
-          </div>
-          <div class="settings-grid" style="margin-top: 8px;">
+          <div class="settings-grid" style="margin-top: 6px;">
             <div>
               <label>Position Preset</label>
-              <select id="captionPositionPreset" class="text-input" style="padding: 5px;">
+              <select id="captionPosition" class="text-input" style="padding: 4px;">
                 <option value="bottom">Bottom</option>
                 <option value="center">Center</option>
                 <option value="top">Top</option>
-                <option value="custom">Custom (Drag)</option>
               </select>
             </div>
             <div>
-              <label>Entrance Animation</label>
-              <select id="captionAnimation" class="text-input" style="padding: 5px;">
-                <option value="none">None</option>
-                <option value="fade">Fade In</option>
-                <option value="slide">Slide Up</option>
-              </select>
+              <label>Timing Display</label>
+              <div style="font-size: 0.65rem; color: var(--text-secondary); margin-top: 2px;">
+                Show: <span id="captionStartVal">1.0s</span> | Hide: <span id="captionEndVal">5.0s</span>
+              </div>
             </div>
           </div>
-          <div class="slider-group" style="margin-top: 12px;">
-            <div class="slider-labels">
-              <span>Show at: <strong id="captionStartVal">1.0s</strong></span>
-              <span>Hide at: <strong id="captionEndVal">8.0s</strong></span>
-            </div>
+          <div class="slider-group" style="margin-top: 8px;">
             <input type="range" id="captionStart" min="0" max="30" step="0.1" value="1" />
-            <input type="range" id="captionEnd" min="1" max="30" step="0.1" value="8" />
+            <input type="range" id="captionEnd" min="1" max="30" step="0.1" value="5" />
           </div>
-          <button id="btnDeleteCaption" class="file-label" style="background: rgba(255, 59, 48, 0.15); border: 1px solid #ff3b30; color: #ff3b30; margin-top: 10px; cursor: pointer; width: 100%;">🗑️ Delete Caption</button>
+          <button id="btnDeleteCaption" class="file-label" style="background: rgba(255, 59, 48, 0.12); border: 1px solid #ff3b30; color: #ff3b30; margin-top: 8px; cursor: pointer; width: 100%;">🗑️ Delete Caption</button>
         </div>
       </div>
 
-      <!-- Step 5: Background Music (Advanced Mode Only) -->
-      <div class="sidebar-card" id="cardBgm" style="display: none;">
-        <h3>🎵 5. Background Music (BGM)</h3>
-        <p class="desc">Mix an MP3 or WAV audio track into your Reels.</p>
-        <div class="file-input-wrapper">
-          <input type="file" id="bgmFile" accept="audio/*" class="file-input" />
-          <label for="bgmFile" class="file-label">Choose Audio File</label>
-        </div>
-        <div id="bgmDetails" class="media-details" style="display: none;">
-          <span class="filename" id="bgmName"></span>
-          <div class="audio-control-row" style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 0.72rem; color: var(--text-secondary);">BGM Vol:</span>
-            <input type="range" id="bgmVolume" min="0" max="1" step="0.05" value="0.5" style="flex: 1;" />
-            <button id="btnMuteBgm" class="mini-toggle-btn" title="Mute BGM">🔇</button>
-            <button id="btnSoloBgm" class="mini-toggle-btn" title="Solo BGM">S</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Terminal Log Console -->
+      <!-- Terminal System Log console -->
       <div class="console-card">
         <h4>🖥️ Editor Terminal</h4>
         <div id="editorConsole" class="console-box">
-          <div class="log-line">System ready. Please select the Main Video (Step 1).</div>
+          <div class="log-line">System initialized. Please choose a Main Video (Step 1).</div>
         </div>
       </div>
 
     </section>
 
-    <!-- Center Panel: Live Video Preview (Mobile Aspect Ratio) -->
+    <!-- Center Preview Screen -->
     <section class="editor-preview-container">
       
-      <!-- Phone Mockup Frame -->
-      <div class="phone-mockup">
-        <div class="phone-notch"></div>
-        <div class="preview-canvas-wrapper">
-          <canvas id="previewCanvas" width="720" height="1280"></canvas>
-          
-          <div class="watermark-overlay">
-            <span>MBR Reels</span>
-          </div>
-        </div>
+      <!-- Video Preview Frame Mockup -->
+      <div class="preview-aspect-wrapper" id="previewAspectWrapper">
+        <canvas id="previewCanvas" width="720" height="1280"></canvas>
       </div>
 
       <!-- Playback Controls -->
@@ -279,71 +242,67 @@
         </div>
       </div>
 
+      <!-- Timeline visual tracks -->
+      <div class="editor-timeline">
+        <div class="timeline-ruler">
+          <div class="ruler-grid"></div>
+        </div>
+        <div class="timeline-tracks">
+          
+          <!-- Track 1: Main Video Trim -->
+          <div class="timeline-track">
+            <div class="track-label">Main Track</div>
+            <div class="track-bar">
+              <div id="blockMainPart1" class="timeline-block block-main">Segment A</div>
+              <div id="blockCutZone" class="timeline-block block-cut">CUT OUT</div>
+              <div id="blockMainPart2" class="timeline-block block-main">Segment C</div>
+            </div>
+          </div>
+          
+          <!-- Track 2: Insert Clip replacement -->
+          <div class="timeline-track">
+            <div class="track-label">Insertion</div>
+            <div class="track-bar">
+              <div id="blockInsert" class="timeline-block block-insert">Replacement Clip</div>
+            </div>
+          </div>
+
+          <!-- Track 3: Active Caption Layer indicator -->
+          <div class="timeline-track">
+            <div class="track-label">Captions</div>
+            <div class="track-bar">
+              <div id="blockText" class="timeline-block block-caption" style="display: none;">Caption Text</div>
+            </div>
+          </div>
+
+          <!-- Playhead indicator -->
+          <div id="playhead" class="playhead-line"></div>
+        </div>
+      </div>
+
+      <button id="btnExport" class="export-btn" style="margin-top: 24px;" disabled>🚀 Export Video</button>
+
     </section>
 
   </main>
 
-  <!-- Timeline Panel -->
-  <footer class="editor-timeline">
-    <div class="timeline-header">
-      <span>Cut-and-Insert Timeline</span>
-      <span id="zoomLabel" style="font-size: 0.75rem; color: #a8a8a8;">Composed Length: <strong id="totalOutputLen">0.0s</strong></span>
-    </div>
-    <div class="timeline-tracks">
-      
-      <!-- Playhead -->
-      <div class="track-row timeline-ruler-row">
-        <div class="track-label" style="height: 16px; border-bottom: none;">Time</div>
-        <div class="track-blocks" style="height: 16px; position: relative;">
-          <div id="playhead" class="playhead"></div>
-        </div>
-      </div>
-
-      <!-- Track 1: Main Video (A & C) with Cut Gap -->
-      <div class="track-row">
-        <div class="track-label">Main Video</div>
-        <div class="track-blocks" style="position: relative;">
-          <div id="blockMainPart1" class="track-block block-clip1" style="position: absolute; left: 0; width: 30%;">Segment A</div>
-          <div id="blockCutZone" class="track-block" style="position: absolute; left: 30%; width: 20%; background: rgba(255, 59, 48, 0.25); border: 1px solid #ff3b30; color: #ff3b30; justify-content: center; padding-left: 0;">CUT OUT</div>
-          <div id="blockMainPart2" class="track-block block-clip1" style="position: absolute; left: 50%; width: 50%;">Segment C</div>
-        </div>
-      </div>
-
-      <!-- Track 2: Insertion Video (Segment B) -->
-      <div class="track-row">
-        <div class="track-label">Insertion</div>
-        <div class="track-blocks" style="position: relative;">
-          <div id="blockInsert" class="track-block block-clip2" style="position: absolute; left: 30%; width: 20%;">Insertion Clip</div>
-        </div>
-      </div>
-
-      <!-- Track 3: Text Overlay -->
-      <div class="track-row">
-        <div class="track-label">Captions</div>
-        <div class="track-blocks" style="position: relative;">
-          <div id="blockText" class="track-block block-text" style="position: absolute; left: 10%; width: 60%;">Text Overlay</div>
-        </div>
-      </div>
-
-    </div>
-  </footer>
-
-  <!-- Export Loading Overlay -->
+  <!-- Exporting Modal Overlay -->
   <div id="exportOverlay" class="export-overlay" style="display: none;">
     <div class="export-card">
-      <div class="insta-spinner" style="width: 42px; height: 42px; margin-bottom: 16px;"></div>
-      <h2>Compiling Reels...</h2>
-      <p id="exportProgressText">Processing frames: 0%</p>
-      <div class="progress-bar-container">
-        <div id="exportProgressBar" class="progress-bar" style="width: 0%;"></div>
+      <div class="insta-spinner" style="margin-bottom: 16px;"></div>
+      <h3 style="color: #fff; margin-bottom: 8px;">Compiling Media Compositions</h3>
+      <p id="exportProgressText" style="color: var(--text-secondary); font-size: 0.82rem; margin-bottom: 12px;">Processing: 0%</p>
+      
+      <div class="progress-bar-container" style="margin-bottom: 16px;">
+        <div id="exportProgressBar" class="progress-bar"></div>
       </div>
-      <p style="color: #a8a8a8; font-size: 0.75rem; margin-top: 14px; line-height: 1.4;">
-        This runs completely inside your browser locally. Do not close this tab until rendering finishes.
-      </p>
+      
+      <button id="btnCancelExport" class="file-label" style="background: transparent; border: 1px solid var(--border-color); cursor: pointer; padding: 6px 12px; font-size: 0.78rem;">Cancel Export</button>
     </div>
   </div>
 
-  <!-- Core Editor Engine JS -->
-  <script src="editor.js"></script>
+  <!-- Re-load Core video compiler controller -->
+  <script src="editor.js?v=10"></script>
+
 </body>
 </html>
