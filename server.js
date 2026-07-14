@@ -123,7 +123,13 @@ const server = http.createServer((req, res) => {
     });
   } else {
     // Serve static files
-    let filePath = path.join(__dirname, pathname === '/' ? 'index.html' : pathname);
+    let fileSegment = pathname;
+    if (pathname === '/') {
+      fileSegment = 'index.html';
+    } else if (pathname === '/editor') {
+      fileSegment = 'editor.html';
+    }
+    let filePath = path.join(__dirname, fileSegment);
     const ext = path.extname(filePath);
     let contentType = 'text/html';
     
