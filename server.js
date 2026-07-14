@@ -50,6 +50,39 @@ const server = http.createServer((req, res) => {
     const apikey = parsedUrl.searchParams.get('apikey');
     const text = parsedUrl.searchParams.get('text');
     proxyRequest(`https://api.callmebot.com/whatsapp.php?phone=${phone}&apikey=${apikey}&text=${encodeURIComponent(text)}`, res);
+  } else if (pathname === '/api/download-video') {
+    const videoUrl = parsedUrl.searchParams.get('url');
+    if (!videoUrl) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Missing url parameter');
+      return;
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'video/mp4',
+      'Content-Disposition': 'attachment; filename="downloaded_video.mp4"',
+      'Access-Control-Allow-Origin': '*'
+    });
+
+    const { spawn } = require('child_process');
+    const ytdlpPath = 'C:\\Users\\motak\\.gemini\\antigravity-ide\\brain\\e4fa1d1d-76bd-4781-ba16-880dfeb5c54e\\scratch\\yt-dlp.exe';
+    
+    const child = spawn(ytdlpPath, ['-o', '-', videoUrl]);
+
+    child.stdout.pipe(res);
+
+    child.stderr.on('data', (data) => {
+      console.error(`yt-dlp stderr: ${data}`);
+    });
+
+    child.on('close', (code) => {
+      console.log(`yt-dlp process exited with code ${code}`);
+      res.end();
+    });
+
+    req.on('close', () => {
+      child.kill();
+    });
   } else {
     // Serve static files
     let filePath = path.join(__dirname, pathname === '/' ? 'index.html' : pathname);

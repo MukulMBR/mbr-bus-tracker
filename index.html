@@ -269,6 +269,41 @@
     </div>
   </div>
 
+  <!-- Floating Action Button (FAB) for Video Downloader -->
+  <button id="btnDlOpen" class="dl-fab" title="Video Downloader">📥</button>
+
+  <!-- Video Downloader Modal Dialog -->
+  <div id="dlModal" class="dl-modal" style="display: none;">
+    <div class="dl-modal-card cyber-card">
+      <div class="cyber-corner corner-tl"></div>
+      <div class="cyber-corner corner-tr"></div>
+      <div class="cyber-corner corner-bl"></div>
+      <div class="cyber-corner corner-br"></div>
+      
+      <div class="dl-modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+        <h3 style="color: var(--accent-gold); font-size: 1.1rem; margin: 0; font-weight: bold;">🎥 Video Downloader</h3>
+        <button id="btnDlClose" class="dl-close-btn" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; line-height: 1;">&times;</button>
+      </div>
+      
+      <div class="dl-modal-body">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+          Paste a video or Reels URL below to download it directly. Supported platforms: Instagram, YouTube, Facebook, Twitter, and more.
+        </p>
+        <div class="dl-input-wrapper" style="margin-bottom: 12px;">
+          <input type="text" id="dlUrlInput" class="cyber-input" placeholder="Paste URL here (e.g. https://instagram.com/...)" style="width: 100%; box-sizing: border-box; background: #0e0b08; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 14px; color: var(--text-primary); outline: none; font-size: 0.85rem;" />
+        </div>
+        
+        <!-- Loading state -->
+        <div id="dlLoading" class="dl-loading-spinner" style="display: none; flex-direction: column; align-items: center; justify-content: center; margin: 15px 0;">
+          <div class="spinner" style="width: 28px; height: 28px; border: 3px solid rgba(245, 158, 11, 0.1); border-top-color: var(--accent-gold); border-radius: 50%; animation: dl-spin 1s infinite linear;"></div>
+          <span style="font-size: 0.78rem; color: var(--accent-gold); margin-top: 8px; font-weight: bold;">Preparing download stream... Please wait.</span>
+        </div>
+        
+        <button id="btnDlSubmit" class="cyber-btn" style="width: 100%; box-sizing: border-box; padding: 10px 16px; border: 1px solid var(--accent-gold); border-radius: 6px; background: rgba(245, 158, 11, 0.15); color: var(--accent-gold); font-size: 0.88rem; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s ease;">Download Video</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 

@@ -1428,6 +1428,65 @@ function setupEventListeners() {
     URL.revokeObjectURL(url);
     logToConsole("System logs downloaded locally.", "success");
   });
+
+  // Video Downloader Modal controls
+  const dlModal = document.getElementById('dlModal');
+  const btnDlOpen = document.getElementById('btnDlOpen');
+  const btnDlClose = document.getElementById('btnDlClose');
+  const btnDlSubmit = document.getElementById('btnDlSubmit');
+  const dlUrlInput = document.getElementById('dlUrlInput');
+  const dlLoading = document.getElementById('dlLoading');
+
+  if (btnDlOpen && dlModal) {
+    btnDlOpen.addEventListener('click', () => {
+      dlModal.style.display = 'flex';
+      dlUrlInput.value = '';
+      dlUrlInput.focus();
+    });
+  }
+
+  if (btnDlClose && dlModal) {
+    btnDlClose.addEventListener('click', () => {
+      dlModal.style.display = 'none';
+      dlLoading.style.display = 'none';
+    });
+  }
+
+  if (dlModal) {
+    dlModal.addEventListener('click', (e) => {
+      if (e.target === dlModal) {
+        dlModal.style.display = 'none';
+        dlLoading.style.display = 'none';
+      }
+    });
+  }
+
+  if (btnDlSubmit) {
+    btnDlSubmit.addEventListener('click', () => {
+      const url = dlUrlInput.value.trim();
+      if (!url) {
+        alert("Please paste a valid video URL.");
+        return;
+      }
+
+      logToConsole(`Initializing video download: ${url}`, "info");
+      dlLoading.style.display = 'flex';
+      btnDlSubmit.disabled = true;
+      btnDlSubmit.style.opacity = '0.5';
+      btnDlSubmit.textContent = 'Processing...';
+
+      // Set window.location.href to download API (triggers native file download prompt)
+      window.location.href = `/api/download-video?url=${encodeURIComponent(url)}`;
+
+      // Reset loading states after 8 seconds
+      setTimeout(() => {
+        dlLoading.style.display = 'none';
+        btnDlSubmit.disabled = false;
+        btnDlSubmit.style.opacity = '1';
+        btnDlSubmit.textContent = 'Download Video';
+      }, 8000);
+    });
+  }
 }
 
 // Toggle and select quick-access tabs
