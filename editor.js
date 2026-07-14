@@ -196,7 +196,8 @@ function renderCanvas(isMuted = false) {
   // Manage playback seeking and muting
   if (activeSource) {
     if (activeType === 'video') {
-      if (Math.abs(activeSource.currentTime - seekTime) > 0.15) {
+      const tolerance = isPlaying ? 0.35 : 0.05; // Larger tolerance during playback prevents constant seeking stutters
+      if (Math.abs(activeSource.currentTime - seekTime) > tolerance) {
         activeSource.currentTime = seekTime;
       }
       
@@ -212,7 +213,7 @@ function renderCanvas(isMuted = false) {
     drawFrame(activeSource, activeType);
   }
 
-  // Mute inactive video elements during playback
+  // Mute/Pause inactive video elements during playback to prevent double audio overlay
   if (isPlaying && !isExporting) {
     if (activeSource === clip1.element) {
       if (clip2.element && clip2.type === 'video') {
@@ -262,6 +263,24 @@ function playbackLoop(timestamp) {
   // Update time display and playhead position
   timeCurrent.textContent = formatTime(currentTime);
   playhead.style.left = `${(currentTime / totalDuration) * 100}%`;
+
+  // Pre-seek / Warm up inactive video decoders 1.2 seconds before transition boundary to eliminate lag
+  const clip2Len = clip2.duration;
+  if (isPlaying && !isExporting) {
+    if (currentTime < cutStart) {
+      if (cutStart - currentTime < 1.2 && clip2.element && clip2.type === 'video') {
+        if (Math.abs(clip2.element.currentTime - 0) > 0.1) {
+          clip2.element.currentTime = 0;
+        }
+      }
+    } else if (currentTime < cutStart + clip2Len) {
+      if ((cutStart + clip2Len) - currentTime < 1.2 && clip1.element) {
+        if (Math.abs(clip1.element.currentTime - cutEnd) > 0.2) {
+          clip1.element.currentTime = cutEnd;
+        }
+      }
+    }
+  }
 
   renderCanvas(isMuted);
   animationFrameId = requestAnimationFrame(playbackLoop);
