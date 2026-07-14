@@ -529,6 +529,21 @@ function togglePlayPause() {
     isPlaying = true;
     btnPlayPause.textContent = '⏸ Pause';
     lastTime = 0;
+
+    // Direct user-gesture playback initiation to bypass browser autoplay blocks
+    const result = getSegmentAtTime(currentTime);
+    if (result && result.segment) {
+      const { segment, offset } = result;
+      if (segment.type === 'main' && clip1.element) {
+        clip1.element.play().catch(e => console.log("Play clip1 error:", e));
+      } else if (segment.type === 'insert' && clip2.element && clip2.type === 'video') {
+        clip2.element.play().catch(e => console.log("Play clip2 error:", e));
+      }
+    }
+    if (bgMusic.element) {
+      bgMusic.element.play().catch(e => console.log("Play BGM error:", e));
+    }
+
     animationFrameId = requestAnimationFrame(playbackLoop);
     logToEditorConsole("Playback started.");
   }
