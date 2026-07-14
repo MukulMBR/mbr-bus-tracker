@@ -612,6 +612,101 @@ input[type="range"]::-webkit-slider-thumb:hover {
   to { opacity: 1; }
 }
 
+/* Advanced Audio Mixer Elements */
+.mini-toggle-btn {
+  background: #2c2c2e;
+  border: 1px solid var(--border-color);
+  color: #8e8e93;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mini-toggle-btn:hover {
+  background: #3a3a3c;
+  color: #fff;
+}
+
+.mini-toggle-btn.active-mute {
+  background: var(--accent-gold);
+  color: #000;
+  border-color: var(--accent-gold);
+}
+
+.mini-toggle-btn.active-solo {
+  background: #34d399;
+  color: #000;
+  border-color: #34d399;
+}
+
+/* Captions List Panel */
+.caption-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #252528;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.caption-item-row:hover {
+  background: #2c2c2e;
+}
+
+.caption-item-row.active {
+  border-color: var(--accent-blue);
+  background: rgba(55, 151, 240, 0.12);
+}
+
+.caption-item-row span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+.caption-item-row .time-tag {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* Additional Cut Cards */
+.cut-item-card {
+  background: #252528;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 6px;
+  position: relative;
+}
+
+.cut-item-card h4 {
+  margin: 0 0 6px 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cut-item-card .delete-cut-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: #ff3b30;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 2px;
+}
+
 /* Mobile responsive styling rules */
 @media (max-width: 992px) {
   body {

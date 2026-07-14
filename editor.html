@@ -53,7 +53,21 @@
         </div>
         <div id="clip1Details" class="media-details" style="display: none;">
           <span class="filename" id="clip1Name"></span>
-          <span style="font-size: 0.75rem; color: var(--text-secondary);">Duration: <strong id="clip1DurationText">0.0s</strong></span>
+          <span style="font-size: 0.75rem; color: var(--text-secondary);">Original Length: <strong id="clip1DurationText">0.0s</strong></span>
+          <div class="slider-group" style="margin-top: 8px;">
+            <div class="slider-labels">
+              <span>Trim Start: <strong id="mainTrimStartVal">0.0s</strong></span>
+              <span>Trim End: <strong id="mainTrimEndVal">15.0s</strong></span>
+            </div>
+            <input type="range" id="mainTrimStart" min="0" max="30" step="0.1" value="0" />
+            <input type="range" id="mainTrimEnd" min="1" max="30" step="0.1" value="15" />
+          </div>
+          <div class="audio-control-row" style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.72rem; color: var(--text-secondary);">Video Vol:</span>
+            <input type="range" id="mainVolume" min="0" max="1" step="0.05" value="1" style="flex: 1;" />
+            <button id="btnMuteMain" class="mini-toggle-btn" title="Mute Original Audio">🔇</button>
+            <button id="btnSoloMain" class="mini-toggle-btn" title="Solo Original Audio">S</button>
+          </div>
         </div>
       </div>
 
@@ -93,28 +107,100 @@
         </div>
       </div>
 
-      <!-- Step 4: Text Overlay (Optional) -->
+      <!-- Additional Cut Zones -->
       <div class="sidebar-card">
-        <h3>🔤 4. Caption Text</h3>
-        <p class="desc">Overlay text on your final Reels output.</p>
-        <input type="text" id="overlayText" placeholder="Enter text here..." class="text-input" />
-        <div class="settings-grid">
-          <div>
-            <label>Color</label>
-            <input type="color" id="textColor" value="#ffffff" />
+        <h3>➕ Additional cuts</h3>
+        <p class="desc">Add more cut-and-replace slots on the timeline.</p>
+        <div id="additionalCutsList" style="display: flex; flex-direction: column; gap: 8px;"></div>
+        <button id="btnAddCut" class="file-label" style="background: #262628; border: 1px dashed var(--border-color); color: var(--text-primary); cursor: pointer; width: 100%; margin-top: 8px;">➕ Add Cut Zone</button>
+      </div>
+
+      <!-- Caption Layers Panel -->
+      <div class="sidebar-card">
+        <h3>🔤 Caption Layers</h3>
+        <p class="desc">Add and style multiple text overlays.</p>
+        <div id="captionsList" class="captions-list" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;"></div>
+        <button id="btnAddCaption" class="file-label" style="background: #262628; border: 1px dashed var(--border-color); color: var(--text-primary); cursor: pointer; width: 100%;">➕ Add Caption Layer</button>
+        
+        <!-- Caption Editor Sub-panel -->
+        <div id="captionEditorPanel" class="media-details" style="display: none; border-top: 1px solid var(--border-color); margin-top: 10px; padding-top: 10px;">
+          <input type="text" id="captionText" placeholder="Enter caption text..." class="text-input" />
+          <div class="settings-grid">
+            <div>
+              <label>Color</label>
+              <input type="color" id="captionColor" value="#ffffff" />
+            </div>
+            <div>
+              <label>Size</label>
+              <input type="range" id="captionSize" min="12" max="64" value="28" />
+            </div>
           </div>
-          <div>
-            <label>Size</label>
-            <input type="range" id="textSize" min="16" max="64" value="28" />
+          <div class="settings-grid" style="margin-top: 8px;">
+            <div>
+              <label>Font Family</label>
+              <select id="captionFontFamily" class="text-input" style="padding: 5px;">
+                <option value="Outfit, sans-serif">Outfit</option>
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="Courier New, monospace">Courier</option>
+                <option value="Impact, Charcoal, sans-serif">Impact</option>
+              </select>
+            </div>
+            <div>
+              <label>Weight</label>
+              <select id="captionFontWeight" class="text-input" style="padding: 5px;">
+                <option value="bold">Bold</option>
+                <option value="normal">Normal</option>
+              </select>
+            </div>
           </div>
+          <div class="settings-grid" style="margin-top: 8px;">
+            <div>
+              <label>Position Preset</label>
+              <select id="captionPositionPreset" class="text-input" style="padding: 5px;">
+                <option value="bottom">Bottom</option>
+                <option value="center">Center</option>
+                <option value="top">Top</option>
+                <option value="custom">Custom (Drag)</option>
+              </select>
+            </div>
+            <div>
+              <label>Entrance Animation</label>
+              <select id="captionAnimation" class="text-input" style="padding: 5px;">
+                <option value="none">None</option>
+                <option value="fade">Fade In</option>
+                <option value="slide">Slide Up</option>
+              </select>
+            </div>
+          </div>
+          <div class="slider-group" style="margin-top: 12px;">
+            <div class="slider-labels">
+              <span>Show at: <strong id="captionStartVal">1.0s</strong></span>
+              <span>Hide at: <strong id="captionEndVal">8.0s</strong></span>
+            </div>
+            <input type="range" id="captionStart" min="0" max="30" step="0.1" value="1" />
+            <input type="range" id="captionEnd" min="1" max="30" step="0.1" value="8" />
+          </div>
+          <button id="btnDeleteCaption" class="file-label" style="background: rgba(255, 59, 48, 0.15); border: 1px solid #ff3b30; color: #ff3b30; margin-top: 10px; cursor: pointer; width: 100%;">🗑️ Delete Caption</button>
         </div>
-        <div class="slider-group" style="margin-top: 12px;">
-          <div class="slider-labels">
-            <span>Show: <strong id="txtStartVal">1.0s</strong></span>
-            <span>Hide: <strong id="txtEndVal">8.0s</strong></span>
+      </div>
+
+      <!-- Step 5: Background Music -->
+      <div class="sidebar-card">
+        <h3>🎵 5. Background Music (BGM)</h3>
+        <p class="desc">Mix an MP3 or WAV audio track into your Reels.</p>
+        <div class="file-input-wrapper">
+          <input type="file" id="bgmFile" accept="audio/*" class="file-input" />
+          <label for="bgmFile" class="file-label">Choose Audio File</label>
+        </div>
+        <div id="bgmDetails" class="media-details" style="display: none;">
+          <span class="filename" id="bgmName"></span>
+          <div class="audio-control-row" style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.72rem; color: var(--text-secondary);">BGM Vol:</span>
+            <input type="range" id="bgmVolume" min="0" max="1" step="0.05" value="0.5" style="flex: 1;" />
+            <button id="btnMuteBgm" class="mini-toggle-btn" title="Mute BGM">🔇</button>
+            <button id="btnSoloBgm" class="mini-toggle-btn" title="Solo BGM">S</button>
           </div>
-          <input type="range" id="txtStart" min="0" max="30" step="0.1" value="1" />
-          <input type="range" id="txtEnd" min="1" max="30" step="0.1" value="8" />
         </div>
       </div>
 
