@@ -91,10 +91,16 @@ function recalculateTimeline() {
     blockA.textContent = `Main Part A (${cutStart.toFixed(1)}s)`;
   }
 
-  // Visual Cut Zone (Main Video Cut Gap)
-  const pctCut = (cutLen / totalDuration) * 100;
+  // Segment B (Insertion Block) & Visual Cut Zone Gap
+  const pctInsert = (clip2Len / totalDuration) * 100;
+  if (blockInsert) {
+    blockInsert.style.width = `${pctInsert}%`;
+    blockInsert.style.left = `${pctA}%`;
+    blockInsert.textContent = clip2.file ? `Insert (${clip2Len.toFixed(1)}s)` : 'Insertion Clip';
+  }
+
   if (blockCut) {
-    blockCut.style.width = `${pctCut}%`;
+    blockCut.style.width = `${pctInsert}%`;
     blockCut.style.left = `${pctA}%`;
   }
 
@@ -105,14 +111,6 @@ function recalculateTimeline() {
     blockC.style.width = `${pctC}%`;
     blockC.style.left = `${pctC_Start}%`;
     blockC.textContent = `Main Part C (${(clip1Len - cutEnd).toFixed(1)}s)`;
-  }
-
-  // Segment B (Insertion Block)
-  const pctInsert = (clip2Len / totalDuration) * 100;
-  if (blockInsert) {
-    blockInsert.style.width = `${pctInsert}%`;
-    blockInsert.style.left = `${pctA}%`;
-    blockInsert.textContent = clip2.file ? `Insert (${clip2Len.toFixed(1)}s)` : 'Insertion Clip';
   }
 
   // Caption Overlay block
@@ -626,4 +624,241 @@ window.addEventListener('DOMContentLoaded', () => {
   ctx.textAlign = 'center';
   ctx.fillText('Composer Screen (9:16)', canvas.width / 2, canvas.height / 2);
   recalculateTimeline();
+  setupTimelineDragging();
 });
+
+// Interactive Timeline Drag and Adjust Engine
+function setupTimelineDragging() {
+  const tracks = document.querySelector('.timeline-tracks');
+  if (!tracks) return;
+
+  let activeDrag = null; // { element: HTMLElement, action: 'left'|'right'|'move', startX: number, startVals: {} }
+
+  function handleStart(e, element, actionType) {
+    if (!clip1.element) return; // Main video must be loaded
+    e.preventDefault();
+    e.stopPropagation();
+
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    
+    // Store starting values
+    const startVals = {
+      cutStart,
+      cutEnd,
+      clip2Duration: clip2.duration,
+      showAt: textOverlay.showAt,
+      hideAt: textOverlay.hideAt
+    };
+
+    activeDrag = {
+      element,
+      action: actionType,
+      startX: clientX,
+      startVals
+    };
+
+    element.style.cursor = 'grabbing';
+    document.body.style.cursor = 'col-resize';
+  }
+
+  // Bind mouse and touch starts
+  const bindBlockDrag = (element, id) => {
+    if (!element) return;
+
+    const startHandler = (e) => {
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      const rect = element.getBoundingClientRect();
+      const clickX = clientX - rect.left;
+      const pct = clickX / rect.width;
+
+      let action = 'move';
+      if (id === 'MainPart1') {
+        action = 'right'; // Adjust cutStart
+      } else if (id === 'MainPart2') {
+        action = 'left'; // Adjust cutEnd
+      } else {
+        // Cut zone, Insert block, or Text block
+        if (pct < 0.15) action = 'left';
+        else if (pct > 0.85) action = 'right';
+        else action = 'move';
+      }
+
+      handleStart(e, element, action);
+    };
+
+    element.addEventListener('mousedown', startHandler);
+    element.addEventListener('touchstart', startHandler, { passive: false });
+  };
+
+  bindBlockDrag(document.getElementById('blockMainPart1'), 'MainPart1');
+  bindBlockDrag(document.getElementById('blockMainPart2'), 'MainPart2');
+  bindBlockDrag(document.getElementById('blockCutZone'), 'CutZone');
+  bindBlockDrag(document.getElementById('blockInsert'), 'Insert');
+  bindBlockDrag(document.getElementById('blockText'), 'Text');
+
+  // Move listener
+  const moveHandler = (e) => {
+    if (!activeDrag) return;
+
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const deltaX = clientX - activeDrag.startX;
+    
+    const trackWidth = tracks.getBoundingClientRect().width - 80; // exclude label offset
+    if (trackWidth <= 0) return;
+
+    const deltaTime = (deltaX / trackWidth) * totalDuration;
+    const vals = activeDrag.startVals;
+    const id = activeDrag.element.id;
+
+    if (id === 'blockMainPart1') {
+      // Adjust cutStart (Segment A end)
+      let val = vals.cutStart + deltaTime;
+      if (val < 0) val = 0;
+      if (val >= cutEnd) val = cutEnd - 0.1;
+      cutStart = val;
+      c1Start.value = val;
+      document.getElementById('cutStartVal').textContent = `${val.toFixed(1)}s`;
+    } 
+    else if (id === 'blockMainPart2') {
+      // Adjust cutEnd (Segment C start)
+      let val = vals.cutEnd + deltaTime;
+      if (val <= cutStart) val = cutStart + 0.1;
+      if (val > clip1.duration) val = clip1.duration;
+      cutEnd = val;
+      c1End.value = val;
+      document.getElementById('cutEndVal').textContent = `${val.toFixed(1)}s`;
+    } 
+    else if (id === 'blockCutZone') {
+      if (activeDrag.action === 'left') {
+        let val = vals.cutStart + deltaTime;
+        if (val < 0) val = 0;
+        if (val >= cutEnd) val = cutEnd - 0.1;
+        cutStart = val;
+        c1Start.value = val;
+        document.getElementById('cutStartVal').textContent = `${val.toFixed(1)}s`;
+      } else if (activeDrag.action === 'right') {
+        let val = vals.cutEnd + deltaTime;
+        if (val <= cutStart) val = cutStart + 0.1;
+        if (val > clip1.duration) val = clip1.duration;
+        cutEnd = val;
+        c1End.value = val;
+        document.getElementById('cutEndVal').textContent = `${val.toFixed(1)}s`;
+      } else {
+        // Move entire cut zone
+        const cutLen = vals.cutEnd - vals.cutStart;
+        let newStart = vals.cutStart + deltaTime;
+        let newEnd = newStart + cutLen;
+        
+        if (newStart < 0) {
+          newStart = 0;
+          newEnd = cutLen;
+        }
+        if (newEnd > clip1.duration) {
+          newEnd = clip1.duration;
+          newStart = newEnd - cutLen;
+        }
+
+        cutStart = newStart;
+        cutEnd = newEnd;
+        c1Start.value = newStart;
+        c1End.value = newEnd;
+        document.getElementById('cutStartVal').textContent = `${newStart.toFixed(1)}s`;
+        document.getElementById('cutEndVal').textContent = `${newEnd.toFixed(1)}s`;
+      }
+    } 
+    else if (id === 'blockInsert') {
+      if (activeDrag.action === 'left') {
+        // Adjust cutStart
+        let val = vals.cutStart + deltaTime;
+        if (val < 0) val = 0;
+        if (val >= cutEnd) val = cutEnd - 0.1;
+        cutStart = val;
+        c1Start.value = val;
+        document.getElementById('cutStartVal').textContent = `${val.toFixed(1)}s`;
+      } else if (activeDrag.action === 'right') {
+        // Adjust insert clip duration
+        let val = vals.clip2Duration + deltaTime;
+        if (val < 1) val = 1;
+        if (val > 15) val = 15;
+        clip2.duration = val;
+        c2Duration.value = val;
+        document.getElementById('c2DurVal').textContent = `${val.toFixed(1)}s`;
+      } else {
+        // Move entire insert segment (which shifts cutStart and cutEnd together)
+        const cutLen = vals.cutEnd - vals.cutStart;
+        let newStart = vals.cutStart + deltaTime;
+        let newEnd = newStart + cutLen;
+        
+        if (newStart < 0) {
+          newStart = 0;
+          newEnd = cutLen;
+        }
+        if (newEnd > clip1.duration) {
+          newEnd = clip1.duration;
+          newStart = newEnd - cutLen;
+        }
+
+        cutStart = newStart;
+        cutEnd = newEnd;
+        c1Start.value = newStart;
+        c1End.value = newEnd;
+        document.getElementById('cutStartVal').textContent = `${newStart.toFixed(1)}s`;
+        document.getElementById('cutEndVal').textContent = `${newEnd.toFixed(1)}s`;
+      }
+    } 
+    else if (id === 'blockText') {
+      if (activeDrag.action === 'left') {
+        let val = vals.showAt + deltaTime;
+        if (val < 0) val = 0;
+        if (val >= textOverlay.hideAt) val = textOverlay.hideAt - 0.1;
+        textOverlay.showAt = val;
+        txtStart.value = val;
+        document.getElementById('txtStartVal').textContent = `${val.toFixed(1)}s`;
+      } else if (activeDrag.action === 'right') {
+        let val = vals.hideAt + deltaTime;
+        if (val <= textOverlay.showAt) val = textOverlay.showAt + 0.1;
+        if (val > totalDuration) val = totalDuration;
+        textOverlay.hideAt = val;
+        txtEnd.value = val;
+        document.getElementById('txtEndVal').textContent = `${val.toFixed(1)}s`;
+      } else {
+        // Move entire text span
+        const textLen = vals.hideAt - vals.showAt;
+        let newStart = vals.showAt + deltaTime;
+        let newEnd = newStart + textLen;
+
+        if (newStart < 0) {
+          newStart = 0;
+          newEnd = textLen;
+        }
+        if (newEnd > totalDuration) {
+          newEnd = totalDuration;
+          newStart = newEnd - textLen;
+        }
+
+        textOverlay.showAt = newStart;
+        textOverlay.hideAt = newEnd;
+        txtStart.value = newStart;
+        txtEnd.value = newEnd;
+        document.getElementById('txtStartVal').textContent = `${newStart.toFixed(1)}s`;
+        document.getElementById('txtEndVal').textContent = `${newEnd.toFixed(1)}s`;
+      }
+    }
+
+    recalculateTimeline();
+    renderCanvas(isMuted);
+  };
+
+  const endHandler = () => {
+    if (!activeDrag) return;
+    activeDrag.element.style.cursor = 'grab';
+    document.body.style.cursor = 'default';
+    activeDrag = null;
+    logToEditorConsole("Timeline elements updated via drag.");
+  };
+
+  window.addEventListener('mousemove', moveHandler);
+  window.addEventListener('touchmove', moveHandler, { passive: false });
+  window.addEventListener('mouseup', endHandler);
+  window.addEventListener('touchend', endHandler);
+}

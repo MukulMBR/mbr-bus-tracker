@@ -488,6 +488,40 @@ input[type="range"]::-webkit-slider-thumb:hover {
   padding-left: 8px;
   box-sizing: border-box;
   color: #fff;
+  cursor: grab;
+  user-select: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  position: relative;
+}
+
+.track-block:active {
+  cursor: grabbing;
+}
+
+.track-block::before, .track-block::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: rgba(255, 255, 255, 0.45);
+  cursor: col-resize;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.track-block:hover::before, .track-block:hover::after {
+  opacity: 1;
+}
+
+.track-block::before {
+  left: 0;
+}
+
+.track-block::after {
+  right: 0;
 }
 
 .block-clip1 {
