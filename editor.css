@@ -417,32 +417,33 @@ input[type="range"]::-webkit-slider-thumb:hover {
   flex-direction: column;
 }
 
-.timeline-ruler {
-  height: 14px;
+.timeline-ruler-row {
+  height: 18px !important;
   background: #141416;
   border-bottom: 1px solid var(--border-color);
-  position: relative;
+  flex: none !important;
 }
 
 .playhead {
   position: absolute;
   top: 0;
-  bottom: 0;
+  height: 120px; /* Stretch across all timeline tracks */
   left: 0%;
   width: 2px;
   background: #ff3b30;
-  z-index: 10;
+  z-index: 100;
+  pointer-events: none;
 }
 
 .playhead::after {
   content: '';
   position: absolute;
-  top: -2px;
+  top: 0px;
   left: -5px;
   width: 12px;
-  height: 8px;
+  height: 10px;
   background: #ff3b30;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
 .track-row {

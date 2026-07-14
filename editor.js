@@ -493,6 +493,8 @@ txtEnd.addEventListener('input', (e) => {
 // Playhead scrubbing handler
 document.querySelector('.timeline-tracks').addEventListener('click', (e) => {
   if (!clip1.element) return;
+  if (e.target.closest('.track-label')) return;
+  
   const rect = e.currentTarget.getBoundingClientRect();
   const clickX = e.clientX - rect.left - 80; // offset track label
   const width = rect.width - 80;
