@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🎥 Local Video Editor - MBR</title>
+  <title>🎥 Reels Editor - Cut & Insert</title>
   <!-- Google Fonts: Outfit -->
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="editor.css">
@@ -29,7 +29,7 @@
           </defs>
           <path fill="url(#headerInsta)" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051C.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
         </svg>
-        Reels Video Composer
+        Reels Editor (Cut & Insert)
       </h1>
     </div>
     <div class="header-right">
@@ -43,50 +43,60 @@
     <!-- Sidebar: Media Controls -->
     <section class="editor-sidebar">
       
-      <!-- Panel 1: Clip 1 (First Video) -->
+      <!-- Step 1: Upload Main Video -->
       <div class="sidebar-card">
-        <h3>🎬 First Clip (First Person)</h3>
-        <p class="desc">This clip plays at the start of your video.</p>
+        <h3>🎬 1. Upload Main Video</h3>
+        <p class="desc">Select the primary video you want to edit.</p>
         <div class="file-input-wrapper">
           <input type="file" id="clip1File" accept="video/*" class="file-input" />
-          <label for="clip1File" class="file-label">Select Video File</label>
+          <label for="clip1File" class="file-label">Choose Main Video</label>
         </div>
         <div id="clip1Details" class="media-details" style="display: none;">
           <span class="filename" id="clip1Name"></span>
-          <div class="slider-group">
-            <div class="slider-labels">
-              <span>Trim Start: <strong id="c1StartVal">0.0s</strong></span>
-              <span>Trim End: <strong id="c1EndVal">5.0s</strong></span>
-            </div>
-            <input type="range" id="c1Start" min="0" max="30" step="0.1" value="0" />
-            <input type="range" id="c1End" min="1" max="30" step="0.1" value="5" />
-          </div>
+          <span style="font-size: 0.75rem; color: var(--text-secondary);">Duration: <strong id="clip1DurationText">0.0s</strong></span>
         </div>
       </div>
 
-      <!-- Panel 2: Clip 2 (Second Person Video or Photo) -->
+      <!-- Step 2: Define Cut Zone -->
       <div class="sidebar-card">
-        <h3>📸 Second Clip (Second Person / Photo)</h3>
-        <p class="desc">This clip plays next, replacing the first clip.</p>
+        <h3>✂️ 2. Select Clip to Remove</h3>
+        <p class="desc">Specify the start and end seconds to cut out.</p>
+        <div class="slider-group">
+          <div class="slider-labels">
+            <span>Cut Starts: <strong id="cutStartVal">0.0s</strong></span>
+            <span>Cut Ends: <strong id="cutEndVal">5.0s</strong></span>
+          </div>
+          <input type="range" id="c1Start" min="0" max="30" step="0.1" value="0" disabled />
+          <input type="range" id="c1End" min="1" max="30" step="0.1" value="5" disabled />
+        </div>
+        <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 8px;">
+          Total Cut Duration: <strong id="totalCutVal" style="color: #ff3b30;">0.0s</strong>
+        </div>
+      </div>
+
+      <!-- Step 3: Upload Insertion Video -->
+      <div class="sidebar-card">
+        <h3>📥 3. Upload Insertion Clip</h3>
+        <p class="desc">This video/photo will replace the removed clip.</p>
         <div class="file-input-wrapper">
           <input type="file" id="clip2File" accept="video/*,image/*" class="file-input" />
-          <label for="clip2File" class="file-label">Select Video or Photo</label>
+          <label for="clip2File" class="file-label">Choose Insertion Clip</label>
         </div>
         <div id="clip2Details" class="media-details" style="display: none;">
           <span class="filename" id="clip2Name"></span>
           <div class="slider-group">
             <div class="slider-labels">
-              <span>Duration/Trim: <strong id="c2DurVal">5.0s</strong></span>
+              <span>Insert Length: <strong id="c2DurVal">5.0s</strong></span>
             </div>
             <input type="range" id="c2Duration" min="1" max="15" step="0.1" value="5" />
           </div>
         </div>
       </div>
 
-      <!-- Panel 3: Custom Text Overlay -->
+      <!-- Step 4: Text Overlay (Optional) -->
       <div class="sidebar-card">
-        <h3>🔤 Overlay Text</h3>
-        <p class="desc">Add captions that appear on the video.</p>
+        <h3>🔤 4. Caption Text</h3>
+        <p class="desc">Overlay text on your final Reels output.</p>
         <input type="text" id="overlayText" placeholder="Enter text here..." class="text-input" />
         <div class="settings-grid">
           <div>
@@ -94,25 +104,25 @@
             <input type="color" id="textColor" value="#ffffff" />
           </div>
           <div>
-            <label>Font Size</label>
+            <label>Size</label>
             <input type="range" id="textSize" min="16" max="64" value="28" />
           </div>
         </div>
         <div class="slider-group" style="margin-top: 12px;">
           <div class="slider-labels">
-            <span>Show at: <strong id="txtStartVal">1.0s</strong></span>
-            <span>Hide at: <strong id="txtEndVal">8.0s</strong></span>
+            <span>Show: <strong id="txtStartVal">1.0s</strong></span>
+            <span>Hide: <strong id="txtEndVal">8.0s</strong></span>
           </div>
           <input type="range" id="txtStart" min="0" max="30" step="0.1" value="1" />
           <input type="range" id="txtEnd" min="1" max="30" step="0.1" value="8" />
         </div>
       </div>
 
-      <!-- System Log Terminal Console -->
+      <!-- Terminal Log Console -->
       <div class="console-card">
-        <h4>🖥️ Production Log</h4>
+        <h4>🖥️ Editor Terminal</h4>
         <div id="editorConsole" class="console-box">
-          <div class="log-line">System ready. Please select your clips.</div>
+          <div class="log-line">System ready. Please select the Main Video (Step 1).</div>
         </div>
       </div>
 
@@ -121,13 +131,12 @@
     <!-- Center Panel: Live Video Preview (Mobile Aspect Ratio) -->
     <section class="editor-preview-container">
       
-      <!-- Phone Mockup Frame wrapper -->
+      <!-- Phone Mockup Frame -->
       <div class="phone-mockup">
         <div class="phone-notch"></div>
         <div class="preview-canvas-wrapper">
           <canvas id="previewCanvas" width="720" height="1280"></canvas>
           
-          <!-- Watermark brand overlay -->
           <div class="watermark-overlay">
             <span>MBR Reels</span>
           </div>
@@ -136,7 +145,7 @@
 
       <!-- Playback Controls -->
       <div class="controls-bar">
-        <button id="btnPlayPause" class="play-btn">▶ Play</button>
+        <button id="btnPlayPause" class="play-btn" disabled>▶ Play</button>
         <button id="btnMute" class="control-btn-icon">🔊</button>
         <div class="time-display">
           <span id="currentTime">00:00</span>
@@ -149,51 +158,53 @@
 
   </main>
 
-  <!-- Interactive Timeline Ruler -->
+  <!-- Timeline Panel -->
   <footer class="editor-timeline">
     <div class="timeline-header">
-      <span>Timeline Manager</span>
-      <span id="zoomLabel" style="font-size: 0.75rem; color: #a8a8a8;">Total Output: <strong id="totalOutputLen">10.0s</strong></span>
+      <span>Cut-and-Insert Timeline</span>
+      <span id="zoomLabel" style="font-size: 0.75rem; color: #a8a8a8;">Composed Length: <strong id="totalOutputLen">0.0s</strong></span>
     </div>
     <div class="timeline-tracks">
       
-      <!-- Playhead ruler -->
+      <!-- Playhead -->
       <div class="timeline-ruler">
         <div id="playhead" class="playhead"></div>
       </div>
 
-      <!-- Track 1: Video clip 1 -->
+      <!-- Track 1: Main Video (A & C) with Cut Gap -->
       <div class="track-row">
-        <div class="track-label">First Clip</div>
-        <div class="track-blocks">
-          <div id="blockClip1" class="track-block block-clip1" style="width: 50%;">First Video Clip</div>
+        <div class="track-label">Main Video</div>
+        <div class="track-blocks" style="position: relative;">
+          <div id="blockMainPart1" class="track-block block-clip1" style="position: absolute; left: 0; width: 30%;">Segment A</div>
+          <div id="blockCutZone" class="track-block" style="position: absolute; left: 30%; width: 20%; background: rgba(255, 59, 48, 0.25); border: 1px solid #ff3b30; color: #ff3b30; justify-content: center; padding-left: 0;">CUT OUT</div>
+          <div id="blockMainPart2" class="track-block block-clip1" style="position: absolute; left: 50%; width: 50%;">Segment C</div>
         </div>
       </div>
 
-      <!-- Track 2: Video clip 2 -->
+      <!-- Track 2: Insertion Video (Segment B) -->
       <div class="track-row">
-        <div class="track-label">Second Clip</div>
-        <div class="track-blocks">
-          <div id="blockClip2" class="track-block block-clip2" style="width: 50%; margin-left: 50%;">Second Clip / Photo</div>
+        <div class="track-label">Insertion</div>
+        <div class="track-blocks" style="position: relative;">
+          <div id="blockInsert" class="track-block block-clip2" style="position: absolute; left: 30%; width: 20%;">Insertion Clip</div>
         </div>
       </div>
 
-      <!-- Track 3: Overlay Text -->
+      <!-- Track 3: Text Overlay -->
       <div class="track-row">
-        <div class="track-label">Text Overlay</div>
-        <div class="track-blocks">
-          <div id="blockText" class="track-block block-text" style="width: 70%; margin-left: 10%;">Caption text</div>
+        <div class="track-label">Captions</div>
+        <div class="track-blocks" style="position: relative;">
+          <div id="blockText" class="track-block block-text" style="position: absolute; left: 10%; width: 60%;">Text Overlay</div>
         </div>
       </div>
 
     </div>
   </footer>
 
-  <!-- Export Overlay Loader -->
+  <!-- Export Loading Overlay -->
   <div id="exportOverlay" class="export-overlay" style="display: none;">
     <div class="export-card">
       <div class="insta-spinner" style="width: 42px; height: 42px; margin-bottom: 16px;"></div>
-      <h2>Compiling Video...</h2>
+      <h2>Compiling Reels...</h2>
       <p id="exportProgressText">Processing frames: 0%</p>
       <div class="progress-bar-container">
         <div id="exportProgressBar" class="progress-bar" style="width: 0%;"></div>

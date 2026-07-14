@@ -1,8 +1,10 @@
-// Reels Video Composer Engine
+// Reels Video Composer Engine - Cut & Insert Workflow
 
 // State variables
-let clip1 = { file: null, element: null, duration: 0, trimStart: 0, trimEnd: 5 };
-let clip2 = { file: null, type: 'video', element: null, duration: 5 }; // default duration for images
+let clip1 = { file: null, element: null, duration: 0 }; // Main Video
+let cutStart = 0;
+let cutEnd = 5;
+let clip2 = { file: null, type: 'video', element: null, duration: 5 }; // Insertion Clip
 let textOverlay = { value: '', color: '#ffffff', size: 28, showAt: 1, hideAt: 8 };
 
 let isPlaying = false;
@@ -11,7 +13,7 @@ let totalDuration = 10;
 let animationFrameId = null;
 let isExporting = false;
 
-// Audio Context variables
+// Audio Context variables for mixing during export
 let audioCtx = null;
 let audioDest = null;
 let audioSource1 = null;
@@ -38,6 +40,7 @@ const overlayText = document.getElementById('overlayText');
 // Log logger
 function logToEditorConsole(message, type = "info") {
   const box = document.getElementById('editorConsole');
+  if (!box) return;
   const div = document.createElement('div');
   div.className = `log-line ${type}`;
   div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
@@ -52,50 +55,83 @@ function formatTime(secs) {
   return `${m}:${s}`;
 }
 
-// Calculate total video duration and timeline blocks
+// Calculate composed timeline duration and update block percentages
 function recalculateTimeline() {
-  const clip1Len = clip1.trimEnd - clip1.trimStart;
+  if (!clip1.element) {
+    totalDuration = 0;
+    timeTotal.textContent = "00:00";
+    document.getElementById('totalOutputLen').textContent = "0.0s";
+    return;
+  }
+
+  const clip1Len = clip1.duration;
   const clip2Len = clip2.duration;
-  totalDuration = clip1Len + clip2Len;
+  const cutLen = cutEnd - cutStart;
+
+  // Composed Video Duration = Segment A + Segment B (Insert) + Segment C (Remaining)
+  totalDuration = cutStart + clip2Len + (clip1Len - cutEnd);
+  if (totalDuration < 0.1) totalDuration = 0.1;
 
   timeTotal.textContent = formatTime(totalDuration);
   document.getElementById('totalOutputLen').textContent = `${totalDuration.toFixed(1)}s`;
+  document.getElementById('totalCutVal').textContent = `${cutLen.toFixed(1)}s`;
 
-  // Update visual timeline block sizes
-  const pct1 = (clip1Len / totalDuration) * 100;
-  const pct2 = (clip2Len / totalDuration) * 100;
-
-  const block1 = document.getElementById('blockClip1');
-  const block2 = document.getElementById('blockClip2');
+  // Timeline track block calculations
+  const blockA = document.getElementById('blockMainPart1');
+  const blockCut = document.getElementById('blockCutZone');
+  const blockC = document.getElementById('blockMainPart2');
+  const blockInsert = document.getElementById('blockInsert');
   const blockText = document.getElementById('blockText');
 
-  if (block1) {
-    block1.style.width = `${pct1}%`;
-    block1.textContent = clip1.file ? `Clip 1 (${clip1Len.toFixed(1)}s)` : 'First Video Clip';
+  // Segment A (Main Video before Cut)
+  const pctA = (cutStart / totalDuration) * 100;
+  if (blockA) {
+    blockA.style.width = `${pctA}%`;
+    blockA.style.left = '0%';
+    blockA.textContent = `Main Part A (${cutStart.toFixed(1)}s)`;
   }
 
-  if (block2) {
-    block2.style.width = `${pct2}%`;
-    block2.style.marginLeft = `${pct1}%`;
-    block2.textContent = clip2.file ? `Clip 2 (${clip2Len.toFixed(1)}s)` : 'Second Clip / Photo';
+  // Visual Cut Zone (Main Video Cut Gap)
+  const pctCut = (cutLen / totalDuration) * 100;
+  if (blockCut) {
+    blockCut.style.width = `${pctCut}%`;
+    blockCut.style.left = `${pctA}%`;
   }
 
+  // Segment C (Main Video after Cut)
+  const pctC = ((clip1Len - cutEnd) / totalDuration) * 100;
+  const pctC_Start = ((cutStart + clip2Len) / totalDuration) * 100;
+  if (blockC) {
+    blockC.style.width = `${pctC}%`;
+    blockC.style.left = `${pctC_Start}%`;
+    blockC.textContent = `Main Part C (${(clip1Len - cutEnd).toFixed(1)}s)`;
+  }
+
+  // Segment B (Insertion Block)
+  const pctInsert = (clip2Len / totalDuration) * 100;
+  if (blockInsert) {
+    blockInsert.style.width = `${pctInsert}%`;
+    blockInsert.style.left = `${pctA}%`;
+    blockInsert.textContent = clip2.file ? `Insert (${clip2Len.toFixed(1)}s)` : 'Insertion Clip';
+  }
+
+  // Caption Overlay block
   if (blockText) {
     const textStart = textOverlay.showAt;
     const textEnd = Math.min(textOverlay.hideAt, totalDuration);
     const textLen = Math.max(0, textEnd - textStart);
     
     blockText.style.width = `${(textLen / totalDuration) * 100}%`;
-    blockText.style.marginLeft = `${(textStart / totalDuration) * 100}%`;
-    blockText.textContent = textOverlay.value ? `Text: "${textOverlay.value}"` : 'Caption Text';
+    blockText.style.left = `${(textStart / totalDuration) * 100}%`;
+    blockText.textContent = textOverlay.value ? `Caption: "${textOverlay.value}"` : 'Caption Text';
   }
 
-  // Update slider bounds dynamically
+  // Update text slider bounds
   txtStart.max = totalDuration;
   txtEnd.max = totalDuration;
 }
 
-// Draw a centered video frame or image scaled to vertical 9:16 aspect ratio
+// Draw a centered cropped video frame to 9:16 vertical ratio
 function drawFrame(mediaElement, type = 'video') {
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -107,14 +143,12 @@ function drawFrame(mediaElement, type = 'video') {
     mediaWidth = mediaElement.videoWidth;
     mediaHeight = mediaElement.videoHeight;
   } else {
-    // Image uploader
     mediaWidth = mediaElement.width;
     mediaHeight = mediaElement.height;
   }
 
   if (!mediaWidth || !mediaHeight) return;
 
-  // Center crop logic (9:16 target ratio)
   const targetRatio = 9 / 16;
   const mediaRatio = mediaWidth / mediaHeight;
 
@@ -124,11 +158,9 @@ function drawFrame(mediaElement, type = 'video') {
   let sourceHeight = mediaHeight;
 
   if (mediaRatio > targetRatio) {
-    // Media is wider than 9:16 (landscape) -> Crop left & right edges
     sourceWidth = mediaHeight * targetRatio;
     sourceX = (mediaWidth - sourceWidth) / 2;
   } else {
-    // Media is taller than 9:16 (portrait) -> Crop top & bottom edges
     sourceHeight = mediaWidth / targetRatio;
     sourceY = (mediaHeight - sourceHeight) / 2;
   }
@@ -136,60 +168,74 @@ function drawFrame(mediaElement, type = 'video') {
   ctx.drawImage(mediaElement, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
 }
 
-// Render canvas preview frame
-function renderCanvas() {
-  const clip1Len = clip1.trimEnd - clip1.trimStart;
+// Render active preview frame depending on current time zone
+let lastActiveSource = null;
+function renderCanvas(isMuted = false) {
+  if (!clip1.element) return;
 
-  if (currentTime < clip1Len) {
-    // Render Clip 1
-    if (clip1.element) {
-      const seekTime = clip1.trimStart + currentTime;
-      // Seek video to current timestamp safely
-      if (Math.abs(clip1.element.currentTime - seekTime) > 0.15) {
-        clip1.element.currentTime = seekTime;
-      }
-      drawFrame(clip1.element, 'video');
-    } else {
-      // Placeholder drawing
-      ctx.fillStyle = '#1e1b4b';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#fff';
-      ctx.font = '24px Outfit';
-      ctx.textAlign = 'center';
-      ctx.fillText('[First Clip Placeholder]', canvas.width / 2, canvas.height / 2);
+  const clip2Len = clip2.duration;
+  let activeSource = null;
+  let activeType = 'video';
+  let seekTime = 0;
+
+  if (currentTime < cutStart) {
+    // Segment A: Main Video (0 to cutStart)
+    activeSource = clip1.element;
+    seekTime = currentTime;
+  } else if (currentTime < cutStart + clip2Len) {
+    // Segment B: Insertion Clip (cutStart to cutStart + clip2Len)
+    if (clip2.element) {
+      activeSource = clip2.element;
+      activeType = clip2.type;
+      seekTime = currentTime - cutStart;
     }
   } else {
-    // Render Clip 2
-    if (clip2.element) {
-      if (clip2.type === 'video') {
-        const seekTime = currentTime - clip1Len;
-        if (Math.abs(clip2.element.currentTime - seekTime) > 0.15) {
-          clip2.element.currentTime = seekTime;
-        }
-        drawFrame(clip2.element, 'video');
-      } else {
-        // Image
-        drawFrame(clip2.element, 'image');
+    // Segment C: Main Video (cutStart + clip2Len onwards)
+    activeSource = clip1.element;
+    seekTime = cutEnd + (currentTime - cutStart - clip2Len);
+  }
+
+  // Manage playback seeking and muting
+  if (activeSource) {
+    if (activeType === 'video') {
+      if (Math.abs(activeSource.currentTime - seekTime) > 0.15) {
+        activeSource.currentTime = seekTime;
       }
-    } else {
-      // Placeholder drawing
-      ctx.fillStyle = '#311042';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#fff';
-      ctx.font = '24px Outfit';
-      ctx.textAlign = 'center';
-      ctx.fillText('[Second Clip Placeholder]', canvas.width / 2, canvas.height / 2);
+      
+      // Handle HTML5 element volume and mute states
+      if (isPlaying && !isExporting) {
+        activeSource.muted = isMuted;
+        if (activeSource.paused) {
+          try { activeSource.play(); } catch(e) {}
+        }
+      }
+    }
+    
+    drawFrame(activeSource, activeType);
+  }
+
+  // Mute inactive video elements during playback
+  if (isPlaying && !isExporting) {
+    if (activeSource === clip1.element) {
+      if (clip2.element && clip2.type === 'video') {
+        clip2.element.muted = true;
+        clip2.element.pause();
+      }
+    } else if (activeSource === clip2.element) {
+      if (clip1.element) {
+        clip1.element.muted = true;
+        clip1.element.pause();
+      }
     }
   }
 
-  // Draw Caption Text Overlay
+  // Draw Captions Text overlay
   if (currentTime >= textOverlay.showAt && currentTime <= textOverlay.hideAt && textOverlay.value) {
     ctx.fillStyle = textOverlay.color;
     ctx.font = `bold ${textOverlay.size}px Outfit, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     
-    // Add glowing stroke or shadow for outline legibility
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 4;
     ctx.strokeText(textOverlay.value, canvas.width / 2, canvas.height * 0.82);
@@ -197,7 +243,7 @@ function renderCanvas() {
   }
 }
 
-// Playback frame loops
+// Playback frame loop
 let lastTime = 0;
 function playbackLoop(timestamp) {
   if (!isPlaying) return;
@@ -210,39 +256,23 @@ function playbackLoop(timestamp) {
 
   if (currentTime >= totalDuration) {
     currentTime = 0;
-    // Loop playback
-    if (clip1.element) clip1.element.currentTime = clip1.trimStart;
+    // Loop
+    if (clip1.element) clip1.element.currentTime = 0;
     if (clip2.element && clip2.type === 'video') clip2.element.currentTime = 0;
   }
 
-  // Sync play states of underlying video tags to prevent audio desyncs
-  const clip1Len = clip1.trimEnd - clip1.trimStart;
-  if (currentTime < clip1Len) {
-    if (clip1.element && clip1.element.paused) {
-      try { clip1.element.play(); } catch(e) {}
-    }
-    if (clip2.element && clip2.type === 'video' && !clip2.element.paused) {
-      clip2.element.pause();
-    }
-  } else {
-    if (clip1.element && !clip1.element.paused) {
-      clip1.element.pause();
-    }
-    if (clip2.element && clip2.type === 'video' && clip2.element.paused) {
-      try { clip2.element.play(); } catch(e) {}
-    }
-  }
-
-  // Update time and timeline playhead
+  // Update time display and playhead position
   timeCurrent.textContent = formatTime(currentTime);
   playhead.style.left = `${(currentTime / totalDuration) * 100}%`;
 
-  renderCanvas();
+  renderCanvas(isMuted);
   animationFrameId = requestAnimationFrame(playbackLoop);
 }
 
-// Toggle Play / Pause
+// Toggle Play/Pause
 function togglePlayPause() {
+  if (!clip1.element) return;
+
   if (isPlaying) {
     isPlaying = false;
     btnPlayPause.textContent = '▶ Play';
@@ -257,14 +287,13 @@ function togglePlayPause() {
     animationFrameId = requestAnimationFrame(playbackLoop);
     logToEditorConsole("Playback started.");
     
-    // Unlock AudioContext if needed
     if (audioCtx && audioCtx.state === 'suspended') {
       audioCtx.resume();
     }
   }
 }
 
-// Initialize Web Audio nodes once media starts
+// Initialize Web Audio routes for final export
 function initAudioPipeline() {
   if (audioCtx) return;
 
@@ -286,21 +315,20 @@ function initAudioPipeline() {
     
     logToEditorConsole("Web Audio routing pipeline initialized.", "success");
   } catch (e) {
-    console.warn("AudioContext setup failed (CORS or gesture lock):", e);
+    console.warn("AudioContext setup failed:", e);
   }
 }
 
-// Media Selection Handlers
+// Main Video File selection handler
 document.getElementById('clip1File').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  logToEditorConsole(`Loading Clip 1: ${file.name}...`);
+  logToEditorConsole(`Loading Main Video: ${file.name}...`);
   clip1.file = file;
   document.getElementById('clip1Name').textContent = file.name;
   document.getElementById('clip1Details').style.display = 'block';
 
-  // Create memory video element
   const video = document.createElement('video');
   video.src = URL.createObjectURL(file);
   video.muted = false;
@@ -311,30 +339,38 @@ document.getElementById('clip1File').addEventListener('change', (e) => {
   video.addEventListener('loadedmetadata', () => {
     clip1.element = video;
     clip1.duration = video.duration;
-    clip1.trimStart = 0;
-    clip1.trimEnd = Math.min(5, video.duration);
+    
+    // Set default cut zone (first 5 seconds or less)
+    cutStart = 0;
+    cutEnd = Math.min(5, video.duration);
 
-    // Setup slider ranges
+    // Enable sliders and set limits
+    c1Start.disabled = false;
+    c1End.disabled = false;
     c1Start.max = video.duration;
     c1End.max = video.duration;
     c1Start.value = 0;
-    c1End.value = clip1.trimEnd;
+    c1End.value = cutEnd;
 
-    document.getElementById('c1StartVal').textContent = '0.0s';
-    document.getElementById('c1EndVal').textContent = `${clip1.trimEnd.toFixed(1)}s`;
+    document.getElementById('clip1DurationText').textContent = `${video.duration.toFixed(1)}s`;
+    document.getElementById('cutStartVal').textContent = '0.0s';
+    document.getElementById('cutEndVal').textContent = `${cutEnd.toFixed(1)}s`;
 
-    logToEditorConsole(`Clip 1 loaded. Length: ${video.duration.toFixed(1)}s`, "success");
+    btnPlayPause.disabled = false;
+
+    logToEditorConsole(`Main video loaded successfully. Length: ${video.duration.toFixed(1)}s`, "success");
     recalculateTimeline();
-    renderCanvas();
+    renderCanvas(isMuted);
     initAudioPipeline();
   });
 });
 
+// Insertion Clip File selection handler
 document.getElementById('clip2File').addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
-  logToEditorConsole(`Loading Clip 2: ${file.name}...`);
+  logToEditorConsole(`Loading Insertion Clip: ${file.name}...`);
   clip2.file = file;
   document.getElementById('clip2Name').textContent = file.name;
   document.getElementById('clip2Details').style.display = 'block';
@@ -347,13 +383,13 @@ document.getElementById('clip2File').addEventListener('change', (e) => {
     img.src = URL.createObjectURL(file);
     img.onload = () => {
       clip2.element = img;
-      clip2.duration = 5.0; // default duration for photo display
+      clip2.duration = 5.0; // default duration
       c2Duration.value = 5.0;
       document.getElementById('c2DurVal').textContent = '5.0s';
       
-      logToEditorConsole("Clip 2 loaded as static image.", "success");
+      logToEditorConsole("Insertion clip loaded as static photo.", "success");
       recalculateTimeline();
-      renderCanvas();
+      renderCanvas(isMuted);
     };
   } else {
     // Video
@@ -371,39 +407,39 @@ document.getElementById('clip2File').addEventListener('change', (e) => {
       c2Duration.value = video.duration;
       document.getElementById('c2DurVal').textContent = `${video.duration.toFixed(1)}s`;
 
-      logToEditorConsole(`Clip 2 loaded as video. Length: ${video.duration.toFixed(1)}s`, "success");
+      logToEditorConsole(`Insertion clip loaded as video. Length: ${video.duration.toFixed(1)}s`, "success");
       recalculateTimeline();
-      renderCanvas();
+      renderCanvas(isMuted);
       initAudioPipeline();
     });
   }
 });
 
-// Slider Interactions
+// Slider Input Listeners
 c1Start.addEventListener('input', (e) => {
   const val = parseFloat(e.target.value);
-  if (val >= clip1.trimEnd) {
-    c1Start.value = clip1.trimEnd - 0.1;
+  if (val >= cutEnd) {
+    c1Start.value = cutEnd - 0.1;
     return;
   }
-  clip1.trimStart = val;
-  document.getElementById('c1StartVal').textContent = `${val.toFixed(1)}s`;
+  cutStart = val;
+  document.getElementById('cutStartVal').textContent = `${val.toFixed(1)}s`;
   recalculateTimeline();
   currentTime = 0;
-  renderCanvas();
+  renderCanvas(isMuted);
 });
 
 c1End.addEventListener('input', (e) => {
   const val = parseFloat(e.target.value);
-  if (val <= clip1.trimStart) {
-    c1End.value = clip1.trimStart + 0.1;
+  if (val <= cutStart) {
+    c1End.value = cutStart + 0.1;
     return;
   }
-  clip1.trimEnd = val;
-  document.getElementById('c1EndVal').textContent = `${val.toFixed(1)}s`;
+  cutEnd = val;
+  document.getElementById('cutEndVal').textContent = `${val.toFixed(1)}s`;
   recalculateTimeline();
   currentTime = 0;
-  renderCanvas();
+  renderCanvas(isMuted);
 });
 
 c2Duration.addEventListener('input', (e) => {
@@ -412,24 +448,24 @@ c2Duration.addEventListener('input', (e) => {
   document.getElementById('c2DurVal').textContent = `${val.toFixed(1)}s`;
   recalculateTimeline();
   currentTime = 0;
-  renderCanvas();
+  renderCanvas(isMuted);
 });
 
 // Text Overlay Configuration
 overlayText.addEventListener('input', (e) => {
   textOverlay.value = e.target.value;
   recalculateTimeline();
-  renderCanvas();
+  renderCanvas(isMuted);
 });
 
 document.getElementById('textColor').addEventListener('input', (e) => {
   textOverlay.color = e.target.value;
-  renderCanvas();
+  renderCanvas(isMuted);
 });
 
 document.getElementById('textSize').addEventListener('input', (e) => {
   textOverlay.size = parseInt(e.target.value);
-  renderCanvas();
+  renderCanvas(isMuted);
 });
 
 txtStart.addEventListener('input', (e) => {
@@ -441,7 +477,7 @@ txtStart.addEventListener('input', (e) => {
   textOverlay.showAt = val;
   document.getElementById('txtStartVal').textContent = `${val.toFixed(1)}s`;
   recalculateTimeline();
-  renderCanvas();
+  renderCanvas(isMuted);
 });
 
 txtEnd.addEventListener('input', (e) => {
@@ -453,13 +489,14 @@ txtEnd.addEventListener('input', (e) => {
   textOverlay.hideAt = val;
   document.getElementById('txtEndVal').textContent = `${val.toFixed(1)}s`;
   recalculateTimeline();
-  renderCanvas();
+  renderCanvas(isMuted);
 });
 
-// Playhead Scrubbing inside Timeline Ruler
+// Playhead scrubbing handler
 document.querySelector('.timeline-tracks').addEventListener('click', (e) => {
+  if (!clip1.element) return;
   const rect = e.currentTarget.getBoundingClientRect();
-  const clickX = e.clientX - rect.left - 80; // offset track label width
+  const clickX = e.clientX - rect.left - 80; // offset track label
   const width = rect.width - 80;
   
   if (clickX >= 0 && clickX <= width) {
@@ -467,18 +504,8 @@ document.querySelector('.timeline-tracks').addEventListener('click', (e) => {
     currentTime = pct * totalDuration;
     timeCurrent.textContent = formatTime(currentTime);
     playhead.style.left = `${pct * 100}%`;
-    
-    // Seek active video frames in background
-    const clip1Len = clip1.trimEnd - clip1.trimStart;
-    if (currentTime < clip1Len) {
-      if (clip1.element) clip1.element.currentTime = clip1.trimStart + currentTime;
-    } else {
-      if (clip2.element && clip2.type === 'video') {
-        clip2.element.currentTime = currentTime - clip1Len;
-      }
-    }
 
-    renderCanvas();
+    renderCanvas(isMuted);
   }
 });
 
@@ -488,18 +515,16 @@ btnPlayPause.addEventListener('click', togglePlayPause);
 let isMuted = false;
 btnMute.addEventListener('click', () => {
   isMuted = !isMuted;
-  if (clip1.element) clip1.element.muted = isMuted;
-  if (clip2.element && clip2.type === 'video') clip2.element.muted = isMuted;
   btnMute.textContent = isMuted ? '🔇' : '🔊';
-  logToEditorConsole(`Speaker Muted: ${isMuted}`);
+  logToEditorConsole(`Mute state toggled: ${isMuted}`);
 });
 
 // 🚀 EXPORT COMPILATION ENGINE
 btnExport.addEventListener('click', async () => {
   if (isExporting) return;
   
-  if (!clip1.file && !clip2.file) {
-    alert("Please upload at least one video or photo asset before exporting.");
+  if (!clip1.element) {
+    alert("Please upload the Main Video (Step 1) before exporting.");
     return;
   }
 
@@ -508,7 +533,7 @@ btnExport.addEventListener('click', async () => {
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
   btnPlayPause.textContent = '▶ Play';
 
-  // Show compilation modal
+  // Show progress modal
   const overlay = document.getElementById('exportOverlay');
   const progText = document.getElementById('exportProgressText');
   const progBar = document.getElementById('exportProgressBar');
@@ -521,7 +546,7 @@ btnExport.addEventListener('click', async () => {
   // Capture canvas video tracks
   const canvasStream = canvas.captureStream(30); // 30 FPS
   
-  // Connect Audio Context tracks if present
+  // Combine audio track if initialized
   let mixedStream = new MediaStream();
   canvasStream.getVideoTracks().forEach(track => mixedStream.addTrack(track));
 
@@ -529,7 +554,6 @@ btnExport.addEventListener('click', async () => {
     audioDest.stream.getAudioTracks().forEach(track => mixedStream.addTrack(track));
   }
 
-  // Choose MIME formats
   let options = { mimeType: 'video/webm;codecs=vp9,opus' };
   if (!MediaRecorder.isTypeSupported(options.mimeType)) {
     options = { mimeType: 'video/webm' };
@@ -549,7 +573,6 @@ btnExport.addEventListener('click', async () => {
     const blob = new Blob(recordedChunks, { type: 'video/webm' });
     const url = URL.createObjectURL(blob);
     
-    // Force browser down-stream
     const a = document.createElement('a');
     a.href = url;
     a.download = `mbr_reels_composed_${Date.now()}.webm`;
@@ -561,19 +584,17 @@ btnExport.addEventListener('click', async () => {
     overlay.style.display = 'none';
     isExporting = false;
     currentTime = 0;
-    renderCanvas();
+    renderCanvas(isMuted);
     logToEditorConsole("Video exported and downloaded successfully!", "success");
   };
 
-  // Start rendering sequence step-by-step
   currentTime = 0;
   recorder.start();
 
   const fps = 30;
   const interval = 1000 / fps;
   
-  // Seek first clips to correct start positions
-  if (clip1.element) clip1.element.currentTime = clip1.trimStart;
+  if (clip1.element) clip1.element.currentTime = 0;
   if (clip2.element && clip2.type === 'video') clip2.element.currentTime = 0;
 
   // Let video buffers seek
@@ -586,18 +607,17 @@ btnExport.addEventListener('click', async () => {
       return;
     }
 
-    // Advance frame time
     currentTime += 1 / fps;
-    renderCanvas();
+    renderCanvas(true); // Export with muted canvas elements to prevent duplicate echo
 
-    // Update loader metrics
+    // Update progress bars
     const progress = (currentTime / totalDuration) * 100;
     progText.textContent = `Compiling frames: ${progress.toFixed(0)}%`;
     progBar.style.width = `${progress}%`;
   }, interval);
 });
 
-// Draw canvas skeleton on initial boot
+// Initial boot
 window.addEventListener('DOMContentLoaded', () => {
   ctx.fillStyle = '#0f0c0c';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
