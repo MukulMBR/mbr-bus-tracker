@@ -1,31 +1,64 @@
-// MBR Reels Video Composer - From Scratch Clean Build
+// MBR Studio Editor - client-side video composer
 
-// 1. State Variables
-let clip1 = { file: null, element: null, duration: 0, videoWidth: 0, videoHeight: 0 };
-let clip2 = { file: null, element: null, type: 'video', duration: 4.0 };
-let bgMusic = { file: null, element: null, duration: 0, volume: 0.5, isMuted: false, isSolo: false };
+const canvas = document.getElementById('previewCanvas');
+const ctx = canvas.getContext('2d');
+const wrapper = document.getElementById('previewAspectWrapper');
 
-// Trimming & Cutting bounds
-let trimStart = 0;
-let trimEnd = 15;
-let cutStart = 2;
-let cutEnd = 6;
+const els = {
+  btnPlayPause: document.getElementById('btnPlayPause'),
+  btnMute: document.getElementById('btnMute'),
+  btnExport: document.getElementById('btnExport'),
+  btnCancelExport: document.getElementById('btnCancelExport'),
+  btnRemoveClip2: document.getElementById('btnRemoveClip2'),
+  btnResetPan: document.getElementById('btnResetPan'),
+  btnResetFilters: document.getElementById('btnResetFilters'),
+  btnRangeIntro: document.getElementById('btnRangeIntro'),
+  btnRangeAtPlayhead: document.getElementById('btnRangeAtPlayhead'),
+  btnRangeTail: document.getElementById('btnRangeTail'),
+  timeCurrent: document.getElementById('currentTime'),
+  timeTotal: document.getElementById('totalDuration'),
+  playhead: document.getElementById('playhead'),
+  mainTrimStart: document.getElementById('mainTrimStart'),
+  mainTrimEnd: document.getElementById('mainTrimEnd'),
+  c1Start: document.getElementById('c1Start'),
+  c1End: document.getElementById('c1End'),
+  c2Duration: document.getElementById('c2Duration'),
+  sliderBrightness: document.getElementById('sliderBrightness'),
+  sliderContrast: document.getElementById('sliderContrast'),
+  sliderSaturation: document.getElementById('sliderSaturation'),
+  mainVolume: document.getElementById('mainVolume'),
+  btnMuteMain: document.getElementById('btnMuteMain'),
+  btnSoloMain: document.getElementById('btnSoloMain'),
+  bgmFile: document.getElementById('bgmFile'),
+  bgmVolume: document.getElementById('bgmVolume'),
+  btnMuteBgm: document.getElementById('btnMuteBgm'),
+  btnSoloBgm: document.getElementById('btnSoloBgm'),
+  btnAddCaption: document.getElementById('btnAddCaption'),
+  captionsList: document.getElementById('captionsList'),
+  captionEditorPanel: document.getElementById('captionEditorPanel'),
+  captionText: document.getElementById('captionText'),
+  captionColor: document.getElementById('captionColor'),
+  captionSize: document.getElementById('captionSize'),
+  captionPosition: document.getElementById('captionPosition'),
+  captionStart: document.getElementById('captionStart'),
+  captionEnd: document.getElementById('captionEnd')
+};
 
-// Audio mixing
-let mainAudioVolume = 1.0;
-let mainAudioMuted = false;
-let mainAudioSolo = false;
-
-// Captions Layers list
+let clip1 = emptyClip();
+let clip2 = { ...emptyClip(), type: 'video', duration: 4 };
+let bgMusic = { file: null, element: null, url: null, duration: 0, volume: 0.5, isMuted: false, isSolo: false };
 let captions = [];
 let activeCaptionId = null;
-
-// Filters
+let trimStart = 0;
+let trimEnd = 0;
+let cutStart = 0;
+let cutEnd = 0;
 let filterBrightness = 100;
 let filterContrast = 100;
 let filterSaturation = 100;
-
-// Aspect Ratio and Crop/Pan offsets
+let mainAudioVolume = 1;
+let mainAudioMuted = false;
+let mainAudioSolo = false;
 let aspectRatio = '9:16';
 let panX = 0;
 let panY = 0;
@@ -34,63 +67,26 @@ let startPanMouseX = 0;
 let startPanMouseY = 0;
 let startPanOffsetX = 0;
 let startPanOffsetY = 0;
-
-// Playback and Render states
 let isPlaying = false;
 let currentTime = 0;
-let totalDuration = 10;
+let totalDuration = 0;
 let animationFrameId = null;
+let lastTime = 0;
 let isExporting = false;
 let cancelExportFlag = false;
 let timelineSegments = [];
 let isMuted = false;
 
-// DOM Elements
-const canvas = document.getElementById('previewCanvas');
-const ctx = canvas.getContext('2d');
-const btnPlayPause = document.getElementById('btnPlayPause');
-const btnMute = document.getElementById('btnMute');
-const btnExport = document.getElementById('btnExport');
-const btnCancelExport = document.getElementById('btnCancelExport');
-const timeCurrent = document.getElementById('currentTime');
-const timeTotal = document.getElementById('totalDuration');
-const playhead = document.getElementById('playhead');
+function emptyClip() {
+  return { file: null, element: null, url: null, type: 'video', duration: 0, videoWidth: 0, videoHeight: 0 };
+}
 
-// Step Sliders
-const mainTrimStart = document.getElementById('mainTrimStart');
-const mainTrimEnd = document.getElementById('mainTrimEnd');
-const c1Start = document.getElementById('c1Start');
-const c1End = document.getElementById('c1End');
-const c2Duration = document.getElementById('c2Duration');
+function byId(id) {
+  return document.getElementById(id);
+}
 
-// Filter Sliders
-const sliderBrightness = document.getElementById('sliderBrightness');
-const sliderContrast = document.getElementById('sliderContrast');
-const sliderSaturation = document.getElementById('sliderSaturation');
-
-// Audio Controls
-const mainVolume = document.getElementById('mainVolume');
-const btnMuteMain = document.getElementById('btnMuteMain');
-const btnSoloMain = document.getElementById('btnSoloMain');
-const bgmFile = document.getElementById('bgmFile');
-const bgmVolume = document.getElementById('bgmVolume');
-const btnMuteBgm = document.getElementById('btnMuteBgm');
-const btnSoloBgm = document.getElementById('btnSoloBgm');
-
-// Captions Controls
-const btnAddCaption = document.getElementById('btnAddCaption');
-const captionsList = document.getElementById('captionsList');
-const captionEditorPanel = document.getElementById('captionEditorPanel');
-const captionText = document.getElementById('captionText');
-const captionColor = document.getElementById('captionColor');
-const captionSize = document.getElementById('captionSize');
-const captionPosition = document.getElementById('captionPosition');
-const captionStart = document.getElementById('captionStart');
-const captionEnd = document.getElementById('captionEnd');
-
-// Logging
-function logToEditorConsole(message, type = "info") {
-  const box = document.getElementById('editorConsole');
+function logToEditorConsole(message, type = 'info') {
+  const box = byId('editorConsole');
   if (!box) return;
   const div = document.createElement('div');
   div.className = `log-line ${type}`;
@@ -99,342 +95,322 @@ function logToEditorConsole(message, type = "info") {
   box.scrollTop = box.scrollHeight;
 }
 
-// Format seconds to MM:SS
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
 function formatTime(secs) {
+  if (!Number.isFinite(secs) || secs <= 0) return '00:00';
   const m = Math.floor(secs / 60).toString().padStart(2, '0');
   const s = Math.floor(secs % 60).toString().padStart(2, '0');
   return `${m}:${s}`;
 }
 
-// 2. Aspect Ratio Settings
+function setText(id, text) {
+  const el = byId(id);
+  if (el) el.textContent = text;
+}
+
+function stopPlayback() {
+  isPlaying = false;
+  lastTime = 0;
+  els.btnPlayPause.textContent = 'Play';
+  if (animationFrameId) cancelAnimationFrame(animationFrameId);
+  if (clip1.element) clip1.element.pause();
+  if (clip2.element && clip2.type === 'video') clip2.element.pause();
+  if (bgMusic.element) bgMusic.element.pause();
+}
+
+function revokeClip(clip) {
+  if (clip.element && clip.element.pause) clip.element.pause();
+  if (clip.url) URL.revokeObjectURL(clip.url);
+}
+
 function setAspectRatio(ratio) {
   aspectRatio = ratio;
-  const wrapper = document.getElementById('previewAspectWrapper');
-  
-  document.getElementById('btnRatioVertical').classList.remove('active');
-  document.getElementById('btnRatioSquare').classList.remove('active');
-  document.getElementById('btnRatioHorizontal').classList.remove('active');
-  
-  if (ratio === '9:16') {
-    document.getElementById('btnRatioVertical').classList.add('active');
-    wrapper.style.width = '270px';
-    wrapper.style.height = '480px';
-    canvas.width = 720;
-    canvas.height = 1280;
-  } else if (ratio === '1:1') {
-    document.getElementById('btnRatioSquare').classList.add('active');
-    wrapper.style.width = '360px';
-    wrapper.style.height = '360px';
-    canvas.width = 720;
-    canvas.height = 720;
-  } else if (ratio === '16:9') {
-    document.getElementById('btnRatioHorizontal').classList.add('active');
-    wrapper.style.width = '480px';
-    wrapper.style.height = '270px';
-    canvas.width = 1280;
-    canvas.height = 720;
-  }
-  
-  // Reset pan offsets
-  panX = 0;
-  panY = 0;
-  
-  logToEditorConsole(`Aspect ratio changed to ${ratio}.`);
-  recalculateTimeline();
+  const sizes = {
+    '9:16': { cssW: 270, cssH: 480, w: 720, h: 1280 },
+    '1:1': { cssW: 360, cssH: 360, w: 900, h: 900 },
+    '16:9': { cssW: 520, cssH: 293, w: 1280, h: 720 }
+  };
+  const size = sizes[ratio] || sizes['9:16'];
+
+  document.querySelectorAll('.aspect-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.ratio === ratio);
+  });
+
+  wrapper.style.width = `${size.cssW}px`;
+  wrapper.style.height = `${size.cssH}px`;
+  canvas.width = size.w;
+  canvas.height = size.h;
+  resetPan(false);
+  logToEditorConsole(`Aspect ratio changed to ${aspectRatio}.`);
   renderCanvas();
 }
 
-// 3. Build Timeline segments list
+window.setAspectRatio = setAspectRatio;
+
+function resetPan(shouldRender = true) {
+  panX = 0;
+  panY = 0;
+  if (shouldRender) {
+    renderCanvas();
+    logToEditorConsole('Crop centered.');
+  }
+}
+
+function sanitizeTimelineBounds() {
+  if (!clip1.element) return;
+  trimStart = clamp(trimStart, 0, Math.max(0, clip1.duration - 0.1));
+  trimEnd = clamp(trimEnd, trimStart + 0.1, clip1.duration);
+  cutStart = clamp(cutStart, trimStart, Math.max(trimStart, trimEnd - 0.1));
+  cutEnd = clamp(cutEnd, cutStart + 0.1, trimEnd);
+}
+
 function buildTimelineSegments() {
   timelineSegments = [];
-  if (!clip1.element) return;
-
-  // Segment A: trimStart -> cutStart
-  const segADur = cutStart - trimStart;
-  if (segADur > 0.05) {
-    timelineSegments.push({
-      type: 'main',
-      start: trimStart,
-      end: cutStart,
-      duration: segADur
-    });
-  }
-
-  // Segment B: Insertion replacement clip
-  if (clip2.element) {
-    timelineSegments.push({
-      type: 'insert',
-      duration: clip2.duration
-    });
-  } else {
-    // Gap placeholder representing removed segment
-    const cutDur = cutEnd - cutStart;
-    if (cutDur > 0.05) {
-      timelineSegments.push({
-        type: 'gap',
-        duration: cutDur
-      });
-    }
-  }
-
-  // Segment C: cutEnd -> trimEnd
-  const segCDur = trimEnd - cutEnd;
-  if (segCDur > 0.05) {
-    timelineSegments.push({
-      type: 'main',
-      start: cutEnd,
-      end: trimEnd,
-      duration: segCDur
-    });
-  }
-
-  totalDuration = timelineSegments.reduce((sum, s) => sum + s.duration, 0);
-  if (totalDuration < 0.1) totalDuration = 0.1;
-}
-
-// Find segment at composed time index
-function getSegmentAtTime(time) {
-  let accumulated = 0;
-  for (let i = 0; i < timelineSegments.length; i++) {
-    const s = timelineSegments[i];
-    if (time < accumulated + s.duration) {
-      return { segment: s, offset: time - accumulated };
-    }
-    accumulated += s.duration;
-  }
-  if (timelineSegments.length > 0) {
-    const last = timelineSegments[timelineSegments.length - 1];
-    return { segment: last, offset: last.duration };
-  }
-  return null;
-}
-
-// Recalculate metrics, bounds, and layout block positions
-function recalculateTimeline() {
-  buildTimelineSegments();
-
   if (!clip1.element) {
     totalDuration = 0;
-    timeTotal.textContent = "00:00";
     return;
   }
 
-  timeTotal.textContent = formatTime(totalDuration);
+  sanitizeTimelineBounds();
+  const beforeDuration = cutStart - trimStart;
+  if (beforeDuration > 0.03) {
+    timelineSegments.push({ type: 'main', start: trimStart, end: cutStart, duration: beforeDuration });
+  }
 
-  // Update tracks timeline blocks
-  const blockA = document.getElementById('blockMainPart1');
-  const blockCut = document.getElementById('blockCutZone');
-  const blockC = document.getElementById('blockMainPart2');
-  const blockInsert = document.getElementById('blockInsert');
-  const blockText = document.getElementById('blockText');
-
-  let accumTime = 0;
-  if (blockA) blockA.style.display = 'none';
-  if (blockCut) blockCut.style.display = 'none';
-  if (blockC) blockC.style.display = 'none';
-  if (blockInsert) blockInsert.style.display = 'none';
-
-  timelineSegments.forEach(s => {
-    const blockWidth = `${(s.duration / totalDuration) * 100}%`;
-    const blockLeft = `${(accumTime / totalDuration) * 100}%`;
-
-    if (s.type === 'main') {
-      if (accumTime === 0 && blockA) {
-        blockA.style.width = blockWidth;
-        blockA.style.left = blockLeft;
-        blockA.style.display = 'flex';
-        blockA.textContent = `Main Part A (${s.duration.toFixed(1)}s)`;
-      } else if (blockC) {
-        blockC.style.width = blockWidth;
-        blockC.style.left = blockLeft;
-        blockC.style.display = 'flex';
-        blockC.textContent = `Main Part C (${s.duration.toFixed(1)}s)`;
-      }
-    } else if (s.type === 'insert') {
-      if (blockInsert) {
-        blockInsert.style.width = blockWidth;
-        blockInsert.style.left = blockLeft;
-        blockInsert.style.display = 'flex';
-        blockInsert.textContent = `Replacement (${s.duration.toFixed(1)}s)`;
-      }
-      if (blockCut) {
-        blockCut.style.width = blockWidth;
-        blockCut.style.left = blockLeft;
-        blockCut.style.display = 'flex';
-      }
-    } else if (s.type === 'gap') {
-      if (blockCut) {
-        blockCut.style.width = blockWidth;
-        blockCut.style.left = blockLeft;
-        blockCut.style.display = 'flex';
-      }
+  if (clip2.element) {
+    timelineSegments.push({ type: 'insert', start: 0, end: clip2.duration, duration: clip2.duration });
+  } else {
+    const removedDuration = cutEnd - cutStart;
+    if (removedDuration > 0.03) {
+      timelineSegments.push({ type: 'gap', start: cutStart, end: cutEnd, duration: removedDuration });
     }
-    accumTime += s.duration;
+  }
+
+  const afterDuration = trimEnd - cutEnd;
+  if (afterDuration > 0.03) {
+    timelineSegments.push({ type: 'main', start: cutEnd, end: trimEnd, duration: afterDuration });
+  }
+
+  totalDuration = Math.max(0.1, timelineSegments.reduce((sum, segment) => sum + segment.duration, 0));
+}
+
+function getSegmentAtTime(time) {
+  let accumulated = 0;
+  for (const segment of timelineSegments) {
+    if (time <= accumulated + segment.duration) {
+      return { segment, offset: clamp(time - accumulated, 0, segment.duration) };
+    }
+    accumulated += segment.duration;
+  }
+  const last = timelineSegments[timelineSegments.length - 1];
+  return last ? { segment: last, offset: last.duration } : null;
+}
+
+function syncSliderBounds() {
+  if (!clip1.element) return;
+  els.mainTrimStart.max = clip1.duration;
+  els.mainTrimEnd.max = clip1.duration;
+  els.c1Start.min = trimStart;
+  els.c1Start.max = trimEnd;
+  els.c1End.min = trimStart;
+  els.c1End.max = trimEnd;
+  els.c1Start.value = cutStart;
+  els.c1End.value = cutEnd;
+  els.mainTrimStart.value = trimStart;
+  els.mainTrimEnd.value = trimEnd;
+  els.captionStart.max = totalDuration;
+  els.captionEnd.max = totalDuration;
+}
+
+function updateTimeLabels() {
+  setText('mainTrimStartVal', `${trimStart.toFixed(1)}s`);
+  setText('mainTrimEndVal', `${trimEnd.toFixed(1)}s`);
+  setText('cutStartVal', `${cutStart.toFixed(1)}s`);
+  setText('cutEndVal', `${cutEnd.toFixed(1)}s`);
+  els.timeCurrent.textContent = formatTime(currentTime);
+  els.timeTotal.textContent = formatTime(totalDuration);
+}
+
+function updatePlayhead() {
+  const pct = totalDuration ? clamp(currentTime / totalDuration, 0, 1) : 0;
+  const tracks = document.querySelector('.timeline-tracks');
+  const trackBar = document.querySelector('.timeline-track .track-bar');
+  if (!tracks || !trackBar) return;
+  const tracksRect = tracks.getBoundingClientRect();
+  const barRect = trackBar.getBoundingClientRect();
+  els.playhead.style.left = `${barRect.left - tracksRect.left + (barRect.width * pct)}px`;
+}
+
+function placeBlock(block, leftSec, duration, label, display = 'flex') {
+  if (!block || !totalDuration) return;
+  block.style.left = `${(leftSec / totalDuration) * 100}%`;
+  block.style.width = `${(duration / totalDuration) * 100}%`;
+  block.style.display = display;
+  block.textContent = label;
+}
+
+function recalculateTimeline() {
+  buildTimelineSegments();
+  currentTime = clamp(currentTime, 0, totalDuration);
+  syncSliderBounds();
+  updateTimeLabels();
+
+  const blockA = byId('blockMainPart1');
+  const blockCut = byId('blockCutZone');
+  const blockC = byId('blockMainPart2');
+  const blockInsert = byId('blockInsert');
+  const blockText = byId('blockText');
+  [blockA, blockCut, blockC, blockInsert].forEach(block => {
+    if (block) block.style.display = 'none';
   });
 
-  // Track Caption layer visualization
+  let accumulated = 0;
+  let mainCount = 0;
+  timelineSegments.forEach(segment => {
+    if (segment.type === 'main') {
+      mainCount += 1;
+      placeBlock(mainCount === 1 ? blockA : blockC, accumulated, segment.duration, `Keep ${mainCount} (${segment.duration.toFixed(1)}s)`);
+    } else if (segment.type === 'insert') {
+      placeBlock(blockInsert, accumulated, segment.duration, `Replacement (${segment.duration.toFixed(1)}s)`);
+      placeBlock(blockCut, accumulated, segment.duration, 'Replace Range');
+    } else if (segment.type === 'gap') {
+      placeBlock(blockCut, accumulated, segment.duration, 'Removed');
+    }
+    accumulated += segment.duration;
+  });
+
   if (blockText) {
     const activeCap = captions.find(c => c.id === activeCaptionId);
-    if (activeCap) {
-      const textLen = Math.max(0, activeCap.hideAt - activeCap.showAt);
-      blockText.style.width = `${(textLen / totalDuration) * 100}%`;
-      blockText.style.left = `${(activeCap.showAt / totalDuration) * 100}%`;
-      blockText.textContent = `Text: "${activeCap.text}"`;
-      blockText.style.display = 'block';
+    if (activeCap && totalDuration) {
+      const start = clamp(activeCap.showAt, 0, totalDuration);
+      const end = clamp(activeCap.hideAt, start + 0.1, totalDuration);
+      placeBlock(blockText, start, end - start, activeCap.text || 'Caption', 'block');
     } else {
       blockText.style.display = 'none';
     }
   }
 
-  // Update dynamic rulers ticks
   const rulerGrid = document.querySelector('.ruler-grid');
   if (rulerGrid) {
     rulerGrid.innerHTML = '';
-    const ticksCount = 5;
-    for (let i = 0; i <= ticksCount; i++) {
-      const tickSecVal = (i / ticksCount) * totalDuration;
+    for (let i = 0; i <= 5; i++) {
       const tick = document.createElement('span');
       tick.className = 'ruler-tick';
-      tick.textContent = `${tickSecVal.toFixed(1)}s`;
+      tick.textContent = `${((i / 5) * totalDuration).toFixed(1)}s`;
       rulerGrid.appendChild(tick);
     }
   }
-
-  // Set sliders range max bounds
-  mainTrimStart.max = clip1.duration;
-  mainTrimEnd.max = clip1.duration;
-  c1Start.max = clip1.duration;
-  c1End.max = clip1.duration;
-  
-  captionStart.max = totalDuration;
-  captionEnd.max = totalDuration;
+  updatePlayhead();
 }
 
-// 4. Center Crop/Pan Frame drawing calculations
+function getMediaSize(mediaElement, type) {
+  if (type === 'image') return { width: mediaElement.naturalWidth || mediaElement.width, height: mediaElement.naturalHeight || mediaElement.height };
+  return { width: mediaElement.videoWidth, height: mediaElement.videoHeight };
+}
+
 function drawFrame(mediaElement, type = 'video') {
   ctx.save();
-  
-  // Clean canvas first
-  ctx.fillStyle = '#000000';
+  ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  let sourceWidth = 0;
-  let sourceHeight = 0;
-
-  if (type === 'video') {
-    sourceWidth = mediaElement.videoWidth;
-    sourceHeight = mediaElement.videoHeight;
-  } else {
-    sourceWidth = mediaElement.width;
-    sourceHeight = mediaElement.height;
-  }
-
+  const { width: sourceWidth, height: sourceHeight } = getMediaSize(mediaElement, type);
   if (!sourceWidth || !sourceHeight) {
     ctx.restore();
     return;
   }
 
-  // Cover calculation
   const scale = Math.max(canvas.width / sourceWidth, canvas.height / sourceHeight);
   const scaledWidth = sourceWidth * scale;
   const scaledHeight = sourceHeight * scale;
+  const centerX = (canvas.width - scaledWidth) / 2;
+  const centerY = (canvas.height - scaledHeight) / 2;
+  const minX = canvas.width - scaledWidth;
+  const minY = canvas.height - scaledHeight;
+  const drawX = clamp(centerX + panX, Math.min(0, minX), 0);
+  const drawY = clamp(centerY + panY, Math.min(0, minY), 0);
 
-  // Clamp panX and panY based on scale dimensions to avoid black margins
-  const minPanX = canvas.width - scaledWidth;
-  const minPanY = canvas.height - scaledHeight;
-
-  if (panX > 0) panX = 0;
-  if (panX < minPanX) panX = minPanX;
-  if (panY > 0) panY = 0;
-  if (panY < minPanY) panY = minPanY;
-
-  // Apply basic filters to canvas context
   ctx.filter = `brightness(${filterBrightness}%) contrast(${filterContrast}%) saturate(${filterSaturation}%)`;
-
-  ctx.drawImage(
-    mediaElement, 
-    0, 0, sourceWidth, sourceHeight,
-    panX, panY, scaledWidth, scaledHeight
-  );
-
+  ctx.drawImage(mediaElement, 0, 0, sourceWidth, sourceHeight, drawX, drawY, scaledWidth, scaledHeight);
   ctx.restore();
 }
 
-// 5. Volume Mixing preview control levels
-function syncAudioMixer(activeEl) {
-  if (!isPlaying || isExporting) return;
-
-  const isMainSolo = mainAudioSolo;
-  const isBgmSolo = bgMusic.isSolo;
-  const anySoloActive = isMainSolo || isBgmSolo;
-
-  let finalMainVol = mainAudioVolume;
-  let finalBgmVol = bgMusic.volume;
-
-  if (mainAudioMuted || (anySoloActive && !isMainSolo)) finalMainVol = 0;
-  if (bgMusic.isMuted || (anySoloActive && !isBgmSolo)) finalBgmVol = 0;
-
-  if (clip1.element) {
-    clip1.element.volume = isMuted ? 0 : finalMainVol;
-    clip1.element.muted = (activeEl !== clip1.element || isMuted || finalMainVol === 0);
-  }
-
-  if (clip2.element && clip2.type === 'video') {
-    clip2.element.volume = isMuted ? 0 : finalMainVol;
-    clip2.element.muted = (activeEl !== clip2.element || isMuted || finalMainVol === 0);
-  }
-
-  if (bgMusic.element) {
-    bgMusic.element.volume = isMuted ? 0 : finalBgmVol;
-    bgMusic.element.muted = (isMuted || finalBgmVol === 0);
-  }
+function getWrappedLines(text, maxWidth) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '';
+  words.forEach(word => {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  });
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
 }
 
-// 6. Canvas Text drawing
 function drawCaptions() {
-  captions.forEach(c => {
-    if (currentTime >= c.showAt && currentTime <= c.hideAt && c.text) {
-      ctx.save();
-      ctx.fillStyle = c.color;
-      ctx.font = `bold ${c.size}px Outfit, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      
-      let x = canvas.width / 2;
-      let y = canvas.height * 0.82;
-      
-      if (c.position === 'top') {
-        y = canvas.height * 0.15;
-      } else if (c.position === 'center') {
-        y = canvas.height * 0.5;
-      }
-      
-      // Outline stroke shadow for contrast
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 4;
-      ctx.strokeText(c.text, x, y);
-      ctx.fillText(c.text, x, y);
-      
-      // Box frame indicator around active selected caption
-      if (c.id === activeCaptionId && !isExporting) {
-        ctx.strokeStyle = '#3797f0';
-        ctx.lineWidth = 2;
-        const widthText = ctx.measureText(c.text).width;
-        ctx.strokeRect(x - widthText / 2 - 10, y - c.size / 2 - 6, widthText + 20, c.size + 12);
-      }
+  captions.forEach(caption => {
+    if (currentTime < caption.showAt || currentTime > caption.hideAt || !caption.text) return;
 
-      ctx.restore();
+    ctx.save();
+    ctx.fillStyle = caption.color;
+    ctx.font = `bold ${caption.size}px Outfit, Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+
+    const lines = getWrappedLines(caption.text, canvas.width * 0.86);
+    const lineHeight = caption.size * 1.18;
+    let y = canvas.height * 0.82;
+    if (caption.position === 'top') y = canvas.height * 0.16;
+    if (caption.position === 'center') y = canvas.height * 0.5;
+    y -= ((lines.length - 1) * lineHeight) / 2;
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+    ctx.lineWidth = Math.max(4, caption.size * 0.14);
+    lines.forEach((line, index) => {
+      const lineY = y + index * lineHeight;
+      ctx.strokeText(line, canvas.width / 2, lineY);
+      ctx.fillText(line, canvas.width / 2, lineY);
+    });
+
+    if (caption.id === activeCaptionId && !isExporting) {
+      const width = Math.max(...lines.map(line => ctx.measureText(line).width));
+      const height = lines.length * lineHeight;
+      ctx.strokeStyle = '#3797f0';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(canvas.width / 2 - width / 2 - 16, y - caption.size / 2 - 8, width + 32, height + 16);
     }
+    ctx.restore();
   });
 }
 
-// 7. Preview Render frame
+function drawEmptyScreen(message = 'Choose a main video') {
+  ctx.save();
+  ctx.fillStyle = '#0f0c0c';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#8e8e93';
+  ctx.font = '28px Outfit, Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+  ctx.restore();
+}
+
 function renderCanvas() {
-  if (!clip1.element) return;
+  if (!clip1.element || !timelineSegments.length) {
+    drawEmptyScreen();
+    return;
+  }
 
   const result = getSegmentAtTime(currentTime);
   if (!result) return;
-
   const { segment, offset } = result;
   let activeSource = null;
   let activeType = 'video';
@@ -451,42 +427,65 @@ function renderCanvas() {
 
   if (activeSource) {
     if (activeType === 'video') {
-      const tolerance = isPlaying ? 0.35 : 0.05;
+      const tolerance = isPlaying ? 0.35 : 0.06;
       if (Math.abs(activeSource.currentTime - seekTime) > tolerance) {
-        activeSource.currentTime = seekTime;
+        activeSource.currentTime = clamp(seekTime, 0, activeSource.duration || seekTime);
       }
-      if (isPlaying && !isExporting) {
-        if (activeSource.paused) {
-          try { activeSource.play(); } catch(e) {}
-        }
+      if (isPlaying && !isExporting && activeSource.paused) {
+        activeSource.play().catch(() => {});
       }
     }
     drawFrame(activeSource, activeType);
   } else {
-    // Gap placeholder: draw black screen
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
   if (isPlaying && !isExporting) {
-    // Pause other inactive elements
     if (activeSource !== clip1.element && clip1.element) clip1.element.pause();
     if (activeSource !== clip2.element && clip2.element && clip2.type === 'video') clip2.element.pause();
     syncAudioMixer(activeSource);
   }
 
   drawCaptions();
+  updateTimeLabels();
+  updatePlayhead();
 }
 
-// 8. Playback Frame Loop
-let lastTime = 0;
+function getMainVolume() {
+  const anySoloActive = mainAudioSolo || bgMusic.isSolo;
+  if (isMuted || mainAudioMuted || (anySoloActive && !mainAudioSolo)) return 0;
+  return mainAudioVolume;
+}
+
+function getBgmVolume() {
+  const anySoloActive = mainAudioSolo || bgMusic.isSolo;
+  if (isMuted || bgMusic.isMuted || (anySoloActive && !bgMusic.isSolo)) return 0;
+  return bgMusic.volume;
+}
+
+function syncAudioMixer(activeEl) {
+  if (!isPlaying || isExporting) return;
+  const mainVol = getMainVolume();
+  const bgmVol = getBgmVolume();
+
+  [clip1, clip2].forEach(clip => {
+    if (!clip.element || clip.type !== 'video') return;
+    clip.element.volume = mainVol;
+    clip.element.muted = activeEl !== clip.element || mainVol === 0;
+  });
+
+  if (bgMusic.element) {
+    bgMusic.element.volume = bgmVol;
+    bgMusic.element.muted = bgmVol === 0;
+  }
+}
+
 function playbackLoop(timestamp) {
   if (!isPlaying) return;
   if (!lastTime) lastTime = timestamp;
-
   const delta = (timestamp - lastTime) / 1000;
   lastTime = timestamp;
-
   currentTime += delta;
 
   if (currentTime >= totalDuration) {
@@ -496,678 +495,358 @@ function playbackLoop(timestamp) {
     if (bgMusic.element) bgMusic.element.currentTime = 0;
   }
 
-  // Playback BGM track sync
   if (bgMusic.element) {
-    if (bgMusic.element.paused) {
-      try { bgMusic.element.play(); } catch(e) {}
-    }
-    if (Math.abs(bgMusic.element.currentTime - currentTime) > 0.3) {
-      bgMusic.element.currentTime = currentTime;
-    }
+    if (Math.abs(bgMusic.element.currentTime - currentTime) > 0.35) bgMusic.element.currentTime = currentTime % (bgMusic.duration || totalDuration);
+    if (bgMusic.element.paused) bgMusic.element.play().catch(() => {});
   }
-
-  timeCurrent.textContent = formatTime(currentTime);
-  playhead.style.left = `${(currentTime / totalDuration) * 100}%`;
 
   renderCanvas();
   animationFrameId = requestAnimationFrame(playbackLoop);
 }
 
-// Play/Pause Action
 function togglePlayPause() {
-  if (!clip1.element) return;
-
+  if (!clip1.element || isExporting) return;
   if (isPlaying) {
-    isPlaying = false;
-    btnPlayPause.textContent = '▶ Play';
-    if (clip1.element) clip1.element.pause();
-    if (clip2.element && clip2.type === 'video') clip2.element.pause();
-    if (bgMusic.element) bgMusic.element.pause();
-    if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    logToEditorConsole("Playback paused.");
-  } else {
-    isPlaying = true;
-    btnPlayPause.textContent = '⏸ Pause';
-    lastTime = 0;
-
-    // Direct user-gesture playback initiation to bypass browser autoplay blocks
-    const result = getSegmentAtTime(currentTime);
-    if (result && result.segment) {
-      const { segment, offset } = result;
-      if (segment.type === 'main' && clip1.element) {
-        clip1.element.play().catch(e => console.log("Play clip1 error:", e));
-      } else if (segment.type === 'insert' && clip2.element && clip2.type === 'video') {
-        clip2.element.play().catch(e => console.log("Play clip2 error:", e));
-      }
-    }
-    if (bgMusic.element) {
-      bgMusic.element.play().catch(e => console.log("Play BGM error:", e));
-    }
-
-    animationFrameId = requestAnimationFrame(playbackLoop);
-    logToEditorConsole("Playback started.");
+    stopPlayback();
+    logToEditorConsole('Playback paused.');
+    return;
   }
+
+  isPlaying = true;
+  els.btnPlayPause.textContent = 'Pause';
+  lastTime = 0;
+  const result = getSegmentAtTime(currentTime);
+  if (result?.segment.type === 'main') clip1.element.play().catch(() => {});
+  if (result?.segment.type === 'insert' && clip2.element && clip2.type === 'video') clip2.element.play().catch(() => {});
+  if (bgMusic.element) bgMusic.element.play().catch(() => {});
+  animationFrameId = requestAnimationFrame(playbackLoop);
+  logToEditorConsole('Playback started.');
 }
 
-// 9. Input & Control Event bindings
+function setEditorReady() {
+  byId('clip2File').disabled = false;
+  byId('clip2FileLabel').classList.remove('disabled');
+  els.btnAddCaption.disabled = false;
+  els.btnPlayPause.disabled = false;
+  els.btnExport.disabled = false;
+  if (els.btnRangeIntro) els.btnRangeIntro.disabled = false;
+  if (els.btnRangeAtPlayhead) els.btnRangeAtPlayhead.disabled = false;
+  if (els.btnRangeTail) els.btnRangeTail.disabled = false;
+}
 
-// Main Video Selection
-document.getElementById('clip1File').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  logToEditorConsole(`Loading Main Video: ${file.name}...`);
+function handleMainVideo(file) {
+  stopPlayback();
+  revokeClip(clip1);
+  clip1 = emptyClip();
   clip1.file = file;
-  document.getElementById('clip1Name').textContent = file.name;
-  document.getElementById('clip1Details').style.display = 'block';
+  clip1.url = URL.createObjectURL(file);
+  setText('clip1Name', file.name);
+  byId('clip1Details').style.display = 'block';
+  logToEditorConsole(`Loading main video: ${file.name}...`);
 
   const video = document.createElement('video');
-  video.src = URL.createObjectURL(file);
-  video.muted = false;
-  video.loop = false;
+  video.src = clip1.url;
+  video.preload = 'metadata';
   video.playsInline = true;
   video.crossOrigin = 'anonymous';
-
   video.addEventListener('loadedmetadata', () => {
     clip1.element = video;
-    clip1.duration = video.duration;
+    clip1.duration = video.duration || 0;
     clip1.videoWidth = video.videoWidth;
     clip1.videoHeight = video.videoHeight;
-
     trimStart = 0;
-    trimEnd = video.duration;
-    cutStart = Math.min(2, video.duration);
-    cutEnd = Math.min(6, video.duration);
-
-    mainTrimStart.max = video.duration;
-    mainTrimEnd.max = video.duration;
-    mainTrimStart.value = 0;
-    mainTrimEnd.value = video.duration;
-
-    c1Start.disabled = false;
-    c1End.disabled = false;
-    c1Start.max = video.duration;
-    c1End.max = video.duration;
-    c1Start.value = cutStart;
-    c1End.value = cutEnd;
-
-    document.getElementById('clip1DurationText').textContent = `${video.duration.toFixed(1)}s`;
-    document.getElementById('mainTrimStartVal').textContent = '0.0s';
-    document.getElementById('mainTrimEndVal').textContent = `${video.duration.toFixed(1)}s`;
-    document.getElementById('cutStartVal').textContent = `${cutStart.toFixed(1)}s`;
-    document.getElementById('cutEndVal').textContent = `${cutEnd.toFixed(1)}s`;
-
-    // Enable subsequent stages inputs
-    document.getElementById('clip2File').disabled = false;
-    document.getElementById('clip2FileLabel').classList.remove('disabled');
-    btnAddCaption.disabled = false;
-    btnPlayPause.disabled = false;
-    btnExport.disabled = false;
-
-    logToEditorConsole("Main video loaded successfully.", "success");
+    trimEnd = clip1.duration;
+    cutStart = 0;
+    cutEnd = Math.min(2, clip1.duration);
+    if (cutEnd <= cutStart) cutEnd = Math.min(clip1.duration, cutStart + 0.1);
+    currentTime = 0;
+    setText('clip1DurationText', `${clip1.duration.toFixed(1)}s`);
+    setEditorReady();
     recalculateTimeline();
     renderCanvas();
+    logToEditorConsole('Main video loaded.', 'success');
   });
-});
+  video.addEventListener('error', () => logToEditorConsole('Could not load the selected video.', 'error'));
+}
 
-// Replacement Clip/Photo selection
-document.getElementById('clip2File').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+function handleReplacement(file) {
+  stopPlayback();
+  revokeClip(clip2);
+  clip2 = { ...emptyClip(), file, url: URL.createObjectURL(file), type: file.type.startsWith('image/') ? 'image' : 'video', duration: 4 };
+  setText('clip2Name', file.name);
+  byId('clip2Details').style.display = 'block';
+  logToEditorConsole(`Loading replacement: ${file.name}...`);
 
-  logToEditorConsole(`Loading Replacement File: ${file.name}...`);
-  clip2.file = file;
-  document.getElementById('clip2Name').textContent = file.name;
-  document.getElementById('clip2Details').style.display = 'block';
-
-  const isImage = file.type.startsWith('image/');
-
-  if (isImage) {
-    clip2.type = 'image';
+  if (clip2.type === 'image') {
     const img = new Image();
-    img.src = URL.createObjectURL(file);
     img.onload = () => {
       clip2.element = img;
-      clip2.duration = 4.0;
-      c2Duration.value = 4.0;
-      document.getElementById('c2DurVal').textContent = '4.0s';
-      logToEditorConsole("Replacement photo loaded.", "success");
+      clip2.duration = parseFloat(els.c2Duration.value) || 4;
+      setText('c2DurVal', `${clip2.duration.toFixed(1)}s`);
       recalculateTimeline();
       renderCanvas();
+      logToEditorConsole('Replacement image loaded.', 'success');
     };
-  } else {
-    clip2.type = 'video';
-    const video = document.createElement('video');
-    video.src = URL.createObjectURL(file);
-    video.muted = true;
-    video.playsInline = true;
-    video.crossOrigin = 'anonymous';
-
-    video.addEventListener('loadedmetadata', () => {
-      clip2.element = video;
-      clip2.duration = video.duration;
-      c2Duration.value = video.duration;
-      document.getElementById('c2DurVal').textContent = `${video.duration.toFixed(1)}s`;
-      logToEditorConsole("Replacement video loaded.", "success");
-      recalculateTimeline();
-      renderCanvas();
-    });
-  }
-});
-
-// Trim and Cut Sliders listener events
-mainTrimStart.addEventListener('input', (e) => {
-  const val = parseFloat(e.target.value);
-  if (val >= trimEnd) {
-    mainTrimStart.value = trimEnd - 0.1;
+    img.onerror = () => logToEditorConsole('Could not load the selected image.', 'error');
+    img.src = clip2.url;
     return;
   }
-  trimStart = val;
-  document.getElementById('mainTrimStartVal').textContent = `${val.toFixed(1)}s`;
+
+  const video = document.createElement('video');
+  video.src = clip2.url;
+  video.preload = 'metadata';
+  video.playsInline = true;
+  video.crossOrigin = 'anonymous';
+  video.addEventListener('loadedmetadata', () => {
+    clip2.element = video;
+    clip2.duration = Math.min(video.duration || 4, 60);
+    els.c2Duration.value = clip2.duration;
+    setText('c2DurVal', `${clip2.duration.toFixed(1)}s`);
+    recalculateTimeline();
+    renderCanvas();
+    logToEditorConsole('Replacement video loaded.', 'success');
+  });
+  video.addEventListener('error', () => logToEditorConsole('Could not load the selected replacement video.', 'error'));
+}
+
+function removeReplacement() {
+  stopPlayback();
+  revokeClip(clip2);
+  clip2 = { ...emptyClip(), type: 'video', duration: 4 };
+  byId('clip2File').value = '';
+  byId('clip2Details').style.display = 'none';
+  els.c2Duration.value = 4;
+  setText('c2DurVal', '4.0s');
   recalculateTimeline();
-  currentTime = 0;
   renderCanvas();
-});
+  logToEditorConsole('Replacement removed.');
+}
 
-mainTrimEnd.addEventListener('input', (e) => {
-  const val = parseFloat(e.target.value);
-  if (val <= trimStart) {
-    mainTrimEnd.value = trimStart + 0.1;
-    return;
-  }
-  trimEnd = val;
-  document.getElementById('mainTrimEndVal').textContent = `${val.toFixed(1)}s`;
-  recalculateTimeline();
-  currentTime = 0;
-  renderCanvas();
-});
-
-c1Start.addEventListener('input', (e) => {
-  const val = parseFloat(e.target.value);
-  if (val >= cutEnd) {
-    c1Start.value = cutEnd - 0.1;
-    return;
-  }
-  cutStart = val;
-  document.getElementById('cutStartVal').textContent = `${val.toFixed(1)}s`;
-  recalculateTimeline();
-  currentTime = 0;
-  renderCanvas();
-});
-
-c1End.addEventListener('input', (e) => {
-  const val = parseFloat(e.target.value);
-  if (val <= cutStart) {
-    c1End.value = cutStart + 0.1;
-    return;
-  }
-  cutEnd = val;
-  document.getElementById('cutEndVal').textContent = `${val.toFixed(1)}s`;
-  recalculateTimeline();
-  currentTime = 0;
-  renderCanvas();
-});
-
-c2Duration.addEventListener('input', (e) => {
-  const val = parseFloat(e.target.value);
-  clip2.duration = val;
-  document.getElementById('c2DurVal').textContent = `${val.toFixed(1)}s`;
-  recalculateTimeline();
-  currentTime = 0;
-  renderCanvas();
-});
-
-// Filters Sliders listener events
-sliderBrightness.addEventListener('input', (e) => {
-  filterBrightness = e.target.value;
-  document.getElementById('valBrightness').textContent = `${filterBrightness}%`;
-  renderCanvas();
-});
-
-sliderContrast.addEventListener('input', (e) => {
-  filterContrast = e.target.value;
-  document.getElementById('valContrast').textContent = `${filterContrast}%`;
-  renderCanvas();
-});
-
-sliderSaturation.addEventListener('input', (e) => {
-  filterSaturation = e.target.value;
-  document.getElementById('valSaturation').textContent = `${filterSaturation}%`;
-  renderCanvas();
-});
-
-// Audio controls
-mainVolume.addEventListener('input', (e) => {
-  mainAudioVolume = parseFloat(e.target.value);
-  document.getElementById('valMainVolume').textContent = `${(mainAudioVolume * 100).toFixed(0)}%`;
-});
-
-btnMuteMain.addEventListener('click', () => {
-  mainAudioMuted = !mainAudioMuted;
-  btnMuteMain.classList.toggle('active-mute', mainAudioMuted);
-  logToEditorConsole(`Main track muted: ${mainAudioMuted}`);
-});
-
-btnSoloMain.addEventListener('click', () => {
-  mainAudioSolo = !mainAudioSolo;
-  btnSoloMain.classList.toggle('active-solo', mainAudioSolo);
-  if (mainAudioSolo && bgMusic.isSolo) {
-    bgMusic.isSolo = false;
-    btnSoloBgm.classList.remove('active-solo');
-  }
-});
-
-// BGM Music Selector
-bgmFile.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  logToEditorConsole(`Loading BGM: ${file.name}...`);
+function handleBgm(file) {
+  if (bgMusic.element) bgMusic.element.pause();
+  if (bgMusic.url) URL.revokeObjectURL(bgMusic.url);
   bgMusic.file = file;
-  document.getElementById('bgmName').textContent = file.name;
-  document.getElementById('bgmDetails').style.display = 'block';
+  bgMusic.url = URL.createObjectURL(file);
+  setText('bgmName', file.name);
+  byId('bgmDetails').style.display = 'block';
+  logToEditorConsole(`Loading background music: ${file.name}...`);
 
   const audio = document.createElement('audio');
-  audio.src = URL.createObjectURL(file);
+  audio.src = bgMusic.url;
+  audio.preload = 'metadata';
   audio.loop = true;
   audio.crossOrigin = 'anonymous';
-
   audio.addEventListener('loadedmetadata', () => {
     bgMusic.element = audio;
-    bgMusic.duration = audio.duration;
-    logToEditorConsole("BGM loaded successfully.", "success");
+    bgMusic.duration = audio.duration || 0;
+    logToEditorConsole('Background music loaded.', 'success');
   });
-});
-
-bgmVolume.addEventListener('input', (e) => {
-  bgMusic.volume = parseFloat(e.target.value);
-  document.getElementById('valBgmVolume').textContent = `${(bgMusic.volume * 100).toFixed(0)}%`;
-});
-
-btnMuteBgm.addEventListener('click', () => {
-  bgMusic.isMuted = !bgMusic.isMuted;
-  btnMuteBgm.classList.toggle('active-mute', bgMusic.isMuted);
-  logToEditorConsole(`BGM track muted: ${bgMusic.isMuted}`);
-});
-
-btnSoloBgm.addEventListener('click', () => {
-  bgMusic.isSolo = !bgMusic.isSolo;
-  btnSoloBgm.classList.toggle('active-solo', bgMusic.isSolo);
-  if (bgMusic.isSolo && mainAudioSolo) {
-    mainAudioSolo = false;
-    btnSoloMain.classList.remove('active-solo');
-  }
-});
-
-// 10. Captions layers manager
-btnAddCaption.addEventListener('click', () => {
-  const id = Date.now();
-  const newCap = {
-    id,
-    text: 'Reels Text',
-    color: '#ffffff',
-    size: 28,
-    position: 'bottom',
-    showAt: Math.max(0, currentTime),
-    hideAt: Math.min(totalDuration, currentTime + 4)
-  };
-
-  captions.push(newCap);
-  logToEditorConsole("Caption layer added.");
-  selectCaption(id);
-});
+  audio.addEventListener('error', () => logToEditorConsole('Could not load the selected audio.', 'error'));
+}
 
 function renderCaptionsList() {
-  captionsList.innerHTML = '';
-  captions.forEach(c => {
+  els.captionsList.innerHTML = '';
+  captions.forEach(caption => {
     const row = document.createElement('div');
-    row.className = `caption-item-row ${c.id === activeCaptionId ? 'active' : ''}`;
-    row.innerHTML = `
-      <span>🔤 ${c.text || '(Empty text)'}</span>
-      <span class="time-tag">${c.showAt.toFixed(1)}s - ${c.hideAt.toFixed(1)}s</span>
-    `;
-    row.addEventListener('click', () => selectCaption(c.id));
-    captionsList.appendChild(row);
+    row.className = `caption-item-row ${caption.id === activeCaptionId ? 'active' : ''}`;
+    const text = document.createElement('span');
+    text.textContent = caption.text || '(Empty text)';
+    const time = document.createElement('span');
+    time.className = 'time-tag';
+    time.textContent = `${caption.showAt.toFixed(1)}s - ${caption.hideAt.toFixed(1)}s`;
+    row.append(text, time);
+    row.addEventListener('click', () => selectCaption(caption.id));
+    els.captionsList.appendChild(row);
   });
 }
 
 function selectCaption(id) {
   activeCaptionId = id;
   renderCaptionsList();
-
-  const c = captions.find(x => x.id === id);
-  if (!c) {
-    captionEditorPanel.style.display = 'none';
+  const caption = captions.find(c => c.id === id);
+  if (!caption) {
+    els.captionEditorPanel.style.display = 'none';
+    recalculateTimeline();
+    renderCanvas();
     return;
   }
 
-  captionEditorPanel.style.display = 'block';
-  captionText.value = c.text;
-  captionColor.value = c.color;
-  captionSize.value = c.size;
-  captionPosition.value = c.position;
-  
-  captionStart.max = totalDuration;
-  captionEnd.max = totalDuration;
-  captionStart.value = c.showAt;
-  captionEnd.value = c.hideAt;
-
-  document.getElementById('captionStartVal').textContent = `${c.showAt.toFixed(1)}s`;
-  document.getElementById('captionEndVal').textContent = `${c.hideAt.toFixed(1)}s`;
-
+  els.captionEditorPanel.style.display = 'block';
+  els.captionText.value = caption.text;
+  els.captionColor.value = caption.color;
+  els.captionSize.value = caption.size;
+  els.captionPosition.value = caption.position;
+  els.captionStart.max = totalDuration;
+  els.captionEnd.max = totalDuration;
+  els.captionStart.value = caption.showAt;
+  els.captionEnd.value = caption.hideAt;
+  setText('captionStartVal', `${caption.showAt.toFixed(1)}s`);
+  setText('captionEndVal', `${caption.hideAt.toFixed(1)}s`);
   recalculateTimeline();
   renderCanvas();
 }
 
-captionText.addEventListener('input', (e) => {
-  const active = captions.find(x => x.id === activeCaptionId);
-  if (active) {
-    active.text = e.target.value;
-    renderCaptionsList();
-    renderCanvas();
-  }
-});
-
-captionColor.addEventListener('input', (e) => {
-  const active = captions.find(x => x.id === activeCaptionId);
-  if (active) {
-    active.color = e.target.value;
-    renderCanvas();
-  }
-});
-
-captionSize.addEventListener('input', (e) => {
-  const active = captions.find(x => x.id === activeCaptionId);
-  if (active) {
-    active.size = parseInt(e.target.value);
-    renderCanvas();
-  }
-});
-
-captionPosition.addEventListener('change', (e) => {
-  const active = captions.find(x => x.id === activeCaptionId);
-  if (active) {
-    active.position = e.target.value;
-    renderCanvas();
-  }
-});
-
-captionStart.addEventListener('input', (e) => {
-  const active = captions.find(x => x.id === activeCaptionId);
-  if (active) {
-    const val = parseFloat(e.target.value);
-    if (val >= active.hideAt) {
-      captionStart.value = active.hideAt - 0.1;
-      return;
-    }
-    active.showAt = val;
-    document.getElementById('captionStartVal').textContent = `${val.toFixed(1)}s`;
-    recalculateTimeline();
-    renderCanvas();
-  }
-});
-
-captionEnd.addEventListener('input', (e) => {
-  const active = captions.find(x => x.id === activeCaptionId);
-  if (active) {
-    const val = parseFloat(e.target.value);
-    if (val <= active.showAt) {
-      captionEnd.value = active.showAt + 0.1;
-      return;
-    }
-    active.hideAt = val;
-    document.getElementById('captionEndVal').textContent = `${val.toFixed(1)}s`;
-    recalculateTimeline();
-    renderCanvas();
-  }
-});
-
-document.getElementById('btnDeleteCaption').addEventListener('click', () => {
-  if (activeCaptionId) {
-    captions = captions.filter(x => x.id !== activeCaptionId);
-    logToEditorConsole("Caption layer removed.");
-    activeCaptionId = null;
-    selectCaption(null);
-  }
-});
-
-// Playhead Scrubbing click
-document.querySelector('.timeline-tracks').addEventListener('click', (e) => {
-  if (!clip1.element) return;
-  if (e.target.closest('.track-label')) return;
-
-  const rect = e.currentTarget.getBoundingClientRect();
-  const clickX = e.clientX - rect.left - 80;
-  const width = rect.width - 80;
-
-  if (clickX >= 0 && clickX <= width) {
-    const pct = clickX / width;
-    currentTime = pct * totalDuration;
-    timeCurrent.textContent = formatTime(currentTime);
-    playhead.style.left = `${pct * 100}%`;
-
-    if (bgMusic.element) {
-      bgMusic.element.currentTime = currentTime;
-    }
-    renderCanvas();
-  }
-});
-
-// Play/Pause button click event listener
-btnPlayPause.addEventListener('click', togglePlayPause);
-
-// Speaker mute
-btnMute.addEventListener('click', () => {
-  isMuted = !isMuted;
-  btnMute.textContent = isMuted ? '🔇' : '🔊';
-  if (clip1.element) clip1.element.muted = isMuted;
-  if (clip2.element && clip2.type === 'video') clip2.element.muted = isMuted;
-  if (bgMusic.element) bgMusic.element.muted = isMuted;
-});
-
-// 11. Canvas Drag-to-Pan (Crop Frame) coordinates
-const wrapper = document.getElementById('previewAspectWrapper');
-
-wrapper.addEventListener('mousedown', (e) => {
-  if (!clip1.element) return;
-  isPanning = true;
-  startPanMouseX = e.clientX;
-  startPanMouseY = e.clientY;
-  startPanOffsetX = panX;
-  startPanOffsetY = panY;
-  e.preventDefault();
-});
-
-window.addEventListener('mousemove', (e) => {
-  if (!isPanning) return;
-  const dx = e.clientX - startPanMouseX;
-  const dy = e.clientY - startPanMouseY;
-  panX = startPanOffsetX + dx;
-  panY = startPanOffsetY + dy;
+function updateActiveCaption(mutator) {
+  const caption = captions.find(c => c.id === activeCaptionId);
+  if (!caption) return;
+  mutator(caption);
+  renderCaptionsList();
+  recalculateTimeline();
   renderCanvas();
-});
+}
 
-window.addEventListener('mouseup', () => {
-  if (isPanning) {
-    isPanning = false;
-    logToEditorConsole(`Panning adjusted: offset X: ${panX.toFixed(0)}, Y: ${panY.toFixed(0)}`);
-  }
-});
-
-// Touch support for crop panning
-wrapper.addEventListener('touchstart', (e) => {
-  if (!clip1.element) return;
-  isPanning = true;
-  startPanMouseX = e.touches[0].clientX;
-  startPanMouseY = e.touches[0].clientY;
-  startPanOffsetX = panX;
-  startPanOffsetY = panY;
-});
-
-window.addEventListener('touchmove', (e) => {
-  if (!isPanning) return;
-  const dx = e.touches[0].clientX - startPanMouseX;
-  const dy = e.touches[0].clientY - startPanMouseY;
-  panX = startPanOffsetX + dx;
-  panY = startPanOffsetY + dy;
+function seekTimelineFromEvent(e) {
+  if (!clip1.element || !totalDuration || e.target.closest('.track-label')) return;
+  const trackBar = document.querySelector('.timeline-track .track-bar');
+  if (!trackBar) return;
+  const rect = trackBar.getBoundingClientRect();
+  const pct = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+  currentTime = pct * totalDuration;
+  if (bgMusic.element) bgMusic.element.currentTime = currentTime % (bgMusic.duration || totalDuration);
   renderCanvas();
-});
+}
 
-window.addEventListener('touchend', () => {
-  isPanning = false;
-});
+function resetFilters() {
+  filterBrightness = 100;
+  filterContrast = 100;
+  filterSaturation = 100;
+  els.sliderBrightness.value = 100;
+  els.sliderContrast.value = 100;
+  els.sliderSaturation.value = 100;
+  setText('valBrightness', '100%');
+  setText('valContrast', '100%');
+  setText('valSaturation', '100%');
+  renderCanvas();
+  logToEditorConsole('Filters reset.');
+}
 
-// 12. 🚀 EXPORT RENDER COMPILATION WITH AUDIO MIXING & CANCEL
-btnExport.addEventListener('click', async () => {
-  if (isExporting || !clip1.element) return;
+function mediaCaptureStream(mediaElement) {
+  return mediaElement.captureStream?.() || mediaElement.mozCaptureStream?.() || null;
+}
 
+function connectMediaAudio(audioCtx, destination, mediaElement, gainValue) {
+  const stream = mediaCaptureStream(mediaElement);
+  if (!stream || !stream.getAudioTracks().length) return false;
+  const source = audioCtx.createMediaStreamSource(stream);
+  const gain = audioCtx.createGain();
+  gain.gain.value = gainValue;
+  source.connect(gain);
+  gain.connect(destination);
+  return true;
+}
+
+function cleanupExport(audioCtx, overlay) {
+  if (bgMusic.element) bgMusic.element.pause();
+  [clip1, clip2].forEach(clip => {
+    if (clip.element?.pause) clip.element.pause();
+  });
+  if (audioCtx) audioCtx.close().catch(() => {});
+  overlay.style.display = 'none';
+  isExporting = false;
+  currentTime = 0;
+  recalculateTimeline();
+  renderCanvas();
+}
+
+async function exportVideo() {
+  if (isExporting || !clip1.element || !canvas.captureStream || typeof MediaRecorder === 'undefined') {
+    logToEditorConsole('Export is not available in this browser.', 'error');
+    return;
+  }
+
+  stopPlayback();
   isExporting = true;
   cancelExportFlag = false;
-  isPlaying = false;
-  btnPlayPause.textContent = '▶ Play';
-  if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
-  const overlay = document.getElementById('exportOverlay');
-  const progText = document.getElementById('exportProgressText');
-  const progBar = document.getElementById('exportProgressBar');
+  const overlay = byId('exportOverlay');
+  const progText = byId('exportProgressText');
+  const progBar = byId('exportProgressBar');
   overlay.style.display = 'flex';
-  progText.textContent = "Initializing render track mixer...";
+  progText.textContent = 'Preparing render...';
   progBar.style.width = '0%';
+  logToEditorConsole('Export started.', 'alert');
 
-  logToEditorConsole("--- EXPORT COMPILATION STARTED ---", "alert");
-
-  // Capture canvas video tracks
-  const canvasStream = canvas.captureStream(30);
-  let mixedStream = new MediaStream();
-  canvasStream.getVideoTracks().forEach(track => mixedStream.addTrack(track));
-
-  // Initialize Temporary AudioContext ONLY for export mixing to prevent cold-starts issues
-  let exportAudioCtx = null;
-  let exportAudioDest = null;
-  let exportSource1 = null;
-  let exportSourceBgm = null;
+  const fps = 30;
+  const canvasStream = canvas.captureStream(fps);
+  const mixedStream = new MediaStream(canvasStream.getVideoTracks());
+  let audioCtx = null;
 
   try {
-    exportAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    exportAudioDest = exportAudioCtx.createMediaStreamDestination();
-
-    const isMainSolo = mainAudioSolo;
-    const isBgmSolo = bgMusic.isSolo;
-    const anySoloActive = isMainSolo || isBgmSolo;
-
-    const mainMixVol = (mainAudioMuted || (anySoloActive && !isMainSolo)) ? 0 : mainAudioVolume;
-    const bgmMixVol = (bgMusic.isMuted || (anySoloActive && !isBgmSolo)) ? 0 : bgMusic.volume;
-
-    if (clip1.element) {
-      exportSource1 = exportAudioCtx.createMediaElementSource(clip1.element);
-      const gainMain = exportAudioCtx.createGain();
-      gainMain.gain.setValueAtTime(mainMixVol, exportAudioCtx.currentTime);
-      exportSource1.connect(gainMain);
-      gainMain.connect(exportAudioCtx.destination);
-      gainMain.connect(exportAudioDest);
-    }
-
-    if (bgMusic.element) {
-      exportSourceBgm = exportAudioCtx.createMediaElementSource(bgMusic.element);
-      const gainBgm = exportAudioCtx.createGain();
-      gainBgm.gain.setValueAtTime(bgmMixVol, exportAudioCtx.currentTime);
-      exportSourceBgm.connect(gainBgm);
-      gainBgm.connect(exportAudioCtx.destination);
-      gainBgm.connect(exportAudioDest);
-    }
-
-    exportAudioDest.stream.getAudioTracks().forEach(track => mixedStream.addTrack(track));
-  } catch (e) {
-    console.warn("Export AudioContext build failed:", e);
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const destination = audioCtx.createMediaStreamDestination();
+    const mainVol = getMainVolume();
+    const bgmVol = getBgmVolume();
+    if (clip1.element && mainVol > 0) connectMediaAudio(audioCtx, destination, clip1.element, mainVol);
+    if (clip2.element && clip2.type === 'video' && mainVol > 0) connectMediaAudio(audioCtx, destination, clip2.element, mainVol);
+    if (bgMusic.element && bgmVol > 0) connectMediaAudio(audioCtx, destination, bgMusic.element, bgmVol);
+    destination.stream.getAudioTracks().forEach(track => mixedStream.addTrack(track));
+  } catch (error) {
+    logToEditorConsole('Audio mix unavailable; exporting video-only stream.', 'error');
+    console.warn(error);
   }
 
-  let options = { mimeType: 'video/webm;codecs=vp9,opus' };
-  if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-    options = { mimeType: 'video/webm' };
-  }
+  const mimeTypes = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  const mimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || '';
+  const recorder = new MediaRecorder(mixedStream, mimeType ? { mimeType } : undefined);
+  const chunks = [];
 
-  const recordedChunks = [];
-  const recorder = new MediaRecorder(mixedStream, options);
-
-  recorder.ondataavailable = (e) => {
-    if (e.data && e.data.size > 0) {
-      recordedChunks.push(e.data);
-    }
+  recorder.ondataavailable = e => {
+    if (e.data?.size) chunks.push(e.data);
   };
 
   recorder.onstop = () => {
-    // If canceled mid-process, discard blobs and return
     if (cancelExportFlag) {
-      logToEditorConsole("Export cancelled by user.", "error");
-      if (exportAudioCtx) exportAudioCtx.close();
-      overlay.style.display = 'none';
-      isExporting = false;
-      currentTime = 0;
-      renderCanvas();
+      cleanupExport(audioCtx, overlay);
+      logToEditorConsole('Export cancelled.', 'error');
       return;
     }
-
-    progText.textContent = "Packing WebM stream...";
-    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    const blob = new Blob(chunks, { type: mimeType || 'video/webm' });
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement('a');
     a.href = url;
-    a.download = `mbr_reels_render_${Date.now()}.webm`;
+    a.download = `mbr_studio_render_${Date.now()}.webm`;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    a.remove();
     URL.revokeObjectURL(url);
-
-    if (exportAudioCtx) exportAudioCtx.close();
-    overlay.style.display = 'none';
-    isExporting = false;
-    currentTime = 0;
-    renderCanvas();
-    logToEditorConsole("Video exported successfully!", "success");
+    cleanupExport(audioCtx, overlay);
+    logToEditorConsole('Video exported successfully.', 'success');
   };
 
+  currentTime = 0;
+  if (clip1.element) {
+    clip1.element.currentTime = trimStart;
+    clip1.element.muted = false;
+    clip1.element.volume = getMainVolume();
+  }
+  if (clip2.element && clip2.type === 'video') {
+    clip2.element.currentTime = 0;
+    clip2.element.muted = false;
+    clip2.element.volume = getMainVolume();
+  }
   if (bgMusic.element) {
     bgMusic.element.currentTime = 0;
-    try { bgMusic.element.play(); } catch(e) {}
+    bgMusic.element.muted = false;
+    bgMusic.element.volume = getBgmVolume();
+    bgMusic.element.play().catch(() => {});
   }
 
-  currentTime = 0;
-  recorder.start();
+  recorder.start(500);
+  const start = performance.now();
 
-  const fps = 30;
-  const interval = 1000 / fps;
-  if (clip1.element) clip1.element.currentTime = trimStart;
-  if (clip2.element && clip2.type === 'video') clip2.element.currentTime = 0;
-
-  // Let buffers initialize briefly
-  await new Promise(r => setTimeout(r, 800));
-
-  const exportTimer = setInterval(() => {
-    if (cancelExportFlag) {
-      clearInterval(exportTimer);
-      recorder.stop();
-      if (bgMusic.element) bgMusic.element.pause();
+  function step() {
+    if (cancelExportFlag || currentTime >= totalDuration) {
+      if (recorder.state !== 'inactive') recorder.stop();
       return;
     }
 
-    if (currentTime >= totalDuration) {
-      clearInterval(exportTimer);
-      recorder.stop();
-      if (bgMusic.element) bgMusic.element.pause();
-      return;
-    }
-
-    currentTime += 1 / fps;
-
-    // Render export frame
+    currentTime = Math.min(totalDuration, (performance.now() - start) / 1000);
     const result = getSegmentAtTime(currentTime);
     if (result) {
       const { segment, offset } = result;
       let activeSource = null;
       let activeType = 'video';
       let seekTime = 0;
-
       if (segment.type === 'main') {
         activeSource = clip1.element;
         seekTime = segment.start + offset;
@@ -1177,41 +856,268 @@ btnExport.addEventListener('click', async () => {
         seekTime = offset;
       }
 
+      [clip1, clip2].forEach(clip => {
+        if (clip.element?.pause && clip.element !== activeSource) clip.element.pause();
+      });
+
       if (activeSource) {
         if (activeType === 'video') {
-          if (Math.abs(activeSource.currentTime - seekTime) > 0.25) {
-            activeSource.currentTime = seekTime;
-          }
-          activeSource.muted = true; // Mute preview speaker during render
-          if (activeSource.paused) {
-            try { activeSource.play(); } catch(e) {}
-          }
+          if (Math.abs(activeSource.currentTime - seekTime) > 0.25) activeSource.currentTime = seekTime;
+          if (activeSource.paused) activeSource.play().catch(() => {});
         }
         drawFrame(activeSource, activeType);
+      } else {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
     }
 
     drawCaptions();
-
-    const pct = (currentTime / totalDuration) * 100;
-    progText.textContent = `Compiling: ${pct.toFixed(0)}%`;
+    const pct = Math.round((currentTime / totalDuration) * 100);
+    progText.textContent = `Rendering: ${pct}%`;
     progBar.style.width = `${pct}%`;
-  }, interval);
+    setTimeout(step, 1000 / fps);
+  }
+
+  step();
+}
+
+els.btnPlayPause.addEventListener('click', togglePlayPause);
+els.btnMute.addEventListener('click', () => {
+  isMuted = !isMuted;
+  els.btnMute.classList.toggle('is-muted', isMuted);
+  els.btnMute.title = isMuted ? 'Unmute preview audio' : 'Mute preview audio';
+  els.btnMute.setAttribute('aria-label', els.btnMute.title);
+  els.btnMute.innerHTML = isMuted
+    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M18 9l4 4"></path><path d="M22 9l-4 4"></path></svg>'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M16 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 6a8 8 0 0 1 0 12"></path></svg>';
+  syncAudioMixer(getSegmentAtTime(currentTime)?.segment.type === 'insert' ? clip2.element : clip1.element);
+});
+els.btnExport.addEventListener('click', exportVideo);
+els.btnCancelExport.addEventListener('click', () => { cancelExportFlag = true; });
+els.btnRemoveClip2.addEventListener('click', removeReplacement);
+els.btnResetPan.addEventListener('click', () => resetPan(true));
+els.btnResetFilters.addEventListener('click', resetFilters);
+if (els.btnRangeIntro) {
+  els.btnRangeIntro.addEventListener('click', () => {
+    if (!clip1.element) return;
+    cutStart = trimStart;
+    cutEnd = Math.min(trimEnd, trimStart + Math.min(2, trimEnd - trimStart));
+    currentTime = 0;
+    recalculateTimeline();
+    renderCanvas();
+    logToEditorConsole('Range set to the intro.');
+  });
+}
+if (els.btnRangeAtPlayhead) {
+  els.btnRangeAtPlayhead.addEventListener('click', () => {
+    if (!clip1.element) return;
+    const result = getSegmentAtTime(currentTime);
+    const sourceTime = result?.segment.type === 'main' ? result.segment.start + result.offset : trimStart;
+    cutStart = clamp(sourceTime, trimStart, trimEnd - 0.1);
+    cutEnd = Math.min(trimEnd, cutStart + Math.min(4, trimEnd - cutStart));
+    currentTime = 0;
+    recalculateTimeline();
+    renderCanvas();
+    logToEditorConsole('Range set from the playhead.');
+  });
+}
+if (els.btnRangeTail) {
+  els.btnRangeTail.addEventListener('click', () => {
+    if (!clip1.element) return;
+    cutEnd = trimEnd;
+    cutStart = Math.max(trimStart, trimEnd - Math.min(3, trimEnd - trimStart));
+    currentTime = 0;
+    recalculateTimeline();
+    renderCanvas();
+    logToEditorConsole('Range set to the ending.');
+  });
+}
+document.querySelectorAll('.aspect-btn').forEach(btn => btn.addEventListener('click', () => setAspectRatio(btn.dataset.ratio)));
+
+byId('clip1File').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) handleMainVideo(file);
+});
+byId('clip2File').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) handleReplacement(file);
+});
+els.bgmFile.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) handleBgm(file);
 });
 
-// Cancel Export Event handler
-btnCancelExport.addEventListener('click', () => {
-  cancelExportFlag = true;
+els.mainTrimStart.addEventListener('input', e => {
+  trimStart = parseFloat(e.target.value);
+  if (trimStart >= trimEnd) trimStart = trimEnd - 0.1;
+  if (cutStart < trimStart) cutStart = trimStart;
+  if (cutEnd <= cutStart) cutEnd = cutStart + 0.1;
+  currentTime = 0;
+  recalculateTimeline();
+  renderCanvas();
+});
+els.mainTrimEnd.addEventListener('input', e => {
+  trimEnd = parseFloat(e.target.value);
+  if (trimEnd <= trimStart) trimEnd = trimStart + 0.1;
+  if (cutEnd > trimEnd) cutEnd = trimEnd;
+  if (cutStart >= cutEnd) cutStart = cutEnd - 0.1;
+  currentTime = 0;
+  recalculateTimeline();
+  renderCanvas();
+});
+els.c1Start.addEventListener('input', e => {
+  cutStart = parseFloat(e.target.value);
+  if (cutStart >= cutEnd) cutStart = cutEnd - 0.1;
+  currentTime = 0;
+  recalculateTimeline();
+  renderCanvas();
+});
+els.c1End.addEventListener('input', e => {
+  cutEnd = parseFloat(e.target.value);
+  if (cutEnd <= cutStart) cutEnd = cutStart + 0.1;
+  currentTime = 0;
+  recalculateTimeline();
+  renderCanvas();
+});
+els.c2Duration.addEventListener('input', e => {
+  clip2.duration = parseFloat(e.target.value);
+  setText('c2DurVal', `${clip2.duration.toFixed(1)}s`);
+  currentTime = 0;
+  recalculateTimeline();
+  renderCanvas();
 });
 
-// Initial boot
+els.sliderBrightness.addEventListener('input', e => {
+  filterBrightness = parseInt(e.target.value, 10);
+  setText('valBrightness', `${filterBrightness}%`);
+  renderCanvas();
+});
+els.sliderContrast.addEventListener('input', e => {
+  filterContrast = parseInt(e.target.value, 10);
+  setText('valContrast', `${filterContrast}%`);
+  renderCanvas();
+});
+els.sliderSaturation.addEventListener('input', e => {
+  filterSaturation = parseInt(e.target.value, 10);
+  setText('valSaturation', `${filterSaturation}%`);
+  renderCanvas();
+});
+
+els.mainVolume.addEventListener('input', e => {
+  mainAudioVolume = parseFloat(e.target.value);
+  setText('valMainVolume', `${Math.round(mainAudioVolume * 100)}%`);
+  syncAudioMixer(getSegmentAtTime(currentTime)?.segment.type === 'insert' ? clip2.element : clip1.element);
+});
+els.bgmVolume.addEventListener('input', e => {
+  bgMusic.volume = parseFloat(e.target.value);
+  setText('valBgmVolume', `${Math.round(bgMusic.volume * 100)}%`);
+  syncAudioMixer(clip1.element);
+});
+els.btnMuteMain.addEventListener('click', () => {
+  mainAudioMuted = !mainAudioMuted;
+  els.btnMuteMain.classList.toggle('active-mute', mainAudioMuted);
+  syncAudioMixer(clip1.element);
+});
+els.btnSoloMain.addEventListener('click', () => {
+  mainAudioSolo = !mainAudioSolo;
+  if (mainAudioSolo) bgMusic.isSolo = false;
+  els.btnSoloMain.classList.toggle('active-solo', mainAudioSolo);
+  els.btnSoloBgm.classList.toggle('active-solo', bgMusic.isSolo);
+  syncAudioMixer(clip1.element);
+});
+els.btnMuteBgm.addEventListener('click', () => {
+  bgMusic.isMuted = !bgMusic.isMuted;
+  els.btnMuteBgm.classList.toggle('active-mute', bgMusic.isMuted);
+  syncAudioMixer(clip1.element);
+});
+els.btnSoloBgm.addEventListener('click', () => {
+  bgMusic.isSolo = !bgMusic.isSolo;
+  if (bgMusic.isSolo) mainAudioSolo = false;
+  els.btnSoloBgm.classList.toggle('active-solo', bgMusic.isSolo);
+  els.btnSoloMain.classList.toggle('active-solo', mainAudioSolo);
+  syncAudioMixer(clip1.element);
+});
+
+els.btnAddCaption.addEventListener('click', () => {
+  const id = Date.now();
+  captions.push({
+    id,
+    text: 'Reels Text',
+    color: '#ffffff',
+    size: 32,
+    position: 'bottom',
+    showAt: currentTime,
+    hideAt: Math.min(totalDuration, currentTime + 4)
+  });
+  logToEditorConsole('Caption layer added.');
+  selectCaption(id);
+});
+els.captionText.addEventListener('input', e => updateActiveCaption(caption => { caption.text = e.target.value; }));
+els.captionColor.addEventListener('input', e => updateActiveCaption(caption => { caption.color = e.target.value; }));
+els.captionSize.addEventListener('input', e => updateActiveCaption(caption => { caption.size = parseInt(e.target.value, 10); }));
+els.captionPosition.addEventListener('change', e => updateActiveCaption(caption => { caption.position = e.target.value; }));
+els.captionStart.addEventListener('input', e => updateActiveCaption(caption => {
+  caption.showAt = clamp(parseFloat(e.target.value), 0, caption.hideAt - 0.1);
+  setText('captionStartVal', `${caption.showAt.toFixed(1)}s`);
+}));
+els.captionEnd.addEventListener('input', e => updateActiveCaption(caption => {
+  caption.hideAt = clamp(parseFloat(e.target.value), caption.showAt + 0.1, totalDuration);
+  setText('captionEndVal', `${caption.hideAt.toFixed(1)}s`);
+}));
+byId('btnDeleteCaption').addEventListener('click', () => {
+  if (!activeCaptionId) return;
+  captions = captions.filter(caption => caption.id !== activeCaptionId);
+  activeCaptionId = null;
+  logToEditorConsole('Caption layer removed.');
+  selectCaption(null);
+});
+
+document.querySelector('.timeline-tracks').addEventListener('click', seekTimelineFromEvent);
+window.addEventListener('resize', updatePlayhead);
+
+wrapper.addEventListener('mousedown', e => {
+  if (!clip1.element) return;
+  isPanning = true;
+  startPanMouseX = e.clientX;
+  startPanMouseY = e.clientY;
+  startPanOffsetX = panX;
+  startPanOffsetY = panY;
+  e.preventDefault();
+});
+window.addEventListener('mousemove', e => {
+  if (!isPanning) return;
+  const scaleX = canvas.width / wrapper.clientWidth;
+  const scaleY = canvas.height / wrapper.clientHeight;
+  panX = startPanOffsetX + ((e.clientX - startPanMouseX) * scaleX);
+  panY = startPanOffsetY + ((e.clientY - startPanMouseY) * scaleY);
+  renderCanvas();
+});
+window.addEventListener('mouseup', () => {
+  if (!isPanning) return;
+  isPanning = false;
+  logToEditorConsole(`Crop offset: ${panX.toFixed(0)}, ${panY.toFixed(0)}`);
+});
+wrapper.addEventListener('touchstart', e => {
+  if (!clip1.element || !e.touches.length) return;
+  isPanning = true;
+  startPanMouseX = e.touches[0].clientX;
+  startPanMouseY = e.touches[0].clientY;
+  startPanOffsetX = panX;
+  startPanOffsetY = panY;
+}, { passive: true });
+window.addEventListener('touchmove', e => {
+  if (!isPanning || !e.touches.length) return;
+  const scaleX = canvas.width / wrapper.clientWidth;
+  const scaleY = canvas.height / wrapper.clientHeight;
+  panX = startPanOffsetX + ((e.touches[0].clientX - startPanMouseX) * scaleX);
+  panY = startPanOffsetY + ((e.touches[0].clientY - startPanMouseY) * scaleY);
+  renderCanvas();
+}, { passive: true });
+window.addEventListener('touchend', () => { isPanning = false; });
+
 window.addEventListener('DOMContentLoaded', () => {
-  ctx.fillStyle = '#0f0c0c';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#8e8e93';
-  ctx.font = '20px Outfit';
-  ctx.textAlign = 'center';
-  ctx.fillText('Reels Composing Screen', canvas.width / 2, canvas.height / 2);
-  
   setAspectRatio('9:16');
+  recalculateTimeline();
+  drawEmptyScreen();
 });

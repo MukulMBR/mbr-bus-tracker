@@ -128,6 +128,10 @@ const server = http.createServer((req, res) => {
       fileSegment = 'index.html';
     } else if (pathname === '/editor') {
       fileSegment = 'editor.html';
+    } else if (pathname === '/video-editor') {
+      fileSegment = 'video-editor.html';
+    } else if (pathname === '/video-downloader') {
+      fileSegment = 'downloader.html';
     }
     let filePath = path.join(__dirname, fileSegment);
     const ext = path.extname(filePath);
@@ -152,5 +156,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`MBR Bus Telemetry Server running at http://localhost:${PORT}`);
+  console.log(`MBR Motion Hub running at http://localhost:${PORT}`);
 });

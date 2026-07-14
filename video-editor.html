@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MBR Video Editor</title>
+  <link rel="stylesheet" href="editor.css?v=12">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <header>
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">🎬</div>
+        <div>
+          <span class="brand-title">MBR Video Editor</span>
+          <span class="brand-subtitle">Remove any part, replace it, caption it, mix it, export it</span>
+        </div>
+      </div>
+      <a href="/editor" class="back-link" title="Return to hub">Back to Hub</a>
+    </div>
+  </header>
+
+  <main class="editor-workspace">
+    <section class="editor-sidebar">
+      <div class="sidebar-card">
+        <h3>1. Upload Main Video</h3>
+        <p class="desc">Select the primary video you want to edit.</p>
+        <div class="file-input-wrapper">
+          <input type="file" id="clip1File" accept="video/*" class="file-input" />
+          <label for="clip1File" class="file-label">Choose Main Video</label>
+        </div>
+        <div id="clip1Details" class="media-details" style="display: none;">
+          <span class="filename" id="clip1Name"></span>
+          <span class="dur-badge">Duration: <strong id="clip1DurationText">0.0s</strong></span>
+          <div class="slider-group" style="margin-top: 10px;">
+            <div class="slider-labels">
+              <span>Trim Start: <strong id="mainTrimStartVal">0.0s</strong></span>
+              <span>Trim End: <strong id="mainTrimEndVal">15.0s</strong></span>
+            </div>
+            <input type="range" id="mainTrimStart" min="0" max="30" step="0.1" value="0" />
+            <input type="range" id="mainTrimEnd" min="1" max="30" step="0.1" value="15" />
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>2. Remove or Replace Any Range</h3>
+        <p class="desc">Set the exact range to remove. Add an image or video when you want that range replaced.</p>
+        <div class="slider-group">
+          <div class="slider-labels">
+            <span>Range Starts: <strong id="cutStartVal">0.0s</strong></span>
+            <span>Range Ends: <strong id="cutEndVal">2.0s</strong></span>
+          </div>
+          <input type="range" id="c1Start" min="0" max="30" step="0.1" value="0" disabled />
+          <input type="range" id="c1End" min="1" max="30" step="0.1" value="2" disabled />
+        </div>
+        <div class="range-actions">
+          <button id="btnRangeIntro" class="mini-action" type="button" disabled>Intro</button>
+          <button id="btnRangeAtPlayhead" class="mini-action" type="button" disabled>From Playhead</button>
+          <button id="btnRangeTail" class="mini-action" type="button" disabled>Ending</button>
+        </div>
+        <div class="file-input-wrapper" style="margin-top: 10px;">
+          <input type="file" id="clip2File" accept="video/*,image/*" class="file-input" disabled />
+          <label for="clip2File" class="file-label disabled" id="clip2FileLabel">Choose Replacement File</label>
+        </div>
+        <div id="clip2Details" class="media-details" style="display: none;">
+          <span class="filename" id="clip2Name"></span>
+          <div class="slider-group">
+            <div class="slider-labels">
+              <span>Replacement Length: <strong id="c2DurVal">4.0s</strong></span>
+            </div>
+            <input type="range" id="c2Duration" min="1" max="15" step="0.1" value="4" />
+          </div>
+          <button id="btnRemoveClip2" class="secondary-action" type="button">Remove Replacement</button>
+        </div>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>3. Aspect Ratio & Pan</h3>
+        <p class="desc">Pick an export format. Drag the preview to reposition the crop.</p>
+        <div class="aspect-ratio-buttons">
+          <button id="btnRatioVertical" class="aspect-btn active" type="button" data-ratio="9:16">9:16</button>
+          <button id="btnRatioSquare" class="aspect-btn" type="button" data-ratio="1:1">1:1</button>
+          <button id="btnRatioHorizontal" class="aspect-btn" type="button" data-ratio="16:9">16:9</button>
+        </div>
+        <button id="btnResetPan" class="secondary-action" type="button">Center Crop</button>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>4. Video Filters</h3>
+        <p class="desc">Adjust the look of the finished composition.</p>
+        <div class="slider-group">
+          <div class="slider-labels"><span>Brightness</span><strong id="valBrightness">100%</strong></div>
+          <input type="range" id="sliderBrightness" min="50" max="150" value="100" />
+        </div>
+        <div class="slider-group" style="margin-top: 8px;">
+          <div class="slider-labels"><span>Contrast</span><strong id="valContrast">100%</strong></div>
+          <input type="range" id="sliderContrast" min="50" max="150" value="100" />
+        </div>
+        <div class="slider-group" style="margin-top: 8px;">
+          <div class="slider-labels"><span>Saturation</span><strong id="valSaturation">100%</strong></div>
+          <input type="range" id="sliderSaturation" min="0" max="200" value="100" />
+        </div>
+        <button id="btnResetFilters" class="secondary-action" type="button">Reset Filters</button>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>5. Audio Mixer</h3>
+        <p class="desc">Control original audio and optional background music.</p>
+        <div class="slider-group">
+          <div class="slider-labels"><span>Original Audio</span><strong id="valMainVolume">100%</strong></div>
+          <div class="inline-controls">
+            <input type="range" id="mainVolume" min="0" max="1" step="0.05" value="1" />
+            <button id="btnMuteMain" class="toggle-btn" title="Mute original video">M</button>
+            <button id="btnSoloMain" class="toggle-btn" title="Solo original video">S</button>
+          </div>
+        </div>
+        <div style="border-top: 1px dashed var(--border-color); margin-top: 10px; padding-top: 10px;">
+          <div class="file-input-wrapper">
+            <input type="file" id="bgmFile" accept="audio/*" class="file-input" />
+            <label for="bgmFile" class="file-label">Add Background Music</label>
+          </div>
+          <div id="bgmDetails" class="media-details" style="display: none;">
+            <span class="filename" id="bgmName"></span>
+            <div class="slider-group">
+              <div class="slider-labels"><span>BGM Volume</span><strong id="valBgmVolume">50%</strong></div>
+              <div class="inline-controls">
+                <input type="range" id="bgmVolume" min="0" max="1" step="0.05" value="0.5" />
+                <button id="btnMuteBgm" class="toggle-btn" title="Mute BGM">M</button>
+                <button id="btnSoloBgm" class="toggle-btn" title="Solo BGM">S</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>6. Caption Layers</h3>
+        <p class="desc">Add text overlays with timing controls.</p>
+        <div id="captionsList" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;"></div>
+        <button id="btnAddCaption" class="file-label" style="background: #262628; border: 1px dashed var(--border-color); cursor: pointer;" disabled>Add Caption Layer</button>
+        <div id="captionEditorPanel" class="media-details" style="display: none; border-top: 1px solid var(--border-color); margin-top: 8px; padding-top: 8px;">
+          <input type="text" id="captionText" placeholder="Enter text..." class="text-input" />
+          <div class="settings-grid">
+            <div>
+              <label>Text Color</label>
+              <input type="color" id="captionColor" value="#ffffff" />
+            </div>
+            <div>
+              <label>Text Size</label>
+              <input type="range" id="captionSize" min="16" max="64" value="28" />
+            </div>
+          </div>
+          <div class="settings-grid" style="margin-top: 6px;">
+            <div>
+              <label>Position</label>
+              <select id="captionPosition" class="text-input" style="padding: 4px;">
+                <option value="bottom">Bottom</option>
+                <option value="center">Center</option>
+                <option value="top">Top</option>
+              </select>
+            </div>
+            <div>
+              <label>Timing</label>
+              <div style="font-size: 0.65rem; color: var(--text-secondary); margin-top: 2px;">
+                Show: <span id="captionStartVal">1.0s</span> | Hide: <span id="captionEndVal">5.0s</span>
+              </div>
+            </div>
+          </div>
+          <div class="slider-group" style="margin-top: 8px;">
+            <input type="range" id="captionStart" min="0" max="30" step="0.1" value="1" />
+            <input type="range" id="captionEnd" min="1" max="30" step="0.1" value="5" />
+          </div>
+          <button id="btnDeleteCaption" class="file-label danger-action" type="button">Delete Caption</button>
+        </div>
+      </div>
+
+      <div class="console-card">
+        <h4>Editor Log</h4>
+        <div id="editorConsole" class="console-box">
+          <div class="log-line">System initialized. Choose a main video to start.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="editor-preview-container">
+      <div class="preview-aspect-wrapper" id="previewAspectWrapper">
+        <canvas id="previewCanvas" width="720" height="1280"></canvas>
+      </div>
+
+      <div class="controls-bar">
+        <button id="btnPlayPause" class="play-btn" disabled>Play</button>
+        <button id="btnMute" class="control-btn-icon sound-icon-button" type="button" title="Mute preview audio" aria-label="Mute preview audio">
+          <svg class="sound-on" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 9v6h4l5 4V5L8 9H4z"></path>
+            <path d="M16 8.5a5 5 0 0 1 0 7"></path>
+            <path d="M18.5 6a8 8 0 0 1 0 12"></path>
+          </svg>
+        </button>
+        <div class="time-display">
+          <span id="currentTime">00:00</span>
+          <span>/</span>
+          <span id="totalDuration">00:00</span>
+        </div>
+      </div>
+
+      <div class="editor-timeline">
+        <div class="timeline-ruler">
+          <div class="ruler-grid"></div>
+        </div>
+        <div class="timeline-tracks">
+          <div class="timeline-track">
+            <div class="track-label">Main</div>
+            <div class="track-bar">
+              <div id="blockMainPart1" class="timeline-block block-main">Segment A</div>
+              <div id="blockCutZone" class="timeline-block block-cut">Cut</div>
+              <div id="blockMainPart2" class="timeline-block block-main">Segment C</div>
+            </div>
+          </div>
+          <div class="timeline-track">
+            <div class="track-label">Insert</div>
+            <div class="track-bar">
+              <div id="blockInsert" class="timeline-block block-insert">Replacement</div>
+            </div>
+          </div>
+          <div class="timeline-track">
+            <div class="track-label">Captions</div>
+            <div class="track-bar">
+              <div id="blockText" class="timeline-block block-caption" style="display: none;">Caption</div>
+            </div>
+          </div>
+          <div id="playhead" class="playhead-line"></div>
+        </div>
+      </div>
+
+      <button id="btnExport" class="export-btn" style="margin-top: 24px;" disabled>Export Video</button>
+    </section>
+  </main>
+
+  <div id="exportOverlay" class="export-overlay" style="display: none;">
+    <div class="export-card">
+      <div class="insta-spinner" style="margin-bottom: 16px;"></div>
+      <h3 style="color: #fff; margin-bottom: 8px;">Rendering Video</h3>
+      <p id="exportProgressText" style="color: var(--text-secondary); font-size: 0.82rem; margin-bottom: 12px;">Processing: 0%</p>
+      <div class="progress-bar-container" style="margin-bottom: 16px;">
+        <div id="exportProgressBar" class="progress-bar"></div>
+      </div>
+      <button id="btnCancelExport" class="file-label" style="background: transparent; border: 1px solid var(--border-color); cursor: pointer; padding: 6px 12px; font-size: 0.78rem;">Cancel Export</button>
+    </div>
+  </div>
+
+  <script src="editor.js?v=12"></script>
+</body>
+
+</html>

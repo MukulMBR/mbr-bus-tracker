@@ -1,4 +1,4 @@
-// MBR Bus Tracker - Logic & Telemetry Engine
+// MBR Trip Radar - Logic & tracking engine
 
 // BRS Travels Nandyal to Bangalore Route (parsed from user screenshot data)
 const BRS_ROUTE = [
@@ -61,10 +61,10 @@ let geofenceCircle = null;
 // Multi-language Translation Dictionaries
 const translations = {
   en: {
-    appTitle: "MBR BUS TELEMETRY",
-    appSubtitle: "GPS TRACKING & AUTOMATED ARRIVAL ALARMS",
-    badgeLabel: "Telemetry Link Active",
-    hudTitle: "Live Telemetry HUD",
+    appTitle: "MBR TRIP RADAR",
+    appSubtitle: "LIVE TRACKING, DROP ALERTS & TRAVEL TOOLS",
+    badgeLabel: "Tracking Link Active",
+    hudTitle: "Live Trip Radar",
     gpsLabel: "Current Position",
     speedLabel: "Current Speed",
     distLabel: "Distance to Drop",
@@ -100,10 +100,10 @@ const translations = {
     none: "None"
   },
   kn: {
-    appTitle: "ಎಂ.ಬಿ.ಆರ್ ಬಸ್ ಟೆಲಿಮೆಟ್ರಿ",
-    appSubtitle: "ಜಿಪಿಎಸ್ ಟ್ರ್ಯಾಕಿಂಗ್ ಮತ್ತು ಸ್ವಯಂಚಾಲಿತ ಆಗಮನದ ಅಲಾರಂಗಳು",
-    badgeLabel: "ಟೆಲಿಮೆಟ್ರಿ ಲಿಂಕ್ ಸಕ್ರಿಯವಾಗಿದೆ",
-    hudTitle: "ಲೈವ್ ಟೆಲಿಮೆಟ್ರಿ HUD",
+    appTitle: "ಎಂ.ಬಿ.ಆರ್ ಟ್ರಿಪ್ ರಾಡಾರ್",
+    appSubtitle: "ಲೈವ್ ಟ್ರ್ಯಾಕಿಂಗ್, ಡ್ರಾಪ್ ಅಲರ್ಟ್‌ಗಳು ಮತ್ತು ಪ್ರಯಾಣ ಟೂಲ್ಸ್",
+    badgeLabel: "ಟ್ರ್ಯಾಕಿಂಗ್ ಲಿಂಕ್ ಸಕ್ರಿಯವಾಗಿದೆ",
+    hudTitle: "ಲೈವ್ ಟ್ರಿಪ್ ರಾಡಾರ್",
     gpsLabel: "ಪ್ರಸ್ತುತ ಜಿಪಿಎಸ್ ಸ್ಥಳ",
     speedLabel: "ಪ್ರಸ್ತುತ ವೇಗ",
     distLabel: "ಇಳಿಯುವ ದೂರ",
@@ -139,10 +139,10 @@ const translations = {
     none: "ಯಾವುದೂ ಇಲ್ಲ"
   },
   te: {
-    appTitle: "ఎమ్.బి.ఆర్ బస్ టెలిమెట్రీ",
-    appSubtitle: "జిపిఎస్ ట్రాకింగ్ & ఆటోమేటెడ్ రాక అలారాలు",
-    badgeLabel: "టెలిమెట్రీ లింక్ క్రియాశీలంగా ఉంది",
-    hudTitle: "లైవ్ టెలిమెట్రీ HUD",
+    appTitle: "ఎమ్.బి.ఆర్ ట్రిప్ రాడార్",
+    appSubtitle: "లైవ్ ట్రాకింగ్, డ్రాప్ అలర్ట్స్ & ట్రావెల్ టూల్స్",
+    badgeLabel: "ట్రాకింగ్ లింక్ క్రియాశీలంగా ఉంది",
+    hudTitle: "లైవ్ ట్రిప్ రాడార్",
     gpsLabel: "ప్రస్తుత స్థానం",
     speedLabel: "ప్రస్తుత వేగం",
     distLabel: "దిగే దూరం",
@@ -1403,7 +1403,7 @@ function setupEventListeners() {
     // Play a brief 1.5 second test of the siren buzzer
     alarmActive = true;
     playBuzzerSound();
-    speakVoiceAlert("System Check: MBR Bus Telemetry voice engine is active and ready.");
+    speakVoiceAlert("System Check: MBR Trip Radar voice engine is active and ready.");
     
     setTimeout(() => {
       alarmActive = false;
@@ -1426,7 +1426,7 @@ function setupEventListeners() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `mbr_bus_tracker_log_${new Date().toISOString().slice(0, 10)}.txt`;
+    a.download = `mbr_trip_radar_log_${new Date().toISOString().slice(0, 10)}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
