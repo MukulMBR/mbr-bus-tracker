@@ -13,23 +13,18 @@ if (process.platform === 'win32') {
   ytdlpPath = 'C:\\Users\\motak\\.gemini\\antigravity-ide\\brain\\e4fa1d1d-76bd-4781-ba16-880dfeb5c54e\\scratch\\yt-dlp.exe';
 } else {
   const localYtdlp = path.join(__dirname, 'yt-dlp');
-  if (fs.existsSync(localYtdlp)) {
-    ytdlpPath = localYtdlp;
-  } else {
-    try {
-      execSync('which yt-dlp');
-      ytdlpPath = 'yt-dlp';
-    } catch (e) {
-      console.log('yt-dlp not found globally. Downloading Linux binary on Render startup...');
-      try {
-        execSync(`curl -L -o "${localYtdlp}" https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp`);
-        execSync(`chmod +x "${localYtdlp}"`);
-        ytdlpPath = localYtdlp;
-        console.log('yt-dlp downloaded and made executable successfully!');
-      } catch (err) {
-        console.error('Failed to download yt-dlp on Render:', err);
-      }
+  console.log('Ensuring latest yt-dlp binary is installed...');
+  try {
+    if (fs.existsSync(localYtdlp)) {
+      fs.unlinkSync(localYtdlp);
     }
+    execSync(`curl -L -o "${localYtdlp}" https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp`);
+    execSync(`chmod +x "${localYtdlp}"`);
+    ytdlpPath = localYtdlp;
+    console.log('Latest yt-dlp downloaded and made executable successfully!');
+  } catch (err) {
+    console.error('Failed to download latest yt-dlp, falling back to system command:', err);
+    ytdlpPath = 'yt-dlp';
   }
 }
 
@@ -123,9 +118,9 @@ const server = http.createServer((req, res) => {
 
     let ytdlpArgs;
     if (type === 'audio') {
-      ytdlpArgs = ['--js-runtimes', 'node', '--extractor-args', 'youtube:player_client=android', '-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', tempFile, videoUrl];
+      ytdlpArgs = ['--js-runtimes', 'node', '-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', tempFile, videoUrl];
     } else {
-      ytdlpArgs = ['--js-runtimes', 'node', '--extractor-args', 'youtube:player_client=android', '-f', 'best[ext=mp4]/best', '-o', tempFile, videoUrl];
+      ytdlpArgs = ['--js-runtimes', 'node', '-f', 'best[ext=mp4]/best', '-o', tempFile, videoUrl];
       if (ffmpegPath && ffmpegPath !== 'ffmpeg') {
         ytdlpArgs.push('--ffmpeg-location', ffmpegPath);
       }
@@ -182,7 +177,6 @@ const server = http.createServer((req, res) => {
         // 1. Download video-only stream to disk
         await runProcess(ytdlpPath, [
           '--js-runtimes', 'node',
-          '--extractor-args', 'youtube:player_client=android',
           '-f', 'bestvideo[ext=mp4]/bestvideo',
           '--no-playlist', '-o', vFile, videoUrl
         ]);
@@ -192,7 +186,6 @@ const server = http.createServer((req, res) => {
         // 2. Download audio-only stream to disk
         await runProcess(ytdlpPath, [
           '--js-runtimes', 'node',
-          '--extractor-args', 'youtube:player_client=android',
           '-f', 'bestaudio',
           '--no-playlist', '-o', aFile, videoUrl
         ]);
