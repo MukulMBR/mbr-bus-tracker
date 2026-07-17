@@ -204,10 +204,22 @@
       <input type="file" id="fileInput" accept="audio/*">
       
       <!-- Player seek interface -->
-      <div class="player-bar" id="playerBar">
-        <button id="playBtn" class="play-btn" title="Play/Pause">▶</button>
-        <input type="range" id="seek" class="seek-slider" min="0" max="1000" value="0">
-        <span class="hint" id="timeLabel" style="min-width: 90px; text-align: right;">0:00 / 0:00</span>
+      <div class="player-bar" id="playerBar" style="flex-direction: column; align-items: stretch; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <button id="playBtn" class="play-btn" title="Play/Pause">▶</button>
+          <input type="range" id="seek" class="seek-slider" min="0" max="1000" value="0">
+          <span class="hint" id="timeLabel" style="min-width: 90px; text-align: right;">0:00 / 0:00</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding-left: 58px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button id="rewindBtn" class="btn" style="padding: 6px 12px; font-size: 0.8rem;" title="Rewind">⏪</button>
+            <button id="forwardBtn" class="btn" style="padding: 6px 12px; font-size: 0.8rem;" title="Fast Forward">⏩</button>
+            <select id="skipInterval" class="select-input" style="width: auto; padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;">
+              <option value="5">5s</option>
+            </select>
+          </div>
+          <span style="font-size: 0.75rem; color: var(--muted);">Skip Interval</span>
+        </div>
       </div>
       <div class="status" id="durationHint" style="margin-top: 8px;"></div>
       <div class="status err" id="playError" style="display:none"></div>
@@ -224,6 +236,13 @@
           <option value="keep">Keep Selected Segments (Merge them together)</option>
           <option value="delete">Delete / Cut Out Selected Segments (Remove them, keep the balance)</option>
         </select>
+      </div>
+
+      <!-- Live Segment Marker Container -->
+      <div style="margin-bottom: 22px; padding: 16px; background: rgba(251,146,60,0.04); border: 1px solid rgba(251,146,60,0.15); border-radius: 14px; text-align: center;">
+        <div style="font-size: 0.75rem; font-weight: 800; color: var(--orange); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;">⏱️ Live Segment Marker</div>
+        <button id="liveMarkBtn" class="btn btn-primary" style="width: 100%; font-size: 0.95rem; padding: 12px; border-radius: 10px; box-shadow: 0 4px 15px rgba(251,146,60,0.15);">Capture Start Point</button>
+        <div id="liveMarkStatus" style="font-size: 0.8rem; color: var(--muted); margin-top: 8px; line-height: 1.4;">Click to set segment start while listening</div>
       </div>
 
       <div class="row">
@@ -285,6 +304,15 @@
     const listTitle = document.getElementById('listTitle');
     const addClipBtn = document.getElementById('addClip');
 
+    // New DOM elements
+    const rewindBtn = document.getElementById('rewindBtn');
+    const forwardBtn = document.getElementById('forwardBtn');
+    const skipInterval = document.getElementById('skipInterval');
+    const liveMarkBtn = document.getElementById('liveMarkBtn');
+    const liveMarkStatus = document.getElementById('liveMarkStatus');
+
+    let liveStart = null;
+
     // Handle trimmer mode toggle
     trimMode.addEventListener('change', () => {
       const isDelete = trimMode.value === 'delete';
@@ -326,6 +354,8 @@
           clipCard.style.display = 'block';
           clips = [];
           renderClips();
+          populateSkipIntervals(audioBuffer.duration);
+          resetLiveMarker();
         } catch (err) {
           durationHint.textContent = "";
           playError.textContent = "Could not decode this audio file (" + err.message + "). Try converting it to MP3 or WAV first.";
@@ -436,6 +466,97 @@
         playStartOffset = t;
       }
     });
+
+    // Skip and Fast-forward / Rewind controls
+    function populateSkipIntervals(duration) {
+      skipInterval.innerHTML = '';
+      const options = [
+        { label: '5s', value: 5 },
+        { label: '30s', value: 30 },
+        { label: '1 min', value: 60 },
+        { label: '5 min', value: 300 },
+        { label: '10 min', value: 600 },
+        { label: '30 min', value: 1800 }
+      ];
+      options.forEach(opt => {
+        if (duration >= opt.value) {
+          const el = document.createElement('option');
+          el.value = opt.value;
+          el.textContent = opt.label;
+          skipInterval.appendChild(el);
+        }
+      });
+      if (skipInterval.children.length === 0) {
+        const el = document.createElement('option');
+        el.value = 5;
+        el.textContent = '5s';
+        skipInterval.appendChild(el);
+      }
+    }
+
+    rewindBtn.addEventListener('click', () => {
+      if (!audioBuffer) return;
+      const skip = parseFloat(skipInterval.value);
+      const newTime = Math.max(0, currentPlaybackTime() - skip);
+      seek.value = newTime;
+      updateTimeLabel(newTime);
+      if (isPlaying) {
+        playFrom(newTime, audioBuffer.duration);
+      } else {
+        playStartOffset = newTime;
+      }
+    });
+
+    forwardBtn.addEventListener('click', () => {
+      if (!audioBuffer) return;
+      const skip = parseFloat(skipInterval.value);
+      const newTime = Math.min(audioBuffer.duration, currentPlaybackTime() + skip);
+      seek.value = newTime;
+      updateTimeLabel(newTime);
+      if (isPlaying) {
+        playFrom(newTime, audioBuffer.duration);
+      } else {
+        playStartOffset = newTime;
+      }
+    });
+
+    // Live segment marking logic
+    liveMarkBtn.addEventListener('click', () => {
+      if (!audioBuffer) return;
+      const currentTime = currentPlaybackTime();
+      
+      if (liveStart === null) {
+        // Mark Start
+        liveStart = currentTime;
+        liveMarkBtn.textContent = 'Capture End & Add Segment';
+        liveMarkBtn.style.background = 'var(--rose)';
+        liveMarkBtn.style.borderColor = 'var(--rose)';
+        liveMarkBtn.style.color = '#fff';
+        liveMarkStatus.innerHTML = `Start marked at <strong style="color:var(--orange);">${formatTime(liveStart)}</strong>. Listen and click when reached end point.`;
+      } else {
+        // Mark End & Add Segment
+        const liveEnd = currentTime;
+        if (liveEnd <= liveStart) {
+          liveMarkStatus.textContent = 'Error: End point must be after start point. Resetting...';
+          resetLiveMarker();
+          return;
+        }
+        
+        clips.push({ start: liveStart, end: liveEnd });
+        renderClips();
+        
+        liveMarkStatus.innerHTML = `Added segment: <strong style="color:var(--cyan);">${formatTime(liveStart)} &rarr; ${formatTime(liveEnd)}</strong>`;
+        resetLiveMarker();
+      }
+    });
+
+    function resetLiveMarker() {
+      liveStart = null;
+      liveMarkBtn.textContent = 'Capture Start Point';
+      liveMarkBtn.style.background = 'var(--orange)';
+      liveMarkBtn.style.borderColor = 'var(--orange)';
+      liveMarkBtn.style.color = '#000';
+    }
 
     document.getElementById('useCurrentStart').addEventListener('click', () => {
       startInput.value = formatTime(currentPlaybackTime());
