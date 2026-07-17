@@ -95,7 +95,7 @@
     /* Inputs */
     .input-row { display:flex; gap:10px; align-items:center; }
     .input-wrap { position: relative; width: 100%; }
-    .url-input { width: 100%; background:rgba(0,0,0,0.3); border:1px solid var(--line); border-radius:14px; padding:14px 165px 14px 18px; color:var(--text); font:inherit; font-size:0.9rem; outline:none; transition:border-color 0.2s,box-shadow 0.2s; }
+    .url-input { width: 100%; background:rgba(0,0,0,0.3); border:1px solid var(--line); border-radius:14px; padding:14px 95px 14px 18px; color:var(--text); font:inherit; font-size:0.9rem; outline:none; transition:border-color 0.2s,box-shadow 0.2s; }
     .url-input::placeholder { color:var(--muted); }
     .url-input:focus { border-color:rgba(96,165,250,0.5); box-shadow:0 0 0 3px rgba(96,165,250,0.1); }
     .input-actions { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; gap: 6px; align-items: center; z-index: 10; }
@@ -200,8 +200,8 @@
     <div class="input-wrap">
       <input class="url-input" id="videoUrl" type="url" placeholder="Paste video URL here…">
       <div class="input-actions">
-        <button class="inline-btn inline-paste" id="pasteBtnVideo">📋 Paste</button>
-        <button class="inline-btn inline-clear" id="clearBtnVideo">❌ Clear</button>
+        <button class="inline-btn inline-paste" id="pasteBtnVideo" title="Paste URL">📋</button>
+        <button class="inline-btn inline-clear" id="clearBtnVideo" title="Clear URL">❌</button>
       </div>
     </div>
     <button class="dl-btn dl-btn-video" id="videoBtn">Download Video</button>
@@ -213,8 +213,8 @@
     <div class="input-wrap">
       <input class="url-input" id="audioUrl" type="url" placeholder="Paste video URL to extract audio…">
       <div class="input-actions">
-        <button class="inline-btn inline-paste" id="pasteBtnAudio">📋 Paste</button>
-        <button class="inline-btn inline-clear" id="clearBtnAudio">❌ Clear</button>
+        <button class="inline-btn inline-paste" id="pasteBtnAudio" title="Paste URL">📋</button>
+        <button class="inline-btn inline-clear" id="clearBtnAudio" title="Clear URL">❌</button>
       </div>
     </div>
     <button class="dl-btn dl-btn-audio" id="audioBtn">Extract Audio (MP3)</button>
@@ -226,8 +226,8 @@
     <div class="input-wrap">
       <input class="url-input" id="bothUrl" type="url" placeholder="Paste video URL here…">
       <div class="input-actions">
-        <button class="inline-btn inline-paste" id="pasteBtnBoth">📋 Paste</button>
-        <button class="inline-btn inline-clear" id="clearBtnBoth">❌ Clear</button>
+        <button class="inline-btn inline-paste" id="pasteBtnBoth" title="Paste URL">📋</button>
+        <button class="inline-btn inline-clear" id="clearBtnBoth" title="Clear URL">❌</button>
       </div>
     </div>
     <button class="dl-btn dl-btn-both" id="bothBtn">Download Both (Video + Audio)</button>
@@ -290,8 +290,8 @@
     <div class="input-wrap" style="margin-bottom:12px;">
       <input class="url-input" id="mergeUrl" type="url" placeholder="Paste source video URL…">
       <div class="input-actions">
-        <button class="inline-btn inline-paste" id="pasteBtnMerge">📋 Paste</button>
-        <button class="inline-btn inline-clear" id="clearBtnMerge">❌ Clear</button>
+        <button class="inline-btn inline-paste" id="pasteBtnMerge" title="Paste URL">📋</button>
+        <button class="inline-btn inline-clear" id="clearBtnMerge" title="Clear URL">❌</button>
       </div>
     </div>
     <button id="mergeBtn" style="width:100%;padding:14px;border:none;border-radius:12px;font:inherit;font-weight:800;font-size:0.95rem;cursor:pointer;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;box-shadow:0 6px 20px rgba(59,130,246,0.3);">Merge via URL → MP4</button>
