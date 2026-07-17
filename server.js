@@ -35,6 +35,7 @@ if (process.platform === 'win32') {
   if (fs.existsSync(winFfmpeg)) ffmpegPath = winFfmpeg;
 }
 const ffmpegLocation = ffmpegPath && ffmpegPath !== 'ffmpeg' ? path.dirname(ffmpegPath) : null;
+const cookiesPath = process.env.YT_DLP_COOKIES_PATH || path.join(__dirname, 'cookies.txt');
 
 // Temp directory for merge intermediates
 const TMP_DIR = path.join(__dirname, 'tmp');
@@ -119,13 +120,17 @@ const server = http.createServer((req, res) => {
 
     let ytdlpArgs;
     if (type === 'audio') {
-      ytdlpArgs = ['--js-runtimes', 'node:' + process.execPath, '-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', tempFile, videoUrl];
+      ytdlpArgs = ['--js-runtimes', 'node:' + process.execPath, '-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', tempFile];
     } else {
-      ytdlpArgs = ['--js-runtimes', 'node:' + process.execPath, '-f', 'best[ext=mp4]/best', '-o', tempFile, videoUrl];
+      ytdlpArgs = ['--js-runtimes', 'node:' + process.execPath, '-f', 'best[ext=mp4]/best', '-o', tempFile];
     }
     if (ffmpegLocation) {
       ytdlpArgs.push('--ffmpeg-location', ffmpegLocation);
     }
+    if (cookiesPath && fs.existsSync(cookiesPath)) {
+      ytdlpArgs.push('--cookies', cookiesPath);
+    }
+    ytdlpArgs.push(videoUrl);
 
     (async () => {
       try {
@@ -154,7 +159,14 @@ const server = http.createServer((req, res) => {
         if (!res.headersSent) {
           res.writeHead(500, { 'Content-Type': 'text/plain' });
         }
-        res.end('Download failed: ' + err.message);
+        let clientMsg = err.message || '';
+        const isBotOrCookieErr = /confirm.*bot|sign in|cookies|auth/i.test(clientMsg);
+        if (isBotOrCookieErr) {
+          clientMsg = "This video requires additional authentication and could not be downloaded";
+        } else {
+          clientMsg = "Download failed: " + clientMsg;
+        }
+        res.end(clientMsg);
       }
     })();
 
@@ -179,9 +191,13 @@ const server = http.createServer((req, res) => {
         const vArgs = [
           '--js-runtimes', 'node:' + process.execPath,
           '-f', 'bestvideo[ext=mp4]/bestvideo',
-          '--no-playlist', '-o', vFile, videoUrl
+          '--no-playlist', '-o', vFile
         ];
         if (ffmpegLocation) vArgs.push('--ffmpeg-location', ffmpegLocation);
+        if (cookiesPath && fs.existsSync(cookiesPath)) {
+          vArgs.push('--cookies', cookiesPath);
+        }
+        vArgs.push(videoUrl);
         await runProcess(ytdlpPath, vArgs);
 
         if (!fs.existsSync(vFile)) throw new Error('Video download produced no file.');
@@ -190,9 +206,13 @@ const server = http.createServer((req, res) => {
         const aArgs = [
           '--js-runtimes', 'node:' + process.execPath,
           '-f', 'bestaudio',
-          '--no-playlist', '-o', aFile, videoUrl
+          '--no-playlist', '-o', aFile
         ];
         if (ffmpegLocation) aArgs.push('--ffmpeg-location', ffmpegLocation);
+        if (cookiesPath && fs.existsSync(cookiesPath)) {
+          aArgs.push('--cookies', cookiesPath);
+        }
+        aArgs.push(videoUrl);
         await runProcess(ytdlpPath, aArgs);
 
         if (!fs.existsSync(aFile)) throw new Error('Audio download produced no file.');
@@ -233,7 +253,12 @@ const server = http.createServer((req, res) => {
         if (!res.headersSent) {
           res.writeHead(500, { 'Content-Type': 'application/json' });
         }
-        res.end(JSON.stringify({ error: err.message }));
+        let clientMsg = err.message || '';
+        const isBotOrCookieErr = /confirm.*bot|sign in|cookies|auth/i.test(clientMsg);
+        if (isBotOrCookieErr) {
+          clientMsg = "This video requires additional authentication and could not be downloaded";
+        }
+        res.end(JSON.stringify({ error: clientMsg }));
       }
     })();
 

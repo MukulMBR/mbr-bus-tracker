@@ -1,0 +1,7 @@
+# Ignore YouTube downloader cookies
+*cookies*.txt
+cookies.txt
+
+# Temp files
+tmp/
+downloaded_video.mp4
