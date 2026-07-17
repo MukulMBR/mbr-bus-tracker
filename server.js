@@ -33,6 +33,17 @@ if (process.platform === 'win32') {
   }
 }
 
+// Resolve ffmpeg path (needed for merge)
+let ffmpegPath = 'ffmpeg';
+if (process.platform === 'win32') {
+  const winFfmpeg = 'C:\\Users\\motak\\Downloads\\ffmpeg\\ffmpeg-master-latest-win64-gpl\\bin\\ffmpeg.exe';
+  if (fs.existsSync(winFfmpeg)) ffmpegPath = winFfmpeg;
+}
+
+// Temp directory for merge intermediates
+const TMP_DIR = path.join(__dirname, 'tmp');
+if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR);
+
 // Helper to proxy JSON requests to trackingo with browser headers
 function proxyRequest(targetUrl, res) {
   const urlObj = new URL(targetUrl);
@@ -61,6 +72,25 @@ function proxyRequest(targetUrl, res) {
   });
 }
 
+// Run a child process and resolve when it exits 0, reject otherwise
+function runProcess(cmd, args) {
+  const { spawn } = require('child_process');
+  return new Promise((resolve, reject) => {
+    const proc = spawn(cmd, args);
+    let stderr = '';
+    proc.stderr.on('data', d => { stderr += d; console.error(d.toString()); });
+    proc.stdout.on('data', d => console.log(d.toString()));
+    proc.on('error', reject);
+    proc.on('close', code => {
+      if (code === 0) resolve();
+      else reject(new Error(`Exit ${code}: ${stderr.slice(-400)}`));
+    });
+  });
+}
+
+// Silently delete a file, ignore errors
+function tryUnlink(f) { try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch (_) {} }
+
 const server = http.createServer((req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
   const pathname = parsedUrl.pathname;
@@ -80,22 +110,35 @@ const server = http.createServer((req, res) => {
     proxyRequest(`https://api.callmebot.com/whatsapp.php?phone=${phone}&apikey=${apikey}&text=${encodeURIComponent(text)}`, res);
   } else if (pathname === '/api/download-video') {
     const videoUrl = parsedUrl.searchParams.get('url');
+    const type = parsedUrl.searchParams.get('type') || 'video'; // 'video' | 'audio'
     if (!videoUrl) {
       res.writeHead(400, { 'Content-Type': 'text/plain' });
       res.end('Missing url parameter');
       return;
     }
 
-    res.writeHead(200, {
-      'Content-Type': 'video/mp4',
-      'Content-Disposition': 'attachment; filename="downloaded_video.mp4"',
-      'Access-Control-Allow-Origin': '*'
-    });
-
     const { spawn } = require('child_process');
+    let ytdlpArgs;
+
+    if (type === 'audio') {
+      res.writeHead(200, {
+        'Content-Type': 'audio/mpeg',
+        'Content-Disposition': 'attachment; filename="downloaded_audio.mp3"',
+        'Access-Control-Allow-Origin': '*'
+      });
+      ytdlpArgs = ['-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', '-', videoUrl];
+    } else {
+      res.writeHead(200, {
+        'Content-Type': 'video/mp4',
+        'Content-Disposition': 'attachment; filename="downloaded_video.mp4"',
+        'Access-Control-Allow-Origin': '*'
+      });
+      ytdlpArgs = ['-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best', '--merge-output-format', 'mp4', '-o', '-', videoUrl];
+    }
+
     let child;
     try {
-      child = spawn(ytdlpPath, ['-o', '-', videoUrl]);
+      child = spawn(ytdlpPath, ytdlpArgs);
     } catch (err) {
       console.error('Failed to spawn child process:', err);
       res.writeHead(500, { 'Content-Type': 'text/plain' });
@@ -121,8 +164,142 @@ const server = http.createServer((req, res) => {
     req.on('close', () => {
       child.kill();
     });
+
+  } else if (pathname === '/api/merge') {
+
+    // ── Merge video + audio into one MP4 ──────────────────────────────────
+    const videoUrl = parsedUrl.searchParams.get('url');
+    if (!videoUrl) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Missing url parameter' }));
+      return;
+    }
+
+    const id    = Date.now();
+    const vFile = path.join(TMP_DIR, `v_${id}.mp4`);
+    const aFile = path.join(TMP_DIR, `a_${id}.m4a`);
+    const oFile = path.join(TMP_DIR, `merged_${id}.mp4`);
+
+    (async () => {
+      try {
+        // 1. Download video-only stream to disk
+        await runProcess(ytdlpPath, [
+          '-f', 'bestvideo[ext=mp4]/bestvideo',
+          '--no-playlist', '-o', vFile, videoUrl
+        ]);
+
+        if (!fs.existsSync(vFile)) throw new Error('Video download produced no file.');
+
+        // 2. Download audio-only stream to disk
+        await runProcess(ytdlpPath, [
+          '-f', 'bestaudio',
+          '--no-playlist', '-o', aFile, videoUrl
+        ]);
+
+        if (!fs.existsSync(aFile)) throw new Error('Audio download produced no file.');
+
+        // 3. Merge — copy video, encode audio as AAC, trim to shorter stream
+        await runProcess(ffmpegPath, [
+          '-i', vFile, '-i', aFile,
+          '-c:v', 'copy', '-c:a', 'aac', '-shortest',
+          '-y', oFile
+        ]);
+
+        if (!fs.existsSync(oFile)) throw new Error('ffmpeg merge produced no output file.');
+
+        // 4. Stream merged file to client
+        const stat = fs.statSync(oFile);
+        res.writeHead(200, {
+          'Content-Type': 'video/mp4',
+          'Content-Disposition': 'attachment; filename="merged_output.mp4"',
+          'Content-Length': stat.size,
+          'Access-Control-Allow-Origin': '*'
+        });
+
+        const stream = fs.createReadStream(oFile);
+        stream.pipe(res);
+
+        stream.on('end', () => {
+          // 5. Delete originals (only after successful stream) — keep none
+          tryUnlink(vFile);
+          tryUnlink(aFile);
+          tryUnlink(oFile);
+          console.log(`Merge complete, temp files cleaned up (id=${id})`);
+        });
+
+      } catch (err) {
+        console.error('Merge failed:', err.message);
+        // Do NOT delete originals on failure so user can retry
+        tryUnlink(oFile); // clean any partial output
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+        }
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    })();
+
+  } else if (pathname === '/api/upload/video' || pathname === '/api/upload/audio') {
+    // ── Receive raw binary upload (video or audio) ─────────────────────────
+    const session = parsedUrl.searchParams.get('session');
+    if (!session) { res.writeHead(400); res.end('Missing session'); return; }
+    const isVideo = pathname.includes('video');
+    const ext = isVideo ? 'mp4' : 'mp3';
+    const outFile = path.join(TMP_DIR, `upload_${isVideo ? 'v' : 'a'}_${session}.${ext}`);
+    const ws = fs.createWriteStream(outFile);
+    req.pipe(ws);
+    ws.on('finish', () => {
+      if (!res.headersSent) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      }
+    });
+    ws.on('error', err => {
+      tryUnlink(outFile);
+      if (!res.headersSent) { res.writeHead(500); res.end(JSON.stringify({ error: err.message })); }
+    });
+
+  } else if (pathname === '/api/merge-uploaded') {
+    // ── Merge previously uploaded video + audio files ─────────────────────
+    const session = parsedUrl.searchParams.get('session');
+    if (!session) { res.writeHead(400); res.end('Missing session'); return; }
+    const vFile = path.join(TMP_DIR, `upload_v_${session}.mp4`);
+    const aFile = path.join(TMP_DIR, `upload_a_${session}.mp3`);
+    const oFile = path.join(TMP_DIR, `upload_merged_${session}.mp4`);
+
+    if (!fs.existsSync(vFile) || !fs.existsSync(aFile)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Upload both video and audio files first.' }));
+      return;
+    }
+
+    (async () => {
+      try {
+        await runProcess(ffmpegPath, [
+          '-i', vFile, '-i', aFile,
+          '-c:v', 'copy', '-c:a', 'aac', '-shortest',
+          '-y', oFile
+        ]);
+        if (!fs.existsSync(oFile)) throw new Error('ffmpeg produced no output.');
+        const stat = fs.statSync(oFile);
+        res.writeHead(200, {
+          'Content-Type': 'video/mp4',
+          'Content-Disposition': 'attachment; filename="merged_output.mp4"',
+          'Content-Length': stat.size,
+          'Access-Control-Allow-Origin': '*'
+        });
+        const rs = fs.createReadStream(oFile);
+        rs.pipe(res);
+        rs.on('end', () => { tryUnlink(vFile); tryUnlink(aFile); tryUnlink(oFile); });
+      } catch (err) {
+        tryUnlink(oFile); // remove partial output; keep v+a so user can retry
+        if (!res.headersSent) { res.writeHead(500, { 'Content-Type': 'application/json' }); }
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    })();
+
   } else {
     // Serve static files
+
     let fileSegment = pathname;
     if (pathname === '/') {
       fileSegment = 'index.html';
@@ -130,8 +307,9 @@ const server = http.createServer((req, res) => {
       fileSegment = 'editor.html';
     } else if (pathname === '/video-editor') {
       fileSegment = 'video-editor.html';
-    } else if (pathname === '/video-downloader') {
+    } else if (pathname === '/video-downloader' || pathname === '/downloader') {
       fileSegment = 'downloader.html';
+
     }
     let filePath = path.join(__dirname, fileSegment);
     const ext = path.extname(filePath);

@@ -1,132 +1,576 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MBR Video Downloader</title>
-  <link rel="stylesheet" href="hub.css?v=1">
+  <title>MBR Downloader</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
-    .download-shell {
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:    #06070c;
+      --panel: rgba(10,12,20,0.9);
+      --line:  rgba(255,255,255,0.09);
+      --text:  #f1f5f9;
+      --muted: #94a3b8;
+      --cyan:  #2dd4bf;
+      --blue:  #60a5fa;
+      --purple:#a78bfa;
+      --rose:  #fb7185;
+      --font:  'Outfit', system-ui, sans-serif;
+    }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
       display: grid;
       place-items: center;
       padding: 24px;
+      overflow-x: hidden;
     }
+    .bg-orb { position:fixed; border-radius:50%; filter:blur(100px); opacity:0.12; pointer-events:none; animation:orbFloat 14s ease-in-out infinite; }
+    .orb-a { width:500px;height:500px; background:#60a5fa; top:-100px; left:-100px; }
+    .orb-b { width:400px;height:400px; background:#bc1888; bottom:-80px; right:-80px; animation-delay:-6s; }
+    @keyframes orbFloat { 0%,100%{transform:translate(0,0)} 50%{transform:translate(20px,-30px)} }
 
-    .download-panel {
-      width: min(720px, 100%);
-      border: 1px solid var(--line);
-      border-radius: 22px;
-      background: rgba(18, 20, 28, 0.82);
-      backdrop-filter: blur(18px);
-      padding: 28px;
+    /* Panel */
+    .panel {
+      position:relative; z-index:1;
+      width:min(660px,100%);
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:28px;
+      padding:36px;
+      backdrop-filter:blur(24px);
+      box-shadow:0 32px 80px rgba(0,0,0,0.5);
+      animation:slideUp 0.5s ease both;
     }
+    @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
 
-    .download-panel h1 {
-      font-size: clamp(2rem, 6vw, 4.6rem);
-      margin-bottom: 16px;
+    /* Nav */
+    .panel-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; }
+    .back-link { display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:700; color:var(--muted); text-decoration:none; transition:color 0.2s; }
+    .back-link:hover { color:var(--text); }
+    .panel-brand { font-size:0.72rem; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+
+    /* Dynamic icon */
+    .panel-icon {
+      width:56px; height:56px; border-radius:18px;
+      display:grid; place-items:center;
+      margin-bottom:20px;
+      transition:background 0.4s ease, box-shadow 0.4s ease;
     }
+    .panel-icon svg { display:block; }
 
-    .download-panel p {
-      color: var(--muted);
-      line-height: 1.55;
+    h1 { font-size:2.2rem; font-weight:900; letter-spacing:-0.02em; margin-bottom:8px; }
+    .subtitle { color:var(--muted); font-size:0.9rem; line-height:1.6; margin-bottom:20px; }
+
+    /* Platform chips */
+    .platform-chips { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:26px; }
+    .pchip {
+      display:inline-flex; align-items:center; gap:7px;
+      padding:6px 14px; border-radius:999px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(255,255,255,0.04);
+      color:var(--muted); font:inherit; font-size:0.78rem; font-weight:700;
+      cursor:pointer; transition:all 0.2s; user-select:none;
     }
+    .pchip:hover { border-color:rgba(255,255,255,0.22); color:var(--text); background:rgba(255,255,255,0.07); }
+    .pchip.active { color:var(--text); border-color:rgba(255,255,255,0.28); background:rgba(255,255,255,0.08); }
+    .pchip-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 
-    .download-form {
-      display: flex;
-      gap: 10px;
-      margin-top: 24px;
+    /* Tabs */
+    .tabs { display:flex; gap:0; background:rgba(255,255,255,0.04); border:1px solid var(--line); border-radius:14px; padding:4px; margin-bottom:24px; }
+    .tab { flex:1; background:transparent; border:none; color:var(--muted); font:inherit; font-weight:700; font-size:0.88rem; padding:10px 16px; border-radius:10px; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:7px; }
+    .tab.active { background:rgba(255,255,255,0.08); color:var(--text); box-shadow:0 1px 6px rgba(0,0,0,0.3); }
+    .tab.active.tab-video { color:var(--blue); }
+    .tab.active.tab-audio { color:var(--purple); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+
+    /* Inputs */
+    .input-row { display:flex; gap:10px; align-items:center; }
+    .url-input { flex:1; min-width:0; background:rgba(0,0,0,0.3); border:1px solid var(--line); border-radius:14px; padding:14px 18px; color:var(--text); font:inherit; font-size:0.9rem; outline:none; transition:border-color 0.2s,box-shadow 0.2s; }
+    .url-input::placeholder { color:var(--muted); }
+    .url-input:focus { border-color:rgba(96,165,250,0.5); box-shadow:0 0 0 3px rgba(96,165,250,0.1); }
+    .paste-btn { background:rgba(255,255,255,0.06); border:1px solid var(--line); color:var(--text); font:inherit; font-weight:700; font-size:0.82rem; padding:14px 16px; border-radius:14px; cursor:pointer; white-space:nowrap; transition:all 0.2s; }
+    .paste-btn:hover { background:rgba(255,255,255,0.1); }
+
+    /* Download buttons */
+    .dl-btn { width:100%; margin-top:14px; padding:16px; border:none; border-radius:14px; font:inherit; font-size:1rem; font-weight:800; cursor:pointer; transition:opacity 0.2s,transform 0.15s; position:relative; overflow:hidden; }
+    .dl-btn:hover { opacity:0.9; transform:translateY(-1px); }
+    .dl-btn-video { background:linear-gradient(135deg,#f09433,#dc2743,#bc1888); color:#fff; box-shadow:0 8px 28px rgba(220,39,67,0.35); }
+    .dl-btn-audio { background:linear-gradient(135deg,#7c3aed,#a78bfa,#818cf8); color:#fff; box-shadow:0 8px 28px rgba(139,92,246,0.35); }
+    .dl-btn::after { content:''; position:absolute; top:0; left:-100%; width:60%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent); transform:skewX(-20deg); animation:shimmer 2.5s infinite; }
+    @keyframes shimmer { 0%{left:-100%} 100%{left:200%} }
+
+    .hint { font-size:0.78rem; color:var(--muted); margin-top:12px; opacity:0.7; line-height:1.5; }
+    .dl-log { min-height:20px; margin-top:14px; font-size:0.82rem; color:var(--muted); text-align:center; }
+
+    hr { border:none; border-top:1px solid var(--line); margin:26px 0; }
+
+    /* File pickers */
+    .file-pick-box {
+      flex:1; background:rgba(0,0,0,0.3); border:1px dashed rgba(255,255,255,0.15);
+      border-radius:12px; padding:12px 16px; font-size:0.85rem; color:var(--muted);
+      cursor:pointer; transition:border-color 0.2s,color 0.2s;
     }
+    .file-pick-box:hover { border-color:rgba(255,255,255,0.3); color:var(--text); }
+    .file-pick-box.picked { border-color:rgba(52,211,153,0.4); color:#34d399; }
+    .field-label { font-size:0.72rem; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; }
 
-    .download-input {
-      flex: 1;
-      min-width: 0;
-      background: #0c0f16;
-      color: var(--text);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 14px 16px;
-      font: inherit;
-      outline: none;
+    /* Progress bar */
+    .prog-wrap { background:rgba(255,255,255,0.07); border-radius:999px; height:6px; overflow:hidden; margin-top:8px; }
+    .prog-bar { height:100%; width:0%; border-radius:999px; transition:width 0.3s; }
+
+    /* Result / error cards */
+    .result-card { margin-top:16px; padding:14px 18px; border-radius:14px; text-align:center; }
+    .result-card.green { background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); }
+    .result-card.blue  { background:rgba(96,165,250,0.08); border:1px solid rgba(96,165,250,0.2); }
+    .result-card .title { font-weight:700; margin-bottom:8px; }
+    .result-card.green .title { color:#34d399; }
+    .result-card.blue  .title { color:var(--blue); }
+    .dl-link {
+      display:inline-flex; align-items:center; gap:6px;
+      font-weight:800; font-size:0.9rem; padding:10px 22px;
+      border-radius:10px; text-decoration:none;
     }
+    .dl-link.green { background:linear-gradient(135deg,#059669,#10b981); color:#fff; box-shadow:0 4px 16px rgba(16,185,129,0.3); }
+    .dl-link.blue  { background:var(--blue); color:#06070c; }
+    .err-card { margin-top:12px; padding:12px 16px; background:rgba(251,113,133,0.08); border:1px solid rgba(251,113,133,0.25); border-radius:12px; font-size:0.82rem; color:var(--rose); }
 
-    .download-input:focus {
-      border-color: var(--blue);
-    }
+    /* Info strip */
+    .info-strip { display:flex; gap:20px; justify-content:center; flex-wrap:wrap; }
+    .info-item { display:flex; align-items:center; gap:6px; font-size:0.75rem; color:var(--muted); }
+    .info-dot { width:6px; height:6px; border-radius:50%; }
+    .dot-green  { background:#4ade80; box-shadow:0 0 8px #4ade80; }
+    .dot-blue   { background:var(--blue); box-shadow:0 0 8px var(--blue); }
+    .dot-purple { background:var(--purple); box-shadow:0 0 8px var(--purple); }
+    .dot-teal   { background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
 
-    .download-button,
-    .back-button {
-      border: 0;
-      border-radius: 12px;
-      padding: 14px 18px;
-      font: inherit;
-      font-weight: 800;
-      cursor: pointer;
-    }
-
-    .download-button {
-      background: var(--blue);
-      color: #06101f;
-    }
-
-    .back-button {
-      display: inline-flex;
-      margin-top: 18px;
-      background: transparent;
-      color: var(--muted);
-      border: 1px solid var(--line);
-    }
-
-    .download-log {
-      margin-top: 18px;
-      color: var(--muted);
-      font-size: 0.9rem;
-      min-height: 24px;
-    }
-
-    @media (max-width: 680px) {
-      .download-form {
-        flex-direction: column;
-      }
+    @media(max-width:500px){
+      .panel{padding:24px 20px;border-radius:20px;}
+      .input-row{flex-direction:column;}
+      .paste-btn{width:100%;}
+      .info-strip{flex-direction:column;align-items:center;gap:10px;}
     }
   </style>
 </head>
-
 <body>
-  <main class="download-shell">
-    <section class="download-panel">
-      <p class="eyebrow">Media Capture</p>
-      <h1>Video Downloader</h1>
-      <p>Paste a public video URL from a supported platform. The server will stream the file as <strong>downloaded_video.mp4</strong>.</p>
-      <form class="download-form" id="downloadForm">
-        <input class="download-input" id="downloadUrl" type="url" placeholder="Paste video URL..." required>
-        <button class="download-button" type="submit">Download</button>
-      </form>
-      <div class="download-log" id="downloadLog"></div>
-      <a class="back-button" href="/editor">Back to hub</a>
-    </section>
-  </main>
 
-  <script>
-    const form = document.getElementById('downloadForm');
-    const input = document.getElementById('downloadUrl');
-    const log = document.getElementById('downloadLog');
+<div class="bg-orb orb-a"></div>
+<div class="bg-orb orb-b"></div>
 
-    form.addEventListener('submit', event => {
-      event.preventDefault();
-      const url = input.value.trim();
-      if (!url) return;
-      log.textContent = 'Starting download...';
-      window.location.href = `/api/download-video?url=${encodeURIComponent(url)}`;
-      setTimeout(() => {
-        log.textContent = 'If the download did not begin, check that the link is public and supported.';
-      }, 5000);
+<div class="panel">
+
+  <!-- Nav -->
+  <div class="panel-nav">
+    <a class="back-link" href="/editor">← Back to hub</a>
+    <span class="panel-brand">Media Capture</span>
+  </div>
+
+  <!-- Dynamic platform icon -->
+  <div class="panel-icon" id="panelIcon">
+    <span id="panelIconContent"></span>
+  </div>
+
+  <h1>Downloader</h1>
+  <p class="subtitle">Paste a URL from any platform below. Download as MP4 or extract audio as MP3 — streams directly to you.</p>
+
+  <!-- Platform chips (interactive) -->
+  <div class="platform-chips" id="platformChips"></div>
+
+  <!-- Download tabs -->
+  <div class="tabs">
+    <button class="tab tab-video active" data-tab="video">📹 Video (MP4)</button>
+    <button class="tab tab-audio" data-tab="audio">🎵 Audio (MP3)</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-video">
+    <div class="input-row">
+      <input class="url-input" id="videoUrl" type="url" placeholder="Paste video URL here…">
+      <button class="paste-btn" id="pasteBtnVideo">📋 Paste</button>
+    </div>
+    <button class="dl-btn dl-btn-video" id="videoBtn">Download Video</button>
+    <p class="hint">Best available MP4 quality. Instagram reels must be from a public account.</p>
+    <div class="dl-log" id="videoLog"></div>
+  </div>
+
+  <div class="tab-panel" id="tab-audio">
+    <div class="input-row">
+      <input class="url-input" id="audioUrl" type="url" placeholder="Paste video URL to extract audio…">
+      <button class="paste-btn" id="pasteBtnAudio">📋 Paste</button>
+    </div>
+    <button class="dl-btn dl-btn-audio" id="audioBtn">Extract Audio (MP3)</button>
+    <p class="hint">Extracts high-quality MP3 from any supported video URL.</p>
+    <div class="dl-log" id="audioLog"></div>
+  </div>
+
+  <hr>
+
+  <!-- Browser-side Merge (zero server upload, runs in browser via ffmpeg.wasm) -->
+  <div id="browserMergeSection">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#059669,#10b981);display:grid;place-items:center;font-size:1.15rem;flex-shrink:0;">🔀</div>
+      <div>
+        <div style="font-weight:800;font-size:1rem;">Merge in Browser</div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-top:2px;">Runs entirely on your device — nothing leaves your computer</div>
+      </div>
+      <span style="margin-left:auto;font-size:0.68rem;font-weight:800;color:#34d399;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.2);padding:4px 10px;border-radius:999px;white-space:nowrap;">Zero server cost</span>
+    </div>
+
+    <div style="margin-bottom:10px;">
+      <div class="field-label">📹 Video file (.mp4)</div>
+      <div class="file-pick-box" id="vLabel2" onclick="document.getElementById('vPick2').click()">Click to select downloaded video…</div>
+      <input type="file" id="vPick2" accept="video/*,.mp4" style="display:none">
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <div class="field-label">🎵 Audio file (.mp3)</div>
+      <div class="file-pick-box" id="aLabel2" onclick="document.getElementById('aPick2').click()">Click to select downloaded audio…</div>
+      <input type="file" id="aPick2" accept="audio/*,.mp3,.m4a" style="display:none">
+    </div>
+
+    <button id="browserMergeBtn" style="width:100%;padding:16px;border:none;border-radius:14px;font:inherit;font-size:1rem;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#059669,#10b981,#34d399);color:#fff;box-shadow:0 8px 28px rgba(16,185,129,0.35);transition:opacity 0.2s,transform 0.15s;">
+      Merge &amp; Download MP4 — In Browser
+    </button>
+
+    <div id="mergeProgressArea" style="display:none;margin-top:14px;">
+      <div id="mergeStepText" style="font-size:0.78rem;color:var(--muted);margin-bottom:6px;text-align:center;"></div>
+      <div class="prog-wrap"><div class="prog-bar" id="mergeProgBar" style="background:linear-gradient(90deg,#059669,#34d399);"></div></div>
+    </div>
+
+    <div class="result-card green" id="mergeResultCard" style="display:none;">
+      <div class="title">✅ Merge complete — processed on your device!</div>
+      <a class="dl-link green" id="mergeResultLink">⬇️ Save Merged MP4</a>
+    </div>
+    <div class="err-card" id="mergeErrCard" style="display:none;"></div>
+  </div>
+
+  <!-- URL Merge — locked behind code 1706 -->
+  <div style="margin-top:18px;text-align:center;">
+    <button id="advancedToggle" style="background:transparent;border:none;color:var(--muted);font:inherit;font-size:0.73rem;cursor:pointer;opacity:0.45;letter-spacing:0.06em;">🔒 Advanced options</button>
+  </div>
+  <div id="advancedLock" style="display:none;margin-top:10px;">
+    <input id="lockCode" type="password" placeholder="Access code…" maxlength="10"
+      style="width:100%;background:rgba(0,0,0,0.3);border:1px solid var(--line);border-radius:10px;padding:11px 16px;color:var(--text);font:inherit;font-size:0.9rem;outline:none;text-align:center;letter-spacing:0.3em;">
+    <div id="lockError" style="display:none;margin-top:5px;font-size:0.73rem;color:var(--rose);text-align:center;">Incorrect code</div>
+  </div>
+  <div id="urlMergeSection" style="display:none;margin-top:14px;padding:18px;background:rgba(255,255,255,0.02);border:1px solid var(--line);border-radius:16px;">
+    <div style="font-size:0.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">🔓 URL-based Merge</div>
+    <div class="input-row" style="margin-bottom:12px;">
+      <input class="url-input" id="mergeUrl" type="url" placeholder="Paste source video URL…">
+      <button class="paste-btn" id="pasteBtnMerge">📋 Paste</button>
+    </div>
+    <button id="mergeBtn" style="width:100%;padding:14px;border:none;border-radius:12px;font:inherit;font-weight:800;font-size:0.95rem;cursor:pointer;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;box-shadow:0 6px 20px rgba(59,130,246,0.3);">Merge via URL → MP4</button>
+    <div id="mergeStatus" style="margin-top:10px;font-size:0.82rem;color:var(--muted);text-align:center;display:none;"></div>
+    <div class="result-card blue" id="mergeResult" style="display:none;">
+      <div class="title">✅ Done!</div>
+      <a class="dl-link blue" id="mergeDownloadLink">⬇️ Download</a>
+    </div>
+    <div class="err-card" id="mergeError" style="display:none;"></div>
+  </div>
+
+  <hr>
+
+  <div class="info-strip">
+    <div class="info-item"><span class="info-dot dot-teal"></span> Browser merge = zero server</div>
+    <div class="info-item"><span class="info-dot dot-blue"></span> Direct stream to you</div>
+    <div class="info-item"><span class="info-dot dot-purple"></span> Public links only</div>
+  </div>
+
+</div>
+
+<script>
+// ─── Platform data ────────────────────────────────────────────────────────────
+const PLATFORMS = [
+  {
+    id: 'instagram', label: 'Instagram',
+    dot: 'linear-gradient(45deg,#f09433,#dc2743,#bc1888)',
+    bg: 'linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)',
+    shadow: 'rgba(220,39,67,0.45)',
+    icon: `<svg viewBox="0 0 24 24" width="28" height="28" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>`
+  },
+  {
+    id: 'youtube', label: 'YouTube',
+    dot: '#ff0000',
+    bg: '#cc0000',
+    shadow: 'rgba(255,0,0,0.5)',
+    icon: `<svg viewBox="0 0 24 24" width="28" height="28" fill="white"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`
+  },
+  {
+    id: 'twitter', label: 'X / Twitter',
+    dot: '#e7e9ea',
+    bg: '#14171a',
+    shadow: 'rgba(231,233,234,0.2)',
+    icon: `<svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.745l7.739-8.844L1.254 2.25H8.08l4.252 5.622 5.912-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`
+  },
+  {
+    id: 'facebook', label: 'Facebook',
+    dot: '#1877f2',
+    bg: '#1877f2',
+    shadow: 'rgba(24,119,242,0.5)',
+    icon: `<svg viewBox="0 0 24 24" width="28" height="28" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`
+  },
+  {
+    id: 'tiktok', label: 'TikTok',
+    dot: 'linear-gradient(135deg,#69C9D0,#EE1D52)',
+    bg: 'linear-gradient(135deg,#1a1a1a,#2a2a2a)',
+    shadow: 'rgba(105,201,208,0.4)',
+    icon: `<svg viewBox="0 0 24 24" width="26" height="26" fill="white"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.77a4.85 4.85 0 0 1-1.01-.08z"/></svg>`
+  },
+  {
+    id: 'reddit', label: 'Reddit',
+    dot: '#ff4500',
+    bg: '#ff4500',
+    shadow: 'rgba(255,69,0,0.5)',
+    icon: `<svg viewBox="0 0 24 24" width="28" height="28" fill="white"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/></svg>`
+  }
+];
+
+// ─── Platform chip init ───────────────────────────────────────────────────────
+let activePlatform = PLATFORMS[0];
+
+function selectPlatform(p) {
+  activePlatform = p;
+  const icon = document.getElementById('panelIcon');
+  const content = document.getElementById('panelIconContent');
+  icon.style.background  = p.bg;
+  icon.style.boxShadow   = `0 0 36px ${p.shadow}`;
+  content.innerHTML      = p.icon;
+  document.querySelectorAll('.pchip').forEach(c => c.classList.remove('active'));
+  const chip = document.getElementById('chip-' + p.id);
+  if (chip) chip.classList.add('active');
+}
+
+const chipsEl = document.getElementById('platformChips');
+PLATFORMS.forEach(p => {
+  const btn = document.createElement('button');
+  btn.className = 'pchip' + (p.id === activePlatform.id ? ' active' : '');
+  btn.id = 'chip-' + p.id;
+  const dot = p.dot.startsWith('linear')
+    ? `<span class="pchip-dot" style="background:${p.dot}"></span>`
+    : `<span class="pchip-dot" style="background:${p.dot};box-shadow:0 0 6px ${p.dot}"></span>`;
+  btn.innerHTML = dot + p.label;
+  btn.addEventListener('click', () => selectPlatform(p));
+  chipsEl.appendChild(btn);
+});
+selectPlatform(activePlatform); // set initial icon
+
+// ─── Tab switching ────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ─── Paste helpers ────────────────────────────────────────────────────────────
+async function pasteInto(id) {
+  try { document.getElementById(id).value = await navigator.clipboard.readText(); }
+  catch { alert('Allow clipboard access or paste manually (Ctrl+V).'); }
+}
+document.getElementById('pasteBtnVideo').addEventListener('click', () => pasteInto('videoUrl'));
+document.getElementById('pasteBtnAudio').addEventListener('click', () => pasteInto('audioUrl'));
+document.getElementById('pasteBtnMerge').addEventListener('click', () => pasteInto('mergeUrl'));
+
+// ─── Download trigger (unchanged) ────────────────────────────────────────────
+function startDownload(url, type, logEl, btn) {
+  if (!url) return;
+  logEl.textContent = type === 'audio' ? '🎵 Extracting audio…' : '📹 Fetching video…';
+  btn.disabled = true; btn.textContent = 'Starting…';
+  window.location.href = `/api/download-video?url=${encodeURIComponent(url)}&type=${type}`;
+  setTimeout(() => {
+    logEl.textContent = 'If download didn\'t start, check the link is public.';
+    btn.disabled = false;
+    btn.textContent = type === 'audio' ? 'Extract Audio (MP3)' : 'Download Video';
+  }, 6000);
+}
+document.getElementById('videoBtn').addEventListener('click', () =>
+  startDownload(document.getElementById('videoUrl').value.trim(), 'video', document.getElementById('videoLog'), document.getElementById('videoBtn')));
+document.getElementById('audioBtn').addEventListener('click', () =>
+  startDownload(document.getElementById('audioUrl').value.trim(), 'audio', document.getElementById('audioLog'), document.getElementById('audioBtn')));
+['videoUrl','audioUrl'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const type = id === 'videoUrl' ? 'video' : 'audio';
+    startDownload(e.target.value.trim(), type,
+      document.getElementById(id === 'videoUrl' ? 'videoLog' : 'audioLog'),
+      document.getElementById(id === 'videoUrl' ? 'videoBtn' : 'audioBtn'));
+  });
+});
+
+// ─── File pickers ─────────────────────────────────────────────────────────────
+function bindPicker(pickId, labelId, type) {
+  document.getElementById(pickId).addEventListener('change', e => {
+    const f = e.target.files[0];
+    const el = document.getElementById(labelId);
+    el.textContent = f ? `✅ ${f.name}` : `Click to select ${type} file…`;
+    el.classList.toggle('picked', !!f);
+  });
+}
+bindPicker('vPick2', 'vLabel2', 'video');
+bindPicker('aPick2', 'aLabel2', 'audio');
+
+// ─── Browser-side merge (ffmpeg.wasm) ────────────────────────────────────────
+let ffmpegReady = false;
+let ffmpegInst  = null;
+
+async function ensureFfmpeg(setStep) {
+  if (!window.FFmpeg) {
+    setStep('📥 Loading ffmpeg.wasm (~30 MB first time, cached after)…');
+    await new Promise((ok, fail) => {
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/@ffmpeg/ffmpeg@0.11.12/dist/ffmpeg.min.js';
+      s.onload = ok; s.onerror = () => fail(new Error('Failed to load ffmpeg.js from CDN'));
+      document.head.appendChild(s);
     });
-  </script>
-</body>
+  }
+  if (!ffmpegInst) {
+    const { createFFmpeg } = FFmpeg;
+    ffmpegInst = createFFmpeg({
+      corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
+      log: false
+    });
+  }
+  if (!ffmpegReady) {
+    setStep('⚙️ Initialising ffmpeg engine…');
+    await ffmpegInst.load();
+    ffmpegReady = true;
+  }
+  return ffmpegInst;
+}
 
+const browserMergeBtn  = document.getElementById('browserMergeBtn');
+const mergeProgressArea= document.getElementById('mergeProgressArea');
+const mergeStepText    = document.getElementById('mergeStepText');
+const mergeProgBar     = document.getElementById('mergeProgBar');
+const mergeResultCard  = document.getElementById('mergeResultCard');
+const mergeResultLink  = document.getElementById('mergeResultLink');
+const mergeErrCard     = document.getElementById('mergeErrCard');
+
+browserMergeBtn.addEventListener('click', async () => {
+  const vFile = document.getElementById('vPick2').files[0];
+  const aFile = document.getElementById('aPick2').files[0];
+  if (!vFile || !aFile) {
+    mergeErrCard.style.display = 'block';
+    mergeErrCard.textContent = '⚠️ Select both a video file and an audio file first.';
+    return;
+  }
+  mergeResultCard.style.display = 'none';
+  mergeErrCard.style.display = 'none';
+  mergeProgressArea.style.display = 'block';
+  mergeProgBar.style.width = '0%';
+  browserMergeBtn.disabled = true;
+
+  const setStep = t => { mergeStepText.textContent = t; };
+
+  try {
+    const ffmpeg = await ensureFfmpeg(setStep);
+    ffmpeg.setProgress(({ ratio }) => {
+      mergeProgBar.style.width = Math.min(100, Math.round(ratio * 100)) + '%';
+    });
+
+    setStep('📂 Reading files…');
+    mergeProgBar.style.width = '10%';
+
+    const { fetchFile } = FFmpeg;
+    ffmpeg.FS('writeFile', 'input_video.mp4', await fetchFile(vFile));
+    ffmpeg.FS('writeFile', 'input_audio.mp3', await fetchFile(aFile));
+
+    setStep('⚙️ Merging — copy video + encode audio as AAC…');
+    mergeProgBar.style.width = '30%';
+
+    await ffmpeg.run(
+      '-i', 'input_video.mp4',
+      '-i', 'input_audio.mp3',
+      '-c:v', 'copy',
+      '-c:a', 'aac',
+      '-shortest',
+      'output.mp4'
+    );
+
+    setStep('📦 Packaging result…');
+    mergeProgBar.style.width = '95%';
+
+    const data = ffmpeg.FS('readFile', 'output.mp4');
+    // Cleanup virtual FS
+    ['input_video.mp4','input_audio.mp3','output.mp4'].forEach(f => {
+      try { ffmpeg.FS('unlink', f); } catch (_) {}
+    });
+
+    const blob = new Blob([data.buffer], { type: 'video/mp4' });
+    mergeResultLink.href = URL.createObjectURL(blob);
+    mergeResultLink.download = 'merged_output.mp4';
+    mergeProgBar.style.width = '100%';
+    mergeProgressArea.style.display = 'none';
+    mergeResultCard.style.display = 'block';
+    mergeResultLink.click();
+
+  } catch (err) {
+    mergeProgressArea.style.display = 'none';
+    mergeErrCard.style.display = 'block';
+    mergeErrCard.textContent = '❌ ' + err.message;
+  } finally {
+    browserMergeBtn.disabled = false;
+  }
+});
+
+// ─── Advanced lock (URL merge behind 1706) ────────────────────────────────────
+document.getElementById('advancedToggle').addEventListener('click', () => {
+  const lock = document.getElementById('advancedLock');
+  lock.style.display = lock.style.display === 'none' ? 'block' : 'none';
+  document.getElementById('lockError').style.display = 'none';
+  document.getElementById('lockCode').value = '';
+});
+document.getElementById('lockCode').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (e.target.value === '1706') {
+    document.getElementById('advancedLock').style.display = 'none';
+    document.getElementById('advancedToggle').style.display = 'none';
+    document.getElementById('urlMergeSection').style.display = 'block';
+  } else {
+    document.getElementById('lockError').style.display = 'block';
+    e.target.value = '';
+  }
+});
+
+// ─── URL merge (existing, unchanged) ─────────────────────────────────────────
+const mergeBtn   = document.getElementById('mergeBtn');
+const mergeStatus= document.getElementById('mergeStatus');
+const mergeResult= document.getElementById('mergeResult');
+const mergeError = document.getElementById('mergeError');
+const mergeLink  = document.getElementById('mergeDownloadLink');
+
+mergeBtn.addEventListener('click', async () => {
+  const url = document.getElementById('mergeUrl').value.trim();
+  if (!url) { mergeError.style.display='block'; mergeError.textContent='⚠️ Paste a URL first.'; return; }
+  mergeResult.style.display='none'; mergeError.style.display='none';
+  mergeStatus.style.display='block'; mergeBtn.disabled=true;
+  const steps=['⬇️ Downloading video…','🎵 Downloading audio…','⚙️ Merging…','📦 Finalising…'];
+  let si=0; mergeStatus.textContent=steps[0];
+  const t=setInterval(()=>{si=Math.min(si+1,steps.length-1);mergeStatus.textContent=steps[si];},8000);
+  try {
+    const resp=await fetch(`/api/merge?url=${encodeURIComponent(url)}`);
+    clearInterval(t);
+    if(!resp.ok){let m=`Error ${resp.status}`;try{const j=await resp.json();m=j.error||m;}catch(_){}throw new Error(m);}
+    const blob=await resp.blob();
+    mergeLink.href=URL.createObjectURL(blob);
+    mergeLink.download='merged_output.mp4';
+    mergeStatus.style.display='none';mergeResult.style.display='block';
+    mergeLink.click();
+  } catch(err) {
+    clearInterval(t);
+    mergeStatus.style.display='none';mergeError.style.display='block';
+    mergeError.textContent='❌ '+err.message;
+  } finally{mergeBtn.disabled=false;}
+});
+document.getElementById('mergeUrl').addEventListener('keydown',e=>{if(e.key==='Enter')mergeBtn.click();});
+</script>
+</body>
 </html>
