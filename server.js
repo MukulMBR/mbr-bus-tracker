@@ -160,7 +160,7 @@ const server = http.createServer((req, res) => {
           res.writeHead(500, { 'Content-Type': 'text/plain' });
         }
         let clientMsg = err.message || '';
-        const isBotOrCookieErr = /confirm.*bot|sign in|cookies|auth/i.test(clientMsg);
+        const isBotOrCookieErr = /confirm.*bot|sign in|cookies|auth|forbidden|403/i.test(clientMsg);
         if (isBotOrCookieErr) {
           clientMsg = "This video requires additional authentication and could not be downloaded";
         } else {
@@ -254,7 +254,7 @@ const server = http.createServer((req, res) => {
           res.writeHead(500, { 'Content-Type': 'application/json' });
         }
         let clientMsg = err.message || '';
-        const isBotOrCookieErr = /confirm.*bot|sign in|cookies|auth/i.test(clientMsg);
+        const isBotOrCookieErr = /confirm.*bot|sign in|cookies|auth|forbidden|403/i.test(clientMsg);
         if (isBotOrCookieErr) {
           clientMsg = "This video requires additional authentication and could not be downloaded";
         }
