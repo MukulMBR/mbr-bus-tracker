@@ -117,56 +117,50 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    const { spawn } = require('child_process');
-    let ytdlpArgs;
+    const id = Date.now();
+    const ext = type === 'audio' ? 'mp3' : 'mp4';
+    const tempFile = path.join(TMP_DIR, `dl_${id}.${ext}`);
 
+    let ytdlpArgs;
     if (type === 'audio') {
-      res.writeHead(200, {
-        'Content-Type': 'audio/mpeg',
-        'Content-Disposition': 'attachment; filename="downloaded_audio.mp3"',
-        'Access-Control-Allow-Origin': '*'
-      });
-      ytdlpArgs = ['-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', '-', videoUrl];
+      ytdlpArgs = ['-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', tempFile, videoUrl];
     } else {
-      res.writeHead(200, {
-        'Content-Type': 'video/mp4',
-        'Content-Disposition': 'attachment; filename="downloaded_video.mp4"',
-        'Access-Control-Allow-Origin': '*'
-      });
-      ytdlpArgs = ['-f', 'best[ext=mp4]/best', '-o', '-', videoUrl];
+      ytdlpArgs = ['-f', 'best[ext=mp4]/best', '-o', tempFile, videoUrl];
       if (ffmpegPath && ffmpegPath !== 'ffmpeg') {
         ytdlpArgs.push('--ffmpeg-location', ffmpegPath);
       }
     }
 
-    let child;
-    try {
-      child = spawn(ytdlpPath, ytdlpArgs);
-    } catch (err) {
-      console.error('Failed to spawn child process:', err);
-      res.writeHead(500, { 'Content-Type': 'text/plain' });
-      res.end('Failed to spawn video downloader');
-      return;
-    }
+    (async () => {
+      try {
+        await runProcess(ytdlpPath, ytdlpArgs);
+        if (!fs.existsSync(tempFile)) {
+          throw new Error('Downloader produced no file.');
+        }
 
-    child.on('error', (err) => {
-      console.error('yt-dlp process error:', err);
-    });
+        const stat = fs.statSync(tempFile);
+        res.writeHead(200, {
+          'Content-Type': type === 'audio' ? 'audio/mpeg' : 'video/mp4',
+          'Content-Disposition': `attachment; filename="downloaded_${type}.${ext}"`,
+          'Content-Length': stat.size,
+          'Access-Control-Allow-Origin': '*'
+        });
 
-    child.stdout.pipe(res);
+        const stream = fs.createReadStream(tempFile);
+        stream.pipe(res);
 
-    child.stderr.on('data', (data) => {
-      console.error(`yt-dlp stderr: ${data}`);
-    });
-
-    child.on('close', (code) => {
-      console.log(`yt-dlp process exited with code ${code}`);
-      res.end();
-    });
-
-    req.on('close', () => {
-      child.kill();
-    });
+        stream.on('end', () => {
+          tryUnlink(tempFile);
+        });
+      } catch (err) {
+        console.error('Download failed:', err.message);
+        tryUnlink(tempFile);
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'text/plain' });
+        }
+        res.end('Download failed: ' + err.message);
+      }
+    })();
 
   } else if (pathname === '/api/merge') {
 

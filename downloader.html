@@ -88,6 +88,7 @@
     .tab.active { background:rgba(255,255,255,0.08); color:var(--text); box-shadow:0 1px 6px rgba(0,0,0,0.3); }
     .tab.active.tab-video { color:var(--blue); }
     .tab.active.tab-audio { color:var(--purple); }
+    .tab.active.tab-both { color:#34d399; }
     .tab-panel { display:none; }
     .tab-panel.active { display:block; }
 
@@ -98,6 +99,8 @@
     .url-input:focus { border-color:rgba(96,165,250,0.5); box-shadow:0 0 0 3px rgba(96,165,250,0.1); }
     .paste-btn { background:rgba(255,255,255,0.06); border:1px solid var(--line); color:var(--text); font:inherit; font-weight:700; font-size:0.82rem; padding:14px 16px; border-radius:14px; cursor:pointer; white-space:nowrap; transition:all 0.2s; }
     .paste-btn:hover { background:rgba(255,255,255,0.1); }
+    .clear-btn { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.22); color:#fb7185; font:inherit; font-weight:700; font-size:0.82rem; padding:14px 16px; border-radius:14px; cursor:pointer; white-space:nowrap; transition:all 0.2s; }
+    .clear-btn:hover { background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.35); color:#ff8796; }
 
     /* Download buttons */
     .dl-btn { width:100%; margin-top:14px; padding:16px; border:none; border-radius:14px; font:inherit; font-size:1rem; font-weight:800; cursor:pointer; transition:opacity 0.2s,transform 0.15s; position:relative; overflow:hidden; }
@@ -187,12 +190,14 @@
   <div class="tabs">
     <button class="tab tab-video active" data-tab="video">📹 Video (MP4)</button>
     <button class="tab tab-audio" data-tab="audio">🎵 Audio (MP3)</button>
+    <button class="tab tab-both" data-tab="both">✨ Both (MP4+MP3)</button>
   </div>
 
   <div class="tab-panel active" id="tab-video">
     <div class="input-row">
       <input class="url-input" id="videoUrl" type="url" placeholder="Paste video URL here…">
       <button class="paste-btn" id="pasteBtnVideo">📋 Paste</button>
+      <button class="clear-btn" id="clearBtnVideo">❌ Clear</button>
     </div>
     <button class="dl-btn dl-btn-video" id="videoBtn">Download Video</button>
     <p class="hint">Best available MP4 quality. Instagram reels must be from a public account.</p>
@@ -203,10 +208,22 @@
     <div class="input-row">
       <input class="url-input" id="audioUrl" type="url" placeholder="Paste video URL to extract audio…">
       <button class="paste-btn" id="pasteBtnAudio">📋 Paste</button>
+      <button class="clear-btn" id="clearBtnAudio">❌ Clear</button>
     </div>
     <button class="dl-btn dl-btn-audio" id="audioBtn">Extract Audio (MP3)</button>
     <p class="hint">Extracts high-quality MP3 from any supported video URL.</p>
     <div class="dl-log" id="audioLog"></div>
+  </div>
+
+  <div class="tab-panel" id="tab-both">
+    <div class="input-row">
+      <input class="url-input" id="bothUrl" type="url" placeholder="Paste video URL here…">
+      <button class="paste-btn" id="pasteBtnBoth">📋 Paste</button>
+      <button class="clear-btn" id="clearBtnBoth">❌ Clear</button>
+    </div>
+    <button class="dl-btn dl-btn-both" id="bothBtn">Download Both (Video + Audio)</button>
+    <p class="hint">Downloads the video file first, then automatically starts downloading the audio file.</p>
+    <div class="dl-log" id="bothLog"></div>
   </div>
 
   <hr>
@@ -264,6 +281,7 @@
     <div class="input-row" style="margin-bottom:12px;">
       <input class="url-input" id="mergeUrl" type="url" placeholder="Paste source video URL…">
       <button class="paste-btn" id="pasteBtnMerge">📋 Paste</button>
+      <button class="clear-btn" id="clearBtnMerge">❌ Clear</button>
     </div>
     <button id="mergeBtn" style="width:100%;padding:14px;border:none;border-radius:12px;font:inherit;font-weight:800;font-size:0.95rem;cursor:pointer;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;box-shadow:0 6px 20px rgba(59,130,246,0.3);">Merge via URL → MP4</button>
     <div id="mergeStatus" style="margin-top:10px;font-size:0.82rem;color:var(--muted);text-align:center;display:none;"></div>
@@ -367,17 +385,52 @@ document.querySelectorAll('.tab').forEach(btn => {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+
+    // Clear all input fields and logs when switching tabs
+    ['videoUrl', 'audioUrl', 'bothUrl', 'mergeUrl'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    ['videoLog', 'audioLog', 'bothLog', 'mergeStatus'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '';
+    });
   });
 });
 
-// ─── Paste helpers ────────────────────────────────────────────────────────────
+// ─── Paste & Clear helpers ────────────────────────────────────────────────────
 async function pasteInto(id) {
   try { document.getElementById(id).value = await navigator.clipboard.readText(); }
   catch { alert('Allow clipboard access or paste manually (Ctrl+V).'); }
 }
+function clearInput(id, logId) {
+  document.getElementById(id).value = '';
+  if (logId) {
+    const el = document.getElementById(logId);
+    if (el) el.textContent = '';
+  }
+}
 document.getElementById('pasteBtnVideo').addEventListener('click', () => pasteInto('videoUrl'));
+document.getElementById('clearBtnVideo').addEventListener('click', () => clearInput('videoUrl', 'videoLog'));
+
 document.getElementById('pasteBtnAudio').addEventListener('click', () => pasteInto('audioUrl'));
+document.getElementById('clearBtnAudio').addEventListener('click', () => clearInput('audioUrl', 'audioLog'));
+
+document.getElementById('pasteBtnBoth').addEventListener('click', () => pasteInto('bothUrl'));
+document.getElementById('clearBtnBoth').addEventListener('click', () => clearInput('bothUrl', 'bothLog'));
+
 document.getElementById('pasteBtnMerge').addEventListener('click', () => pasteInto('mergeUrl'));
+document.getElementById('clearBtnMerge').addEventListener('click', () => clearInput('mergeUrl', 'mergeError'));
+
+// Helper to trigger sequential browser downloads via simulated link click
+function triggerDownload(url, type) {
+  const a = document.createElement('a');
+  a.href = `/api/download-video?url=${encodeURIComponent(url)}&type=${type}`;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
 
 // ─── Download trigger (unchanged) ────────────────────────────────────────────
 function startDownload(url, type, logEl, btn) {
@@ -395,13 +448,34 @@ document.getElementById('videoBtn').addEventListener('click', () =>
   startDownload(document.getElementById('videoUrl').value.trim(), 'video', document.getElementById('videoLog'), document.getElementById('videoBtn')));
 document.getElementById('audioBtn').addEventListener('click', () =>
   startDownload(document.getElementById('audioUrl').value.trim(), 'audio', document.getElementById('audioLog'), document.getElementById('audioBtn')));
-['videoUrl','audioUrl'].forEach(id => {
+document.getElementById('bothBtn').addEventListener('click', () => {
+  const url = document.getElementById('bothUrl').value.trim();
+  if (!url) return;
+  const logEl = document.getElementById('bothLog');
+  const btn = document.getElementById('bothBtn');
+  logEl.textContent = '📹 Fetching video, then audio…';
+  btn.disabled = true; btn.textContent = 'Downloading Both…';
+
+  triggerDownload(url, 'video');
+  setTimeout(() => { triggerDownload(url, 'audio'); }, 1500);
+
+  setTimeout(() => {
+    logEl.textContent = 'Downloads started! Check your downloads folder.';
+    btn.disabled = false; btn.textContent = 'Download Both (Video + Audio)';
+  }, 6000);
+});
+
+['videoUrl','audioUrl','bothUrl'].forEach(id => {
   document.getElementById(id).addEventListener('keydown', e => {
     if (e.key !== 'Enter') return;
-    const type = id === 'videoUrl' ? 'video' : 'audio';
-    startDownload(e.target.value.trim(), type,
-      document.getElementById(id === 'videoUrl' ? 'videoLog' : 'audioLog'),
-      document.getElementById(id === 'videoUrl' ? 'videoBtn' : 'audioBtn'));
+    if (id === 'bothUrl') {
+      document.getElementById('bothBtn').click();
+    } else {
+      const type = id === 'videoUrl' ? 'video' : 'audio';
+      startDownload(e.target.value.trim(), type,
+        document.getElementById(id === 'videoUrl' ? 'videoLog' : 'audioLog'),
+        document.getElementById(id === 'videoUrl' ? 'videoBtn' : 'audioBtn'));
+    }
   });
 });
 
