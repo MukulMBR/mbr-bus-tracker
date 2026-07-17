@@ -34,6 +34,7 @@ if (process.platform === 'win32') {
   const winFfmpeg = 'C:\\Users\\motak\\Downloads\\ffmpeg\\ffmpeg-master-latest-win64-gpl\\bin\\ffmpeg.exe';
   if (fs.existsSync(winFfmpeg)) ffmpegPath = winFfmpeg;
 }
+const ffmpegLocation = ffmpegPath && ffmpegPath !== 'ffmpeg' ? path.dirname(ffmpegPath) : null;
 
 // Temp directory for merge intermediates
 const TMP_DIR = path.join(__dirname, 'tmp');
@@ -118,12 +119,12 @@ const server = http.createServer((req, res) => {
 
     let ytdlpArgs;
     if (type === 'audio') {
-      ytdlpArgs = ['--js-runtimes', 'node', '-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', tempFile, videoUrl];
+      ytdlpArgs = ['--js-runtimes', 'node:' + process.execPath, '-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', tempFile, videoUrl];
     } else {
-      ytdlpArgs = ['--js-runtimes', 'node', '-f', 'best[ext=mp4]/best', '-o', tempFile, videoUrl];
-      if (ffmpegPath && ffmpegPath !== 'ffmpeg') {
-        ytdlpArgs.push('--ffmpeg-location', ffmpegPath);
-      }
+      ytdlpArgs = ['--js-runtimes', 'node:' + process.execPath, '-f', 'best[ext=mp4]/best', '-o', tempFile, videoUrl];
+    }
+    if (ffmpegLocation) {
+      ytdlpArgs.push('--ffmpeg-location', ffmpegLocation);
     }
 
     (async () => {
@@ -175,20 +176,24 @@ const server = http.createServer((req, res) => {
     (async () => {
       try {
         // 1. Download video-only stream to disk
-        await runProcess(ytdlpPath, [
-          '--js-runtimes', 'node',
+        const vArgs = [
+          '--js-runtimes', 'node:' + process.execPath,
           '-f', 'bestvideo[ext=mp4]/bestvideo',
           '--no-playlist', '-o', vFile, videoUrl
-        ]);
+        ];
+        if (ffmpegLocation) vArgs.push('--ffmpeg-location', ffmpegLocation);
+        await runProcess(ytdlpPath, vArgs);
 
         if (!fs.existsSync(vFile)) throw new Error('Video download produced no file.');
 
         // 2. Download audio-only stream to disk
-        await runProcess(ytdlpPath, [
-          '--js-runtimes', 'node',
+        const aArgs = [
+          '--js-runtimes', 'node:' + process.execPath,
           '-f', 'bestaudio',
           '--no-playlist', '-o', aFile, videoUrl
-        ]);
+        ];
+        if (ffmpegLocation) aArgs.push('--ffmpeg-location', ffmpegLocation);
+        await runProcess(ytdlpPath, aArgs);
 
         if (!fs.existsSync(aFile)) throw new Error('Audio download produced no file.');
 
