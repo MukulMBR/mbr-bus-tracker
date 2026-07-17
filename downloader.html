@@ -426,6 +426,7 @@ async function ensureFfmpeg(setStep) {
     setStep('📥 Loading ffmpeg.wasm (~30 MB first time, cached after)…');
     await new Promise((ok, fail) => {
       const s = document.createElement('script');
+      s.crossOrigin = 'anonymous';
       s.src = 'https://unpkg.com/@ffmpeg/ffmpeg@0.11.12/dist/ffmpeg.min.js';
       s.onload = ok; s.onerror = () => fail(new Error('Failed to load ffmpeg.js from CDN'));
       document.head.appendChild(s);

@@ -326,7 +326,12 @@ const server = http.createServer((req, res) => {
         res.writeHead(404, { 'Content-Type': 'text/plain' });
         res.end('Not Found');
       } else {
-        res.writeHead(200, { 'Content-Type': contentType });
+        const headers = { 'Content-Type': contentType };
+        if (contentType === 'text/html') {
+          headers['Cross-Origin-Opener-Policy'] = 'same-origin';
+          headers['Cross-Origin-Embedder-Policy'] = 'require-corp';
+        }
+        res.writeHead(200, headers);
         res.end(content, 'utf-8');
       }
     });
