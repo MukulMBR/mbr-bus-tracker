@@ -133,7 +133,10 @@ const server = http.createServer((req, res) => {
         'Content-Disposition': 'attachment; filename="downloaded_video.mp4"',
         'Access-Control-Allow-Origin': '*'
       });
-      ytdlpArgs = ['-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best', '--merge-output-format', 'mp4', '-o', '-', videoUrl];
+      ytdlpArgs = ['-f', 'best[ext=mp4]/best', '-o', '-', videoUrl];
+      if (ffmpegPath && ffmpegPath !== 'ffmpeg') {
+        ytdlpArgs.push('--ffmpeg-location', ffmpegPath);
+      }
     }
 
     let child;
