@@ -94,13 +94,16 @@
 
     /* Inputs */
     .input-row { display:flex; gap:10px; align-items:center; }
-    .url-input { flex:1; min-width:0; background:rgba(0,0,0,0.3); border:1px solid var(--line); border-radius:14px; padding:14px 18px; color:var(--text); font:inherit; font-size:0.9rem; outline:none; transition:border-color 0.2s,box-shadow 0.2s; }
+    .input-wrap { position: relative; width: 100%; }
+    .url-input { width: 100%; background:rgba(0,0,0,0.3); border:1px solid var(--line); border-radius:14px; padding:14px 165px 14px 18px; color:var(--text); font:inherit; font-size:0.9rem; outline:none; transition:border-color 0.2s,box-shadow 0.2s; }
     .url-input::placeholder { color:var(--muted); }
     .url-input:focus { border-color:rgba(96,165,250,0.5); box-shadow:0 0 0 3px rgba(96,165,250,0.1); }
-    .paste-btn { background:rgba(255,255,255,0.06); border:1px solid var(--line); color:var(--text); font:inherit; font-weight:700; font-size:0.82rem; padding:14px 16px; border-radius:14px; cursor:pointer; white-space:nowrap; transition:all 0.2s; }
-    .paste-btn:hover { background:rgba(255,255,255,0.1); }
-    .clear-btn { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.22); color:#fb7185; font:inherit; font-weight:700; font-size:0.82rem; padding:14px 16px; border-radius:14px; cursor:pointer; white-space:nowrap; transition:all 0.2s; }
-    .clear-btn:hover { background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.35); color:#ff8796; }
+    .input-actions { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; gap: 6px; align-items: center; z-index: 10; }
+    .inline-btn { font: inherit; font-size: 0.72rem; font-weight: 700; padding: 8px 12px; border-radius: 9px; cursor: pointer; white-space: nowrap; transition: all 0.2s; border: 1px solid var(--line); }
+    .inline-paste { background: rgba(255,255,255,0.06); color: var(--text); }
+    .inline-paste:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.25); }
+    .inline-clear { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.22); color: #fb7185; }
+    .inline-clear:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.35); color: #ff8796; }
 
     /* Download buttons */
     .dl-btn { width:100%; margin-top:14px; padding:16px; border:none; border-radius:14px; font:inherit; font-size:1rem; font-weight:800; cursor:pointer; transition:opacity 0.2s,transform 0.15s; position:relative; overflow:hidden; }
@@ -194,10 +197,12 @@
   </div>
 
   <div class="tab-panel active" id="tab-video">
-    <div class="input-row">
+    <div class="input-wrap">
       <input class="url-input" id="videoUrl" type="url" placeholder="Paste video URL here…">
-      <button class="paste-btn" id="pasteBtnVideo">📋 Paste</button>
-      <button class="clear-btn" id="clearBtnVideo">❌ Clear</button>
+      <div class="input-actions">
+        <button class="inline-btn inline-paste" id="pasteBtnVideo">📋 Paste</button>
+        <button class="inline-btn inline-clear" id="clearBtnVideo">❌ Clear</button>
+      </div>
     </div>
     <button class="dl-btn dl-btn-video" id="videoBtn">Download Video</button>
     <p class="hint">Best available MP4 quality. Instagram reels must be from a public account.</p>
@@ -205,10 +210,12 @@
   </div>
 
   <div class="tab-panel" id="tab-audio">
-    <div class="input-row">
+    <div class="input-wrap">
       <input class="url-input" id="audioUrl" type="url" placeholder="Paste video URL to extract audio…">
-      <button class="paste-btn" id="pasteBtnAudio">📋 Paste</button>
-      <button class="clear-btn" id="clearBtnAudio">❌ Clear</button>
+      <div class="input-actions">
+        <button class="inline-btn inline-paste" id="pasteBtnAudio">📋 Paste</button>
+        <button class="inline-btn inline-clear" id="clearBtnAudio">❌ Clear</button>
+      </div>
     </div>
     <button class="dl-btn dl-btn-audio" id="audioBtn">Extract Audio (MP3)</button>
     <p class="hint">Extracts high-quality MP3 from any supported video URL.</p>
@@ -216,10 +223,12 @@
   </div>
 
   <div class="tab-panel" id="tab-both">
-    <div class="input-row">
+    <div class="input-wrap">
       <input class="url-input" id="bothUrl" type="url" placeholder="Paste video URL here…">
-      <button class="paste-btn" id="pasteBtnBoth">📋 Paste</button>
-      <button class="clear-btn" id="clearBtnBoth">❌ Clear</button>
+      <div class="input-actions">
+        <button class="inline-btn inline-paste" id="pasteBtnBoth">📋 Paste</button>
+        <button class="inline-btn inline-clear" id="clearBtnBoth">❌ Clear</button>
+      </div>
     </div>
     <button class="dl-btn dl-btn-both" id="bothBtn">Download Both (Video + Audio)</button>
     <p class="hint">Downloads the video file first, then automatically starts downloading the audio file.</p>
@@ -278,10 +287,12 @@
   </div>
   <div id="urlMergeSection" style="display:none;margin-top:14px;padding:18px;background:rgba(255,255,255,0.02);border:1px solid var(--line);border-radius:16px;">
     <div style="font-size:0.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px;">🔓 URL-based Merge</div>
-    <div class="input-row" style="margin-bottom:12px;">
+    <div class="input-wrap" style="margin-bottom:12px;">
       <input class="url-input" id="mergeUrl" type="url" placeholder="Paste source video URL…">
-      <button class="paste-btn" id="pasteBtnMerge">📋 Paste</button>
-      <button class="clear-btn" id="clearBtnMerge">❌ Clear</button>
+      <div class="input-actions">
+        <button class="inline-btn inline-paste" id="pasteBtnMerge">📋 Paste</button>
+        <button class="inline-btn inline-clear" id="clearBtnMerge">❌ Clear</button>
+      </div>
     </div>
     <button id="mergeBtn" style="width:100%;padding:14px;border:none;border-radius:12px;font:inherit;font-weight:800;font-size:0.95rem;cursor:pointer;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;box-shadow:0 6px 20px rgba(59,130,246,0.3);">Merge via URL → MP4</button>
     <div id="mergeStatus" style="margin-top:10px;font-size:0.82rem;color:var(--muted);text-align:center;display:none;"></div>

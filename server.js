@@ -123,9 +123,9 @@ const server = http.createServer((req, res) => {
 
     let ytdlpArgs;
     if (type === 'audio') {
-      ytdlpArgs = ['-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', tempFile, videoUrl];
+      ytdlpArgs = ['--extractor-args', 'youtube:player_client=android', '-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', tempFile, videoUrl];
     } else {
-      ytdlpArgs = ['-f', 'best[ext=mp4]/best', '-o', tempFile, videoUrl];
+      ytdlpArgs = ['--extractor-args', 'youtube:player_client=android', '-f', 'best[ext=mp4]/best', '-o', tempFile, videoUrl];
       if (ffmpegPath && ffmpegPath !== 'ffmpeg') {
         ytdlpArgs.push('--ffmpeg-location', ffmpegPath);
       }
@@ -181,6 +181,7 @@ const server = http.createServer((req, res) => {
       try {
         // 1. Download video-only stream to disk
         await runProcess(ytdlpPath, [
+          '--extractor-args', 'youtube:player_client=android',
           '-f', 'bestvideo[ext=mp4]/bestvideo',
           '--no-playlist', '-o', vFile, videoUrl
         ]);
@@ -189,6 +190,7 @@ const server = http.createServer((req, res) => {
 
         // 2. Download audio-only stream to disk
         await runProcess(ytdlpPath, [
+          '--extractor-args', 'youtube:player_client=android',
           '-f', 'bestaudio',
           '--no-playlist', '-o', aFile, videoUrl
         ]);
