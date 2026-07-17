@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MBR Audio Studio - Audio Trimmer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:    #06070c;
+      --panel: rgba(10,12,20,0.85);
+      --line:  rgba(255,255,255,0.08);
+      --text:  #f1f5f9;
+      --muted: #94a3b8;
+      --cyan:  #2dd4bf;
+      --blue:  #60a5fa;
+      --purple:#a78bfa;
+      --orange:#fb923c;
+      --rose:  #fb7185;
+      --font:  'Outfit', system-ui, sans-serif;
+    }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px 16px;
+      overflow-x: hidden;
+    }
+    .bg-orb { position:fixed; border-radius:50%; filter:blur(100px); opacity:0.12; pointer-events:none; animation:orbFloat 14s ease-in-out infinite; z-index:0; }
+    .orb-a { width:500px;height:500px; background:#fb923c; top:-100px; left:-100px; }
+    .orb-b { width:400px;height:400px; background:#bc1888; bottom:-80px; right:-80px; animation-delay:-6s; }
+    @keyframes orbFloat { 0%,100%{transform:translate(0,0)} 50%{transform:translate(20px,-30px)} }
+
+    /* Panel */
+    .panel {
+      position:relative; z-index:1;
+      width:min(660px,100%);
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:28px;
+      padding:32px;
+      backdrop-filter:blur(24px);
+      box-shadow:0 32px 80px rgba(0,0,0,0.5);
+      animation:slideUp 0.5s ease both;
+    }
+    @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+
+    /* Nav */
+    .panel-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; }
+    .back-link { display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:700; color:var(--muted); text-decoration:none; transition:color 0.2s; }
+    .back-link:hover { color:var(--text); }
+    .panel-brand { font-size:0.72rem; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+
+    /* Icon badge */
+    .panel-icon {
+      width:56px; height:56px; border-radius:18px;
+      display:grid; place-items:center;
+      margin-bottom:20px;
+      background: rgba(251,146,60,0.1);
+      box-shadow: 0 0 30px rgba(251,146,60,0.25);
+      font-size: 1.6rem;
+    }
+
+    h1 { font-size:2.2rem; font-weight:900; letter-spacing:-0.02em; margin-bottom:8px; }
+    .subtitle { color:var(--muted); font-size:0.9rem; line-height:1.6; margin-bottom:24px; }
+
+    /* Cards inside Panel */
+    .sub-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+    /* File drop area */
+    .drop {
+      border: 1.5px dashed rgba(255,255,255,0.15);
+      border-radius: 14px;
+      padding: 30px 20px;
+      text-align: center;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 0.9rem;
+      transition: all 0.25s;
+      background: rgba(0,0,0,0.2);
+    }
+    .drop:hover, .drop.drag { border-color: var(--orange); color: var(--text); background: rgba(251,146,60,0.04); }
+    input[type=file] { display: none; }
+    .filename { font-size: 0.88rem; font-weight: 600; margin-top: 8px; color: var(--orange); }
+
+    /* Player controls */
+    .player-bar { display: none; align-items: center; gap: 14px; margin-top: 20px; }
+    .player-bar.active { display: flex; }
+    .play-btn {
+      width: 44px; height: 44px; border-radius: 50%;
+      border: none; background: var(--orange); color: #000;
+      font-size: 1.1rem; font-weight: 900; cursor: pointer;
+      display: grid; place-items: center; transition: transform 0.2s, background 0.2s;
+    }
+    .play-btn:hover { transform: scale(1.08); background: #ffa857; }
+    
+    /* Seek bar */
+    .seek-slider {
+      flex: 1; -webkit-appearance: none; appearance: none;
+      height: 6px; border-radius: 3px; background: rgba(255,255,255,0.15);
+      outline: none; transition: background 0.2s; cursor: pointer;
+    }
+    .seek-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--orange); box-shadow: 0 0 10px var(--orange);
+      cursor: pointer; transition: transform 0.1s;
+    }
+    .seek-slider::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+    /* Form Fields */
+    label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 6px; letter-spacing: 0.05em; }
+    
+    .select-input {
+      width: 100%; padding: 12px 14px;
+      background: rgba(0,0,0,0.3); border: 1px solid var(--line);
+      border-radius: 10px; color: var(--text); font: inherit; font-size: 0.88rem;
+      outline: none; transition: border-color 0.2s; cursor: pointer;
+    }
+    .select-input:focus { border-color: rgba(251,146,60,0.5); }
+    
+    .row { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 14px; flex-wrap: wrap; }
+    .field { flex: 1; min-width: 120px; }
+    
+    .time-field {
+      width: 100%; padding: 11px 14px;
+      background: rgba(0,0,0,0.3); border: 1px solid var(--line);
+      border-radius: 10px; color: var(--text); font: inherit; font-size: 0.88rem;
+      outline: none; transition: border-color 0.2s;
+    }
+    .time-field:focus { border-color: rgba(251,146,60,0.5); }
+
+    /* Buttons */
+    .btn {
+      padding: 11px 18px; border-radius: 10px;
+      font: inherit; font-weight: 700; font-size: 0.88rem;
+      cursor: pointer; border: 1px solid var(--line);
+      background: rgba(255,255,255,0.06); color: var(--text);
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); }
+    
+    .btn-primary { background: var(--orange); color: #000; border-color: var(--orange); }
+    .btn-primary:hover { background: #ffa857; }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; background: var(--orange); color: #000; }
+
+    /* Clip Item List */
+    .clip {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; background: rgba(255,255,255,0.02);
+      border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+    .clip .meta { color: var(--muted); font-size: 0.75rem; margin-top: 2px; }
+    .clip-actions { display: flex; gap: 6px; }
+    .clip-actions .btn { padding: 6px 10px; font-size: 0.78rem; border-radius: 8px; }
+    
+    .empty { color: var(--muted); font-size: 0.85rem; padding: 20px 0; text-align: center; font-style: italic; }
+    .hint { font-size: 0.8rem; color: var(--muted); line-height: 1.4; }
+    .status { font-size: 0.85rem; margin-top: 12px; color: var(--orange); }
+    .status.err { color: var(--rose); }
+
+    #exportBtn { width: 100%; margin-top: 8px; padding: 14px; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+
+  <div class="panel">
+    
+    <!-- Navigation header -->
+    <div class="panel-nav">
+      <a class="back-link" href="/editor">← Motion Hub</a>
+      <span class="panel-brand">MBR Audio Studio</span>
+    </div>
+
+    <!-- Main Icon & Title -->
+    <div class="panel-icon">✂️</div>
+    <h1>Audio Trimmer</h1>
+    <p class="subtitle">Upload an audio file, choose between keeping segments or cutting them out, and export the processed audio instantly.</p>
+
+    <!-- Card 1: File Loader -->
+    <div class="sub-card">
+      <h2>📁 Load Audio Source</h2>
+      <div class="drop" id="drop">
+        <div id="dropText">Click to choose an audio file, or drag one here</div>
+        <div class="filename" id="filename"></div>
+      </div>
+      <input type="file" id="fileInput" accept="audio/*">
+      
+      <!-- Player seek interface -->
+      <div class="player-bar" id="playerBar">
+        <button id="playBtn" class="play-btn" title="Play/Pause">▶</button>
+        <input type="range" id="seek" class="seek-slider" min="0" max="1000" value="0">
+        <span class="hint" id="timeLabel" style="min-width: 90px; text-align: right;">0:00 / 0:00</span>
+      </div>
+      <div class="status" id="durationHint" style="margin-top: 8px;"></div>
+      <div class="status err" id="playError" style="display:none"></div>
+    </div>
+
+    <!-- Card 2: Workspace Panel -->
+    <div class="sub-card" id="clipCard" style="display:none">
+      <h2 id="workspaceTitle">⚙️ Configure Segments</h2>
+      
+      <!-- Trimming Mode Select -->
+      <div style="margin-bottom: 18px;">
+        <label>Trimming Mode</label>
+        <select id="trimMode" class="select-input">
+          <option value="keep">Keep Selected Segments (Merge them together)</option>
+          <option value="delete">Delete / Cut Out Selected Segments (Remove them, keep the balance)</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Start (mm:ss)</label>
+          <input type="text" id="startInput" class="time-field" placeholder="1:30">
+        </div>
+        <div class="field">
+          <label>End (mm:ss)</label>
+          <input type="text" id="endInput" class="time-field" placeholder="2:05">
+        </div>
+        <button id="useCurrentStart" class="btn">Use current time</button>
+        <button id="addClip" class="btn btn-primary">Add segment</button>
+      </div>
+      <div class="status" id="addStatus"></div>
+
+      <h2 style="margin-top: 24px;" id="listTitle">Segments to keep (in output order)</h2>
+      <div id="clipList">
+        <div class="empty">No segments defined yet</div>
+      </div>
+
+      <button class="btn btn-primary" id="exportBtn" style="margin-top: 24px;" disabled>Export Output Audio</button>
+      <div class="status" id="exportStatus"></div>
+    </div>
+
+  </div>
+
+  <script>
+    let audioBuffer = null;
+    let audioCtx = null;
+    let clips = [];
+    let fileName = "audio";
+
+    let sourceNode = null;
+    let isPlaying = false;
+    let playStartTime = 0;
+    let playStartOffset = 0;
+    let playStopAt = null;
+    let rafId = null;
+
+    const drop = document.getElementById('drop');
+    const fileInput = document.getElementById('fileInput');
+    const filenameEl = document.getElementById('filename');
+    const durationHint = document.getElementById('durationHint');
+    const playError = document.getElementById('playError');
+    const clipCard = document.getElementById('clipCard');
+    const startInput = document.getElementById('startInput');
+    const endInput = document.getElementById('endInput');
+    const addStatus = document.getElementById('addStatus');
+    const clipList = document.getElementById('clipList');
+    const exportBtn = document.getElementById('exportBtn');
+    const exportStatus = document.getElementById('exportStatus');
+    const playerBar = document.getElementById('playerBar');
+    const playBtn = document.getElementById('playBtn');
+    const seek = document.getElementById('seek');
+    const timeLabel = document.getElementById('timeLabel');
+    const trimMode = document.getElementById('trimMode');
+    const workspaceTitle = document.getElementById('workspaceTitle');
+    const listTitle = document.getElementById('listTitle');
+    const addClipBtn = document.getElementById('addClip');
+
+    // Handle trimmer mode toggle
+    trimMode.addEventListener('change', () => {
+      const isDelete = trimMode.value === 'delete';
+      workspaceTitle.textContent = isDelete ? '⚙️ Define Segments to Delete' : '⚙️ Define Segments to Keep';
+      listTitle.textContent = isDelete ? 'Segments to delete (will be cut out)' : 'Segments to keep (in output order)';
+      addClipBtn.textContent = isDelete ? 'Add segment to delete' : 'Add segment';
+      renderClips();
+    });
+
+    drop.addEventListener('click', () => fileInput.click());
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+    drop.addEventListener('drop', e => {
+      e.preventDefault();
+      drop.classList.remove('drag');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) handleFile(fileInput.files[0]);
+    });
+
+    function handleFile(file) {
+      fileName = file.name.replace(/\.[^/.]+$/, "");
+      filenameEl.textContent = file.name;
+      stopPlayback();
+      playError.style.display = 'none';
+      durationHint.textContent = "Decoding audio...";
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+          audioBuffer = await audioCtx.decodeAudioData(e.target.result);
+          durationHint.textContent = "Total Duration: " + formatTime(audioBuffer.duration);
+          playerBar.classList.add('active');
+          seek.max = audioBuffer.duration;
+          seek.value = 0;
+          updateTimeLabel(0);
+          clipCard.style.display = 'block';
+          clips = [];
+          renderClips();
+        } catch (err) {
+          durationHint.textContent = "";
+          playError.textContent = "Could not decode this audio file (" + err.message + "). Try converting it to MP3 or WAV first.";
+          playError.style.display = 'block';
+        }
+      };
+      reader.onerror = () => {
+        playError.textContent = "Could not read this file.";
+        playError.style.display = 'block';
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function parseTime(str) {
+      str = str.trim();
+      if (!str) return null;
+      const parts = str.split(':').map(s => s.trim());
+      let seconds = 0;
+      if (parts.length === 1) {
+        seconds = parseFloat(parts[0]);
+      } else if (parts.length === 2) {
+        seconds = parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
+      } else if (parts.length === 3) {
+        seconds = parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseFloat(parts[2]);
+      } else {
+        return null;
+      }
+      return isNaN(seconds) ? null : seconds;
+    }
+
+    function formatTime(sec) {
+      sec = Math.max(0, sec || 0);
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return m + ':' + String(s).padStart(2, '0');
+    }
+
+    function currentPlaybackTime() {
+      if (!isPlaying) return playStartOffset;
+      return playStartOffset + (audioCtx.currentTime - playStartTime);
+    }
+
+    function updateTimeLabel(t) {
+      timeLabel.textContent = formatTime(t) + ' / ' + formatTime(audioBuffer ? audioBuffer.duration : 0);
+    }
+
+    function stopPlayback() {
+      if (sourceNode) {
+        try { sourceNode.onended = null; sourceNode.stop(); } catch (e) {}
+        sourceNode = null;
+      }
+      isPlaying = false;
+      playBtn.textContent = '▶';
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    }
+
+    function playFrom(offset, stopAt) {
+      if (!audioBuffer) return;
+      stopPlayback();
+      sourceNode = audioCtx.createBufferSource();
+      sourceNode.buffer = audioBuffer;
+      sourceNode.connect(audioCtx.destination);
+      playStartOffset = offset;
+      playStartTime = audioCtx.currentTime;
+      playStopAt = stopAt !== undefined ? stopAt : audioBuffer.duration;
+      sourceNode.start(0, offset);
+      isPlaying = true;
+      playBtn.textContent = '⏸';
+      sourceNode.onended = () => {
+        if (isPlaying) { stopPlayback(); }
+      };
+      tick();
+    }
+
+    function tick() {
+      if (!isPlaying) return;
+      const t = currentPlaybackTime();
+      if (t >= playStopAt) {
+        stopPlayback();
+        playStartOffset = playStopAt;
+        seek.value = playStopAt;
+        updateTimeLabel(playStopAt);
+        return;
+      }
+      seek.value = t;
+      updateTimeLabel(t);
+      rafId = requestAnimationFrame(tick);
+    }
+
+    playBtn.addEventListener('click', () => {
+      if (!audioBuffer) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      if (isPlaying) {
+        playStartOffset = currentPlaybackTime();
+        stopPlayback();
+        updateTimeLabel(playStartOffset);
+      } else {
+        playFrom(playStartOffset >= (audioBuffer.duration - 0.05) ? 0 : playStartOffset, audioBuffer.duration);
+      }
+    });
+
+    seek.addEventListener('input', () => {
+      const t = parseFloat(seek.value);
+      updateTimeLabel(t);
+      if (isPlaying) {
+        playFrom(t, audioBuffer.duration);
+      } else {
+        playStartOffset = t;
+      }
+    });
+
+    document.getElementById('useCurrentStart').addEventListener('click', () => {
+      startInput.value = formatTime(currentPlaybackTime());
+    });
+
+    document.getElementById('addClip').addEventListener('click', () => {
+      const start = parseTime(startInput.value);
+      const end = parseTime(endInput.value);
+      addStatus.textContent = '';
+      addStatus.className = 'status';
+
+      if (start === null || end === null) {
+        addStatus.textContent = 'Enter both a start and end time, e.g. 1:30';
+        addStatus.className = 'status err';
+        return;
+      }
+      if (end <= start) {
+        addStatus.textContent = 'End time must be after start time.';
+        addStatus.className = 'status err';
+        return;
+      }
+      if (audioBuffer && end > audioBuffer.duration) {
+        addStatus.textContent = 'End time is beyond file duration (' + formatTime(audioBuffer.duration) + ').';
+        addStatus.className = 'status err';
+        return;
+      }
+
+      clips.push({ start, end });
+      startInput.value = '';
+      endInput.value = '';
+      renderClips();
+    });
+
+    function renderClips() {
+      if (clips.length === 0) {
+        clipList.innerHTML = '<div class="empty">No segments added yet</div>';
+        exportBtn.disabled = true;
+        return;
+      }
+      exportBtn.disabled = false;
+      clipList.innerHTML = '';
+      clips.forEach((c, i) => {
+        const div = document.createElement('div');
+        div.className = 'clip';
+        div.innerHTML = `
+          <div>
+            <div>${formatTime(c.start)} &rarr; ${formatTime(c.end)}</div>
+            <div class="meta">${(c.end - c.start).toFixed(1)}s (${trimMode.value === 'delete' ? 'Delete' : 'Keep'})</div>
+          </div>
+          <div class="clip-actions">
+            <button class="btn" data-preview="${i}">Preview</button>
+            <button class="btn" data-up="${i}" ${i === 0 ? 'disabled' : ''}>▲</button>
+            <button class="btn" data-down="${i}" ${i === clips.length - 1 ? 'disabled' : ''}>▼</button>
+            <button class="btn" data-remove="${i}">Remove</button>
+          </div>
+        `;
+        clipList.appendChild(div);
+      });
+
+      clipList.querySelectorAll('[data-preview]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = parseInt(btn.dataset.preview, 10);
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+          playFrom(clips[i].start, clips[i].end);
+        });
+      });
+      clipList.querySelectorAll('[data-remove]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          clips.splice(parseInt(btn.dataset.remove, 10), 1);
+          renderClips();
+        });
+      });
+      clipList.querySelectorAll('[data-up]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = parseInt(btn.dataset.up, 10);
+          [clips[i-1], clips[i]] = [clips[i], clips[i-1]];
+          renderClips();
+        });
+      });
+      clipList.querySelectorAll('[data-down]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = parseInt(btn.dataset.down, 10);
+          [clips[i+1], clips[i]] = [clips[i], clips[i+1]];
+          renderClips();
+        });
+      });
+    }
+
+    function audioBufferToWav(buffer) {
+      const numChannels = buffer.numberOfChannels;
+      const sampleRate = buffer.sampleRate;
+      const format = 1;
+      const bitDepth = 16;
+      const bytesPerSample = bitDepth / 8;
+      const blockAlign = numChannels * bytesPerSample;
+      const dataLength = buffer.length * blockAlign;
+      const bufferLength = 44 + dataLength;
+      const arrBuffer = new ArrayBuffer(bufferLength);
+      const view = new DataView(arrBuffer);
+
+      function writeString(offset, str) {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+      }
+
+      writeString(0, 'RIFF');
+      view.setUint32(4, 36 + dataLength, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, format, true);
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * blockAlign, true);
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, bitDepth, true);
+      writeString(36, 'data');
+      view.setUint32(40, dataLength, true);
+
+      const channels = [];
+      for (let c = 0; c < numChannels; c++) channels.push(buffer.getChannelData(c));
+
+      let offset = 44;
+      for (let i = 0; i < buffer.length; i++) {
+        for (let c = 0; c < numChannels; c++) {
+          let sample = Math.max(-1, Math.min(1, channels[c][i]));
+          sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+          view.setInt16(offset, sample, true);
+          offset += 2;
+        }
+      }
+      return arrBuffer;
+    }
+
+    exportBtn.addEventListener('click', () => {
+      if (!audioBuffer || clips.length === 0) return;
+      stopPlayback();
+      exportStatus.textContent = 'Processing audio...';
+      exportStatus.className = 'status';
+      exportBtn.disabled = true;
+
+      setTimeout(() => {
+        try {
+          const sampleRate = audioBuffer.sampleRate;
+          const numChannels = audioBuffer.numberOfChannels;
+          
+          let targetClips = [];
+          if (trimMode.value === 'delete') {
+            // Sort and merge overlapping delete segments
+            const sortedDelete = [...clips].sort((a, b) => a.start - b.start);
+            const mergedDelete = [];
+            for (const seg of sortedDelete) {
+              if (mergedDelete.length === 0) {
+                mergedDelete.push({ ...seg });
+              } else {
+                const last = mergedDelete[mergedDelete.length - 1];
+                if (seg.start <= last.end) {
+                  last.end = Math.max(last.end, seg.end);
+                } else {
+                  mergedDelete.push({ ...seg });
+                }
+              }
+            }
+            // Compute remaining target keep segments
+            let currentStart = 0;
+            for (const del of mergedDelete) {
+              if (del.start > currentStart) {
+                targetClips.push({ start: currentStart, end: del.start });
+              }
+              currentStart = Math.max(currentStart, del.end);
+            }
+            if (currentStart < audioBuffer.duration) {
+              targetClips.push({ start: currentStart, end: audioBuffer.duration });
+            }
+          } else {
+            targetClips = clips;
+          }
+
+          if (targetClips.length === 0) {
+            throw new Error('No audio remains after applying deletes.');
+          }
+
+          let totalSamples = 0;
+          const segs = targetClips.map(c => {
+            const startSample = Math.floor(c.start * sampleRate);
+            const endSample = Math.min(Math.floor(c.end * sampleRate), audioBuffer.length);
+            totalSamples += Math.max(0, endSample - startSample);
+            return { startSample, endSample };
+          });
+
+          const outBuffer = audioCtx.createBuffer(numChannels, totalSamples, sampleRate);
+          for (let c = 0; c < numChannels; c++) {
+            const outData = outBuffer.getChannelData(c);
+            const srcData = audioBuffer.getChannelData(c);
+            let writeOffset = 0;
+            segs.forEach(seg => {
+              const len = seg.endSample - seg.startSample;
+              for (let i = 0; i < len; i++) {
+                outData[writeOffset + i] = srcData[seg.startSample + i];
+              }
+              writeOffset += len;
+            });
+          }
+
+          const wav = audioBufferToWav(outBuffer);
+          const blob = new Blob([wav], { type: 'audio/wav' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName + '_trimmed.wav';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          exportStatus.textContent = 'Success! Trimmed file downloaded as ' + fileName + '_trimmed.wav (' + formatTime(outBuffer.duration) + ' total duration)';
+          exportBtn.disabled = false;
+        } catch (err) {
+          exportStatus.textContent = 'Export failed: ' + err.message;
+          exportStatus.className = 'status err';
+          exportBtn.disabled = false;
+        }
+      }, 50);
+    });
+  </script>
+</body>
+</html>

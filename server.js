@@ -331,6 +331,8 @@ const server = http.createServer((req, res) => {
       fileSegment = 'editor.html';
     } else if (pathname === '/video-editor') {
       fileSegment = 'video-editor.html';
+    } else if (pathname === '/audio-trimmer' || pathname === '/trimmer') {
+      fileSegment = 'audio-trimmer.html';
     } else if (pathname === '/video-downloader' || pathname === '/downloader') {
       fileSegment = 'downloader.html';
 

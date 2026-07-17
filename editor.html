@@ -211,10 +211,10 @@
     /* ─── CARDS GRID ─── */
     .cards {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 20px;
       padding: 0 40px 80px;
-      max-width: 1180px;
+      max-width: 1280px;
       margin: 0 auto;
       width: 100%;
     }
@@ -240,6 +240,7 @@
     .card:nth-child(1) { animation-delay: 0.25s; }
     .card:nth-child(2) { animation-delay: 0.35s; }
     .card:nth-child(3) { animation-delay: 0.45s; }
+    .card:nth-child(4) { animation-delay: 0.55s; }
 
     /* card glow on hover using pseudo-element */
     .card::before {
@@ -253,12 +254,14 @@
     .card-tracker::before  { background: radial-gradient(ellipse at top left,  rgba(190,242,100,0.12) 0%, transparent 65%); }
     .card-downloader::before { background: radial-gradient(ellipse at top left, rgba(96,165,250,0.12) 0%, transparent 65%); }
     .card-editor::before   { background: radial-gradient(ellipse at top left,  rgba(251,113,133,0.12) 0%, transparent 65%); }
-
+    .card-trimmer::before   { background: radial-gradient(ellipse at top left,  rgba(251,146,60,0.12) 0%, transparent 65%); }
+ 
     .card:hover { transform: translateY(-6px); box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
     .card:hover::before { opacity: 1; }
     .card-tracker:hover  { border-color: rgba(190,242,100,0.35); }
     .card-downloader:hover { border-color: rgba(96,165,250,0.35); }
     .card-editor:hover   { border-color: rgba(251,113,133,0.35); }
+    .card-trimmer:hover   { border-color: rgba(251,146,60,0.35); }
 
     /* card icon */
     .card-icon {
@@ -274,6 +277,7 @@
     .card-tracker   .card-icon { background: rgba(190,242,100,0.1); box-shadow: 0 0 30px rgba(190,242,100,0.2); }
     .card-downloader .card-icon { background: rgba(96,165,250,0.1);  box-shadow: 0 0 30px rgba(96,165,250,0.2); }
     .card-editor    .card-icon { background: rgba(251,113,133,0.1); box-shadow: 0 0 30px rgba(251,113,133,0.2); }
+    .card-trimmer    .card-icon { background: rgba(251,146,60,0.1); box-shadow: 0 0 30px rgba(251,146,60,0.2); }
 
     .card-kicker {
       font-size: 0.68rem;
@@ -317,6 +321,7 @@
     .card-tracker   .card-cta { color: var(--lime); }
     .card-downloader .card-cta { color: var(--blue); }
     .card-editor    .card-cta { color: var(--rose); }
+    .card-trimmer    .card-cta { color: var(--orange); }
 
     /* corner accent lines */
     .card-accent {
@@ -330,6 +335,7 @@
     .card-tracker   .card-accent { background: radial-gradient(circle at top right, var(--lime), transparent 70%); }
     .card-downloader .card-accent { background: radial-gradient(circle at top right, var(--blue), transparent 70%); }
     .card-editor    .card-accent { background: radial-gradient(circle at top right, var(--rose), transparent 70%); }
+    .card-trimmer    .card-accent { background: radial-gradient(circle at top right, var(--orange), transparent 70%); }
 
     /* ─── STATS BAR ─── */
     .stats-bar {
@@ -405,7 +411,7 @@
     <!-- Stats bar -->
     <div class="stats-bar">
       <div class="stat">
-        <span class="stat-val">3</span>
+        <span class="stat-val">4</span>
         <span class="stat-lbl">Tools</span>
       </div>
       <div class="stat">
@@ -450,6 +456,15 @@
         <div class="card-title">Video Editor</div>
         <p class="card-desc">Trim clips, remove ranges, overlay images or video, add captions, mix audio, and export — all in the browser.</p>
         <span class="card-cta">Open editor →</span>
+      </a>
+ 
+      <a class="card card-trimmer" href="/audio-trimmer">
+        <div class="card-accent"></div>
+        <div class="card-icon">✂️</div>
+        <span class="card-kicker">Audio Studio</span>
+        <div class="card-title">Audio Trimmer</div>
+        <p class="card-desc">Cut segments out of audio, trim audio lengths, and export merged files. Processed entirely inside your browser.</p>
+        <span class="card-cta">Open trimmer →</span>
       </a>
 
     </div>
