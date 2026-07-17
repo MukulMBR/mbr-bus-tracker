@@ -220,6 +220,19 @@
           </div>
           <span style="font-size: 0.75rem; color: var(--muted);">Skip Interval</span>
         </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; padding-left: 58px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <select id="speedRate" class="select-input" style="width: auto; padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;">
+              <option value="0.5">0.5x</option>
+              <option value="0.75">0.75x</option>
+              <option value="1.0" selected>1.0x (Normal)</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2.0">2.0x</option>
+            </select>
+          </div>
+          <span style="font-size: 0.75rem; color: var(--muted);">Playback Speed</span>
+        </div>
       </div>
       <div class="status" id="durationHint" style="margin-top: 8px;"></div>
       <div class="status err" id="playError" style="display:none"></div>
@@ -310,8 +323,10 @@
     const skipInterval = document.getElementById('skipInterval');
     const liveMarkBtn = document.getElementById('liveMarkBtn');
     const liveMarkStatus = document.getElementById('liveMarkStatus');
+    const speedRate = document.getElementById('speedRate');
 
     let liveStart = null;
+    let playbackRate = 1.0;
 
     // Handle trimmer mode toggle
     trimMode.addEventListener('change', () => {
@@ -356,6 +371,8 @@
           renderClips();
           populateSkipIntervals(audioBuffer.duration);
           resetLiveMarker();
+          speedRate.value = "1.0";
+          playbackRate = 1.0;
         } catch (err) {
           durationHint.textContent = "";
           playError.textContent = "Could not decode this audio file (" + err.message + "). Try converting it to MP3 or WAV first.";
@@ -395,7 +412,7 @@
 
     function currentPlaybackTime() {
       if (!isPlaying) return playStartOffset;
-      return playStartOffset + (audioCtx.currentTime - playStartTime);
+      return playStartOffset + (audioCtx.currentTime - playStartTime) * playbackRate;
     }
 
     function updateTimeLabel(t) {
@@ -418,6 +435,7 @@
       sourceNode = audioCtx.createBufferSource();
       sourceNode.buffer = audioBuffer;
       sourceNode.connect(audioCtx.destination);
+      sourceNode.playbackRate.value = playbackRate;
       playStartOffset = offset;
       playStartTime = audioCtx.currentTime;
       playStopAt = stopAt !== undefined ? stopAt : audioBuffer.duration;
@@ -517,6 +535,19 @@
         playFrom(newTime, audioBuffer.duration);
       } else {
         playStartOffset = newTime;
+      }
+    });
+
+    speedRate.addEventListener('change', () => {
+      if (!audioBuffer) return;
+      const newRate = parseFloat(speedRate.value);
+      if (isPlaying && sourceNode) {
+        playStartOffset = currentPlaybackTime();
+        playStartTime = audioCtx.currentTime;
+        playbackRate = newRate;
+        sourceNode.playbackRate.value = playbackRate;
+      } else {
+        playbackRate = newRate;
       }
     });
 
