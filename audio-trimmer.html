@@ -194,8 +194,15 @@
     <h1>Audio Trimmer</h1>
     <p class="subtitle">Upload an audio file, choose between keeping segments or cutting them out, and export the processed audio instantly.</p>
 
-    <!-- Card 1: File Loader -->
-    <div class="sub-card">
+    <!-- Tabs Header -->
+    <div style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--line); padding-bottom: 12px;">
+      <button id="tabTrimmer" class="btn btn-primary" style="flex: 1; padding: 10px; font-size: 0.85rem;">✂️ Single Track Trimmer</button>
+      <button id="tabRephraser" class="btn" style="flex: 1; padding: 10px; font-size: 0.85rem;">🔀 Multi-Track Rephraser</button>
+    </div>
+
+    <div id="trimmerContainer">
+      <!-- Card 1: File Loader -->
+      <div class="sub-card">
       <h2>📁 Load Audio Source</h2>
       <div class="drop" id="drop">
         <div id="dropText">Click to choose an audio file, or drag one here</div>
@@ -279,6 +286,30 @@
 
       <button class="btn btn-primary" id="exportBtn" style="margin-top: 24px;" disabled>Export Output Audio</button>
       <div class="status" id="exportStatus"></div>
+    </div></div> <!-- Close trimmerContainer & Card 2 -->
+
+    <!-- Container for Rephraser mode -->
+    <div id="rephraserContainer" style="display:none">
+      <!-- Card 3: Multi File Loader -->
+      <div class="sub-card">
+        <h2>📁 Add Audio Files</h2>
+        <p class="subtitle" style="font-size: 0.82rem; margin-bottom: 12px;">Add multiple audio files to arrange and merge together.</p>
+        <div class="drop" id="dropMulti">
+          <div id="dropTextMulti">Click to choose files, or drag them here</div>
+        </div>
+        <input type="file" id="fileInputMulti" accept="audio/*" multiple style="display:none">
+      </div>
+
+      <!-- Card 4: Multi Tracks Workspace -->
+      <div class="sub-card">
+        <h2>🎛️ Arrange & Crop Tracks</h2>
+        <div id="trackList">
+          <div class="empty">No tracks added yet. Upload files above to begin.</div>
+        </div>
+
+        <button class="btn btn-primary" id="exportMultiBtn" style="width: 100%; margin-top: 24px; padding: 14px;" disabled>Export Rephrased Audio</button>
+        <div class="status" id="exportMultiStatus"></div>
+      </div>
     </div>
 
   </div>
@@ -325,8 +356,24 @@
     const liveMarkStatus = document.getElementById('liveMarkStatus');
     const speedRate = document.getElementById('speedRate');
 
+    // Tab navigation DOM elements
+    const tabTrimmer = document.getElementById('tabTrimmer');
+    const tabRephraser = document.getElementById('tabRephraser');
+    const trimmerContainer = document.getElementById('trimmerContainer');
+    const rephraserContainer = document.getElementById('rephraserContainer');
+
+    // Rephraser DOM elements
+    const dropMulti = document.getElementById('dropMulti');
+    const fileInputMulti = document.getElementById('fileInputMulti');
+    const trackList = document.getElementById('trackList');
+    const exportMultiBtn = document.getElementById('exportMultiBtn');
+    const exportMultiStatus = document.getElementById('exportMultiStatus');
+
     let liveStart = null;
     let playbackRate = 1.0;
+    let currentTab = 'trimmer';
+    let rephraseTracks = [];
+    let nextTrackId = 1;
 
     // Handle trimmer mode toggle
     trimMode.addEventListener('change', () => {
@@ -335,6 +382,25 @@
       listTitle.textContent = isDelete ? 'Segments to delete (will be cut out)' : 'Segments to keep (in output order)';
       addClipBtn.textContent = isDelete ? 'Add segment to delete' : 'Add segment';
       renderClips();
+    });
+
+    // Tab switching event handlers
+    tabTrimmer.addEventListener('click', () => {
+      currentTab = 'trimmer';
+      tabTrimmer.className = 'btn btn-primary';
+      tabRephraser.className = 'btn';
+      trimmerContainer.style.display = 'block';
+      rephraserContainer.style.display = 'none';
+      stopPlayback();
+    });
+
+    tabRephraser.addEventListener('click', () => {
+      currentTab = 'rephraser';
+      tabTrimmer.className = 'btn';
+      tabRephraser.className = 'btn btn-primary';
+      trimmerContainer.style.display = 'none';
+      rephraserContainer.style.display = 'block';
+      stopPlayback();
     });
 
     drop.addEventListener('click', () => fileInput.click());
@@ -807,6 +873,279 @@
           exportStatus.textContent = 'Export failed: ' + err.message;
           exportStatus.className = 'status err';
           exportBtn.disabled = false;
+        }
+      }, 50);
+    });
+
+    // Global Keyboard Shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT') {
+        return;
+      }
+      const key = e.key.toLowerCase();
+      if (key === ' ' || e.code === 'Space') {
+        e.preventDefault();
+        if (currentTab === 'trimmer' && audioBuffer) {
+          playBtn.click();
+        }
+      } else if (key === 'arrowleft') {
+        e.preventDefault();
+        if (currentTab === 'trimmer' && audioBuffer) {
+          rewindBtn.click();
+        }
+      } else if (key === 'arrowright') {
+        e.preventDefault();
+        if (currentTab === 'trimmer' && audioBuffer) {
+          forwardBtn.click();
+        }
+      } else if (key === 's') {
+        e.preventDefault();
+        if (currentTab === 'trimmer' && audioBuffer) {
+          if (liveStart === null) {
+            liveMarkBtn.click();
+          }
+        }
+      } else if (key === 'e') {
+        e.preventDefault();
+        if (currentTab === 'trimmer' && audioBuffer) {
+          if (liveStart !== null) {
+            liveMarkBtn.click();
+          }
+        }
+      }
+    });
+
+    // Rephraser Drag & Drop handlers
+    dropMulti.addEventListener('click', () => fileInputMulti.click());
+    dropMulti.addEventListener('dragover', e => { e.preventDefault(); dropMulti.classList.add('drag'); });
+    dropMulti.addEventListener('dragleave', () => dropMulti.classList.remove('drag'));
+    dropMulti.addEventListener('drop', e => {
+      e.preventDefault();
+      dropMulti.classList.remove('drag');
+      if (e.dataTransfer.files.length) handleMultiFiles(e.dataTransfer.files);
+    });
+    fileInputMulti.addEventListener('change', () => {
+      if (fileInputMulti.files.length) handleMultiFiles(fileInputMulti.files);
+    });
+
+    async function handleMultiFiles(files) {
+      exportMultiStatus.textContent = '';
+      exportMultiStatus.className = 'status';
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      
+      for (const file of files) {
+        try {
+          const trackId = nextTrackId++;
+          const reader = new FileReader();
+          
+          const buffer = await new Promise((resolve, reject) => {
+            reader.onload = async (e) => {
+              try {
+                const decoded = await audioCtx.decodeAudioData(e.target.result);
+                resolve(decoded);
+              } catch (err) {
+                reject(err);
+              }
+            };
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+          });
+
+          rephraseTracks.push({
+            id: trackId,
+            name: file.name,
+            duration: buffer.duration,
+            buffer: buffer,
+            start: 0,
+            end: buffer.duration
+          });
+        } catch (err) {
+          exportMultiStatus.textContent = `Failed to load some files: ${err.message}`;
+          exportMultiStatus.className = 'status err';
+        }
+      }
+      
+      renderRephraseTracks();
+    }
+
+    function renderRephraseTracks() {
+      if (rephraseTracks.length === 0) {
+        trackList.innerHTML = '<div class="empty">No tracks added yet. Upload files above to begin.</div>';
+        exportMultiBtn.disabled = true;
+        return;
+      }
+      exportMultiBtn.disabled = false;
+      trackList.innerHTML = '';
+
+      rephraseTracks.forEach((t, i) => {
+        const div = document.createElement('div');
+        div.className = 'clip';
+        div.style.flexDirection = 'column';
+        div.style.alignItems = 'stretch';
+        div.style.gap = '10px';
+        
+        div.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-weight: 700; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--orange);">${t.name}</div>
+            <div style="font-size: 0.8rem; color: var(--muted);">${formatTime(t.duration)} duration</div>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <div style="flex: 1;">
+              <label style="font-size: 0.7rem; margin-bottom: 2px;">Crop Start</label>
+              <input type="text" class="time-field" style="padding: 6px 10px; font-size: 0.8rem;" placeholder="0:00" value="${formatTime(t.start)}" data-start-id="${t.id}">
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 0.7rem; margin-bottom: 2px;">Crop End</label>
+              <input type="text" class="time-field" style="padding: 6px 10px; font-size: 0.8rem;" placeholder="${formatTime(t.duration)}" value="${formatTime(t.end)}" data-end-id="${t.id}">
+            </div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+            <button class="btn" style="padding: 6px 12px; font-size: 0.78rem;" data-preview-id="${t.id}">▶ Preview</button>
+            <div style="display: flex; gap: 6px;">
+              <button class="btn" style="padding: 6px 10px; font-size: 0.78rem;" data-up-id="${t.id}" ${i === 0 ? 'disabled' : ''}>▲</button>
+              <button class="btn" style="padding: 6px 10px; font-size: 0.78rem;" data-down-id="${t.id}" ${i === rephraseTracks.length - 1 ? 'disabled' : ''}>▼</button>
+              <button class="btn" style="padding: 6px 10px; font-size: 0.78rem; border-color: rgba(251,113,133,0.3); color: var(--rose);" data-remove-id="${t.id}">Remove</button>
+            </div>
+          </div>
+        `;
+        trackList.appendChild(div);
+      });
+
+      trackList.querySelectorAll('[data-start-id]').forEach(input => {
+        input.addEventListener('change', () => {
+          const id = parseInt(input.dataset.startId, 10);
+          const t = rephraseTracks.find(item => item.id === id);
+          if (t) {
+            const val = parseTime(input.value);
+            if (val !== null && val >= 0 && val <= t.end) {
+              t.start = val;
+            } else {
+              input.value = formatTime(t.start);
+            }
+          }
+        });
+      });
+
+      trackList.querySelectorAll('[data-end-id]').forEach(input => {
+        input.addEventListener('change', () => {
+          const id = parseInt(input.dataset.endId, 10);
+          const t = rephraseTracks.find(item => item.id === id);
+          if (t) {
+            const val = parseTime(input.value);
+            if (val !== null && val >= t.start && val <= t.duration) {
+              t.end = val;
+            } else {
+              input.value = formatTime(t.end);
+            }
+          }
+        });
+      });
+
+      trackList.querySelectorAll('[data-preview-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.previewId, 10);
+          const t = rephraseTracks.find(item => item.id === id);
+          if (t) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const origBuffer = audioBuffer;
+            audioBuffer = t.buffer;
+            playFrom(t.start, t.end);
+            sourceNode.onended = () => {
+              audioBuffer = origBuffer;
+              if (isPlaying) { stopPlayback(); }
+            };
+          }
+        });
+      });
+
+      trackList.querySelectorAll('[data-remove-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.removeId, 10);
+          rephraseTracks = rephraseTracks.filter(item => item.id !== id);
+          renderRephraseTracks();
+        });
+      });
+
+      trackList.querySelectorAll('[data-up-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.upId, 10);
+          const idx = rephraseTracks.findIndex(item => item.id === id);
+          if (idx > 0) {
+            [rephraseTracks[idx - 1], rephraseTracks[idx]] = [rephraseTracks[idx], rephraseTracks[idx - 1]];
+            renderRephraseTracks();
+          }
+        });
+      });
+
+      trackList.querySelectorAll('[data-down-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = parseInt(btn.dataset.downId, 10);
+          const idx = rephraseTracks.findIndex(item => item.id === id);
+          if (idx >= 0 && idx < rephraseTracks.length - 1) {
+            [rephraseTracks[idx + 1], rephraseTracks[idx]] = [rephraseTracks[idx], rephraseTracks[idx + 1]];
+            renderRephraseTracks();
+          }
+        });
+      });
+    }
+
+    exportMultiBtn.addEventListener('click', () => {
+      if (rephraseTracks.length === 0) return;
+      stopPlayback();
+      exportMultiStatus.textContent = 'Merging tracks...';
+      exportMultiStatus.className = 'status';
+      exportMultiBtn.disabled = true;
+
+      setTimeout(() => {
+        try {
+          const sampleRate = rephraseTracks[0].buffer.sampleRate;
+          let numChannels = 1;
+          rephraseTracks.forEach(t => {
+            numChannels = Math.max(numChannels, t.buffer.numberOfChannels);
+          });
+
+          let totalSamples = 0;
+          const segments = rephraseTracks.map(t => {
+            const startSample = Math.floor(t.start * t.buffer.sampleRate);
+            const endSample = Math.min(Math.floor(t.end * t.buffer.sampleRate), t.buffer.length);
+            const durationSamples = Math.max(0, endSample - startSample);
+            totalSamples += durationSamples;
+            return { track: t, startSample, endSample, durationSamples };
+          });
+
+          const outBuffer = audioCtx.createBuffer(numChannels, totalSamples, sampleRate);
+          
+          for (let c = 0; c < numChannels; c++) {
+            const outData = outBuffer.getChannelData(c);
+            let writeOffset = 0;
+            
+            segments.forEach(seg => {
+              const srcChannelIdx = Math.min(c, seg.track.buffer.numberOfChannels - 1);
+              const srcData = seg.track.buffer.getChannelData(srcChannelIdx);
+              
+              for (let i = 0; i < seg.durationSamples; i++) {
+                outData[writeOffset + i] = srcData[seg.startSample + i];
+              }
+              writeOffset += seg.durationSamples;
+            });
+          }
+
+          const wav = audioBufferToWav(outBuffer);
+          const blob = new Blob([wav], { type: 'audio/wav' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'rephrased_audio.wav';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          exportMultiStatus.textContent = 'Success! Rephrased file downloaded as rephrased_audio.wav';
+          exportMultiBtn.disabled = false;
+        } catch (err) {
+          exportMultiStatus.textContent = 'Merge failed: ' + err.message;
+          exportMultiStatus.className = 'status err';
+          exportMultiBtn.disabled = false;
         }
       }, 50);
     });
