@@ -252,7 +252,8 @@
           </div>
         </div>
 
-        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 14px;">
+        <!-- Start Offset Slider -->
+        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 18px;">
           <div style="flex: 1;">
             <label style="font-size: 0.72rem; margin-bottom: 2px;">Audio Start Offset (seconds)</label>
             <input type="range" id="vsOffsetSlider" min="0" max="100" value="0" style="width: 100%; accent-color: var(--orange); cursor: pointer;">
@@ -263,8 +264,8 @@
           </div>
         </div>
 
-        <!-- Sync Strategies Selection -->
-        <div style="margin-bottom: 18px;">
+        <!-- Sync Strategies Selection (Hidden as of now) -->
+        <div style="display: none; margin-bottom: 18px;">
           <label>Sync / Matching Strategy</label>
           <select id="vsStrategySelect" class="select-input">
             <option value="trim" selected>✂️ Trim Audio (Cut extra narration at the end)</option>
@@ -274,13 +275,83 @@
           </select>
         </div>
 
+        <!-- Dynamic Trimming Controls for Video and Audio separately -->
+        <div style="margin: 14px 0; padding: 14px; background: rgba(255,255,255,0.01); border: 1px solid var(--line); border-radius: 12px; display: flex; flex-direction: column; gap: 12px;">
+          <h3 style="font-size: 0.85rem; margin: 0; color: #fff; font-weight: 600;">✂️ Custom Range Trimmers</h3>
+          
+          <!-- Video Trim Control Row -->
+          <div>
+            <span style="font-size: 0.72rem; color: #60a5fa; font-weight: 700; display: block; margin-bottom: 4px;">📹 Video Trim Range</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="text" id="vsVideoTrimStart" class="time-field" style="padding: 5px; font-size: 0.75rem; text-align: center; width: 65px;" placeholder="Start" value="0:00">
+              <span style="font-size: 0.75rem; color: var(--muted);">to</span>
+              <input type="text" id="vsVideoTrimEnd" class="time-field" style="padding: 5px; font-size: 0.75rem; text-align: center; width: 65px;" placeholder="End">
+              <button id="vsMarkVideoStart" class="btn" style="padding: 5px 8px; font-size: 0.7rem;">Mark Start</button>
+              <button id="vsMarkVideoEnd" class="btn" style="padding: 5px 8px; font-size: 0.7rem;">Mark End</button>
+            </div>
+            <!-- Start/Stop Trim buttons that record automatically -->
+            <div style="margin-top: 6px;">
+              <button id="vsVideoTrimRecordBtn" class="btn" style="padding: 5px 10px; font-size: 0.7rem; width: 100%; border: 1px solid rgba(96, 165, 250, 0.4); background: rgba(96, 165, 250, 0.05); color: #60a5fa;">✂️ Capture Video Trim live (Click to Start / Stop)</button>
+            </div>
+          </div>
+
+          <!-- Audio Trim Control Row -->
+          <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+            <span style="font-size: 0.72rem; color: #fb923c; font-weight: 700; display: block; margin-bottom: 4px;">🎙️ Audio Trim Range</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="text" id="vsAudioTrimStart" class="time-field" style="padding: 5px; font-size: 0.75rem; text-align: center; width: 65px;" placeholder="Start" value="0:00">
+              <span style="font-size: 0.75rem; color: var(--muted);">to</span>
+              <input type="text" id="vsAudioTrimEnd" class="time-field" style="padding: 5px; font-size: 0.75rem; text-align: center; width: 65px;" placeholder="End">
+              <button id="vsMarkAudioStart" class="btn" style="padding: 5px 8px; font-size: 0.7rem;">Mark Start</button>
+              <button id="vsMarkAudioEnd" class="btn" style="padding: 5px 8px; font-size: 0.7rem;">Mark End</button>
+            </div>
+            <!-- Start/Stop Trim buttons that record automatically -->
+            <div style="margin-top: 6px;">
+              <button id="vsAudioTrimRecordBtn" class="btn" style="padding: 5px 10px; font-size: 0.7rem; width: 100%; border: 1px solid rgba(251, 146, 96, 0.4); background: rgba(251, 146, 96, 0.05); color: #fb923c;">✂️ Capture Audio Trim live (Click to Start / Stop)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Playback Speed Profile Recorder -->
+        <div style="margin: 14px 0; padding: 14px; background: rgba(255,255,255,0.01); border: 1px solid var(--line); border-radius: 12px; display: flex; flex-direction: column; gap: 10px;">
+          <h3 style="font-size: 0.85rem; margin: 0; color: #fff; font-weight: 600; display: flex; align-items: center; gap: 6px;">⚡ Playback Speed Recorder</h3>
+          <p class="subtitle" style="font-size: 0.72rem; margin: 0; color: var(--muted);">Record custom speed segments (like 2x or 0.5x) for video or audio separately during playback.</p>
+          
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <div style="flex: 1;">
+              <select id="vsSpeedTarget" class="select-input" style="padding: 6px; font-size: 0.75rem;">
+                <option value="video">Video</option>
+                <option value="audio">Audio</option>
+              </select>
+            </div>
+            <div style="flex: 1;">
+              <select id="vsSpeedFactor" class="select-input" style="padding: 6px; font-size: 0.75rem;">
+                <option value="0.5">0.5x (Slow)</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5" selected>1.5x</option>
+                <option value="2.0">2.0x (Fast)</option>
+              </select>
+            </div>
+          </div>
+          
+          <button id="vsRecordSpeedBtn" class="btn" style="padding: 8px; font-size: 0.8rem; border: 1px solid rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.08); color: #ef4444;">🔴 Record Speed segment (Click to Start / Stop)</button>
+
+          <!-- List of Recorded Profiles -->
+          <div id="vsSpeedSegmentsContainer" style="display: none;">
+            <span style="font-size: 0.72rem; color: var(--muted); font-weight: 700; display: block; margin-bottom: 4px;">Recorded Speed Profiles:</span>
+            <div id="vsSpeedSegmentsList" style="display: flex; flex-direction: column; gap: 6px; max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 8px;"></div>
+          </div>
+        </div>
+
         <div class="status" id="vsMatchStatus" style="margin-top: 10px; line-height: 1.6;"></div>
 
-        <!-- Dual Playback Controls -->
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0;">
-          <button id="vsPlayVideoBtn" class="btn" style="flex: 1; padding: 10px; font-size: 0.8rem;">📹 Play Video Only</button>
-          <button id="vsPlayAudioBtn" class="btn" style="flex: 1; padding: 10px; font-size: 0.8rem;">🎙️ Play Audio Only</button>
-          <button id="vsPlayBothBtn" class="btn btn-primary" style="flex: 1; padding: 10px; font-size: 0.8rem; min-width: 140px;">▶ Synced Play (Both)</button>
+        <!-- Dual Playback & Seek Controls -->
+        <div style="display: flex; gap: 6px; align-items: center; justify-content: center; margin: 16px 0;">
+          <button id="vsSeekBackBtn" class="btn" style="padding: 10px; font-size: 0.8rem; min-width: 45px;">⏪ -5s</button>
+          <button id="vsPlayVideoBtn" class="btn" style="padding: 10px; font-size: 0.8rem; flex: 1;">📹 Video Only</button>
+          <button id="vsPlayAudioBtn" class="btn" style="padding: 10px; font-size: 0.8rem; flex: 1;">🎙️ Audio Only</button>
+          <button id="vsPlayBothBtn" class="btn btn-primary" style="padding: 10px; font-size: 0.8rem; flex: 1.5; min-width: 130px;">▶ Synced Play</button>
+          <button id="vsSeekForwardBtn" class="btn" style="padding: 10px; font-size: 0.8rem; min-width: 45px;">5s ⏩</button>
         </div>
         <div class="hint" id="vsPreviewTime" style="margin-top: 8px; text-align:center;"></div>
 
@@ -1389,6 +1460,31 @@
     const vsOffsetSlider = document.getElementById('vsOffsetSlider');
     const vsZoomSlider = document.getElementById('vsZoomSlider');
     const vsStrategySelect = document.getElementById('vsStrategySelect');
+    
+    // New Trim DOM Elements
+    const vsVideoTrimStart = document.getElementById('vsVideoTrimStart');
+    const vsVideoTrimEnd = document.getElementById('vsVideoTrimEnd');
+    const vsMarkVideoStart = document.getElementById('vsMarkVideoStart');
+    const vsMarkVideoEnd = document.getElementById('vsMarkVideoEnd');
+    const vsVideoTrimRecordBtn = document.getElementById('vsVideoTrimRecordBtn');
+
+    const vsAudioTrimStart = document.getElementById('vsAudioTrimStart');
+    const vsAudioTrimEnd = document.getElementById('vsAudioTrimEnd');
+    const vsMarkAudioStart = document.getElementById('vsMarkAudioStart');
+    const vsMarkAudioEnd = document.getElementById('vsMarkAudioEnd');
+    const vsAudioTrimRecordBtn = document.getElementById('vsAudioTrimRecordBtn');
+
+    // New Speed Recording DOM Elements
+    const vsSpeedTarget = document.getElementById('vsSpeedTarget');
+    const vsSpeedFactor = document.getElementById('vsSpeedFactor');
+    const vsRecordSpeedBtn = document.getElementById('vsRecordSpeedBtn');
+    const vsSpeedSegmentsContainer = document.getElementById('vsSpeedSegmentsContainer');
+    const vsSpeedSegmentsList = document.getElementById('vsSpeedSegmentsList');
+
+    // New Seek Controls DOM Elements
+    const vsSeekBackBtn = document.getElementById('vsSeekBackBtn');
+    const vsSeekForwardBtn = document.getElementById('vsSeekForwardBtn');
+
     const vsPlayVideoBtn = document.getElementById('vsPlayVideoBtn');
     const vsPlayAudioBtn = document.getElementById('vsPlayAudioBtn');
     const vsPlayBothBtn = document.getElementById('vsPlayBothBtn');
@@ -1410,6 +1506,15 @@
     let vsPlaybackStartOffset = 0;
     let vsPlaybackStartTime = 0;
     let vsPlaybackRafId = null;
+
+    // Trimmer State Variables
+    let vsIsRecordingVideoTrim = false;
+    let vsIsRecordingAudioTrim = false;
+
+    // Speed Recording State Variables
+    let vsIsRecordingSpeed = false;
+    let vsSpeedRecordStartTime = 0;
+    let vsSpeedSegments = []; // array of { target: 'video'|'audio', start, end, speed }
 
     // --- Load video ---
     dropVideo.addEventListener('click', () => videoInput.click());
@@ -1436,6 +1541,10 @@
       vsVideoPreview.onloadedmetadata = () => {
         vsVideoDuration = vsVideoPreview.duration;
         vsVideoStatus.textContent = 'Video duration: ' + formatTime(vsVideoDuration);
+        
+        vsVideoTrimStart.value = "0:00";
+        vsVideoTrimEnd.value = formatTime(vsVideoDuration);
+        
         checkBothLoaded();
       };
       vsVideoPreview.onerror = () => {
@@ -1476,6 +1585,9 @@
           vsOffsetSlider.value = 0;
           vsOffsetInput.value = "0:00";
           
+          vsAudioTrimStart.value = "0:00";
+          vsAudioTrimEnd.value = formatTime(vsAudioBuffer.duration);
+          
           checkBothLoaded();
         } catch (err) {
           vsAudioStatus.textContent = 'Could not decode this audio file (' + err.message + ').';
@@ -1501,57 +1613,32 @@
       if (!vsVideoDuration || !vsAudioBuffer) return;
       
       const offset = parseFloat(vsOffsetSlider.value) || 0;
-      const availableAudio = Math.max(0, vsAudioBuffer.duration - offset);
-      const strategy = vsStrategySelect.value;
       
-      let mode = 'trim-audio';
-      let targetDuration = vsVideoDuration;
-      let extendBy = 0;
-      let speedRatio = 1.0;
-      let statusHtml = '';
+      // Custom Trim Bounds
+      const vStart = parseTime(vsVideoTrimStart.value) || 0;
+      const vEnd = parseTime(vsVideoTrimEnd.value) || vsVideoDuration;
+      const aStart = parseTime(vsAudioTrimStart.value) || 0;
+      const aEnd = parseTime(vsAudioTrimEnd.value) || vsAudioBuffer.duration;
 
-      if (strategy === 'trim') {
-        mode = 'trim-audio';
-        targetDuration = Math.min(vsVideoDuration, availableAudio);
-        statusHtml = `✂️ <strong>Trim Mode:</strong> Audio will start after ${formatTime(offset)} offset. `;
-        if (availableAudio > vsVideoDuration) {
-          statusHtml += `Extra audio tail of <strong>${formatTime(availableAudio - vsVideoDuration)}</strong> will be trimmed to fit the video.`;
-        } else {
-          statusHtml += `Extra video tail of <strong>${formatTime(vsVideoDuration - availableAudio)}</strong> will be trimmed to fit the audio.`;
-        }
-      } 
-      else if (strategy === 'extend') {
-        mode = 'extend-video';
-        if (availableAudio > vsVideoDuration) {
-          targetDuration = availableAudio;
-          extendBy = availableAudio - vsVideoDuration;
-          statusHtml = `❄️ <strong>Freeze Frame Mode:</strong> Video will freeze on its final frame for <strong>${formatTime(extendBy)}</strong> to cover all narration.`;
-        } else {
-          mode = 'trim-video';
-          targetDuration = availableAudio;
-          statusHtml = `⚖️ Video is longer than audio. Video tail of <strong>${formatTime(vsVideoDuration - availableAudio)}</strong> will be trimmed.`;
-        }
-      } 
-      else if (strategy === 'loop') {
-        mode = 'loop-video';
-        if (availableAudio > vsVideoDuration) {
-          targetDuration = availableAudio;
-          statusHtml = `🔄 <strong>Loop Video Mode:</strong> Video is shorter than audio. Video will repeat/loop from the beginning until all narration finishes.`;
-        } else {
-          mode = 'trim-video';
-          targetDuration = availableAudio;
-          statusHtml = `⚖️ Video is longer than audio. Video tail of <strong>${formatTime(vsVideoDuration - availableAudio)}</strong> will be trimmed.`;
-        }
-      } 
-      else if (strategy === 'speed') {
-        mode = 'speed-video';
-        targetDuration = availableAudio;
-        speedRatio = vsVideoDuration / availableAudio;
-        const percent = Math.round(speedRatio * 100);
-        statusHtml = `⚡ <strong>Speed Match Mode:</strong> Video speed will adjust to <strong>${percent}%</strong> to align exactly with narration.`;
-      }
+      // Video trimmed duration
+      const vDuration = Math.max(0.1, vEnd - vStart);
+      // Audio trimmed duration
+      const aDuration = Math.max(0.1, aEnd - aStart);
 
-      vsAnalysis = { offset, targetDuration, mode, extendBy, speedRatio };
+      let statusHtml = `✂️ <strong>Active Trim Ranges:</strong><br>`;
+      statusHtml += `📹 Video Trim: <strong>${formatTime(vStart)} to ${formatTime(vEnd)}</strong> (${formatTime(vDuration)})<br>`;
+      statusHtml += `🎙️ Audio Trim: <strong>${formatTime(aStart)} to ${formatTime(aEnd)}</strong> (${formatTime(aDuration)})`;
+
+      vsAnalysis = { 
+        offset, 
+        vStart, 
+        vEnd, 
+        vDuration,
+        aStart, 
+        aEnd, 
+        aDuration,
+        targetDuration: vDuration 
+      };
       
       const vsMatchStatus = document.getElementById('vsMatchStatus');
       if (vsMatchStatus) {
@@ -1568,12 +1655,26 @@
       const offset = parseFloat(vsOffsetSlider.value) || 0;
       const zoom = parseFloat(vsZoomSlider.value) || 30; // px per second
       
+      const vStart = parseTime(vsVideoTrimStart.value) || 0;
+      const vEnd = parseTime(vsVideoTrimEnd.value) || vsVideoDuration;
+      const aStart = parseTime(vsAudioTrimStart.value) || 0;
+      const aEnd = parseTime(vsAudioTrimEnd.value) || vsAudioBuffer.duration;
+
       vsTimelineVideoTrack.style.width = `${vsVideoDuration * zoom}px`;
       vsTimelineVideoTrack.textContent = `Video: ${formatTime(vsVideoDuration)}`;
       
       vsTimelineAudioTrack.style.width = `${vsAudioBuffer.duration * zoom}px`;
       vsTimelineAudioTrack.textContent = `Audio: ${formatTime(vsAudioBuffer.duration)}`;
       
+      // Update background gradient to show trimmed out bounds in translucent grey
+      const pctVStart = (vStart / vsVideoDuration) * 100;
+      const pctVEnd = (vEnd / vsVideoDuration) * 100;
+      vsTimelineVideoTrack.style.background = `linear-gradient(90deg, rgba(255,255,255,0.08) ${pctVStart}%, #3b82f6 ${pctVStart}%, #60a5fa ${pctVEnd}%, rgba(255,255,255,0.08) ${pctVEnd}%)`;
+
+      const pctAStart = (aStart / vsAudioBuffer.duration) * 100;
+      const pctAEnd = (aEnd / vsAudioBuffer.duration) * 100;
+      vsTimelineAudioTrack.style.background = `linear-gradient(90deg, rgba(255,255,255,0.08) ${pctAStart}%, #ea580c ${pctAStart}%, #fb923c ${pctAEnd}%, rgba(255,255,255,0.08) ${pctAEnd}%)`;
+
       vsTimelineAudioTrack.style.transform = `translateX(${offset * zoom}px)`;
     }
 
@@ -1595,7 +1696,167 @@
     });
 
     vsZoomSlider.addEventListener('input', renderTimelineWidget);
-    vsStrategySelect.addEventListener('change', updateSyncAnalysis);
+
+    // --- Seek Controls ---
+    vsSeekBackBtn.addEventListener('click', () => {
+      if (vsPlayMode === 'video' || vsPlayMode === 'both') {
+        vsVideoPreview.currentTime = Math.max(0, vsVideoPreview.currentTime - 5);
+      }
+      if (vsPlayMode === 'audio' || vsPlayMode === 'both') {
+        vsAudioPreview.currentTime = Math.max(0, vsAudioPreview.currentTime - 5);
+      }
+    });
+
+    vsSeekForwardBtn.addEventListener('click', () => {
+      if (vsPlayMode === 'video' || vsPlayMode === 'both') {
+        vsVideoPreview.currentTime = Math.min(vsVideoDuration, vsVideoPreview.currentTime + 5);
+      }
+      if (vsPlayMode === 'audio' || vsPlayMode === 'both') {
+        vsAudioPreview.currentTime = Math.min(vsAudioBuffer.duration, vsAudioPreview.currentTime + 5);
+      }
+    });
+
+    // --- Video & Audio Trim Manual Marks ---
+    vsMarkVideoStart.addEventListener('click', () => {
+      vsVideoTrimStart.value = formatTime(vsVideoPreview.currentTime);
+      updateSyncAnalysis();
+    });
+    vsMarkVideoEnd.addEventListener('click', () => {
+      vsVideoTrimEnd.value = formatTime(vsVideoPreview.currentTime);
+      updateSyncAnalysis();
+    });
+
+    vsMarkAudioStart.addEventListener('click', () => {
+      vsAudioTrimStart.value = formatTime(vsAudioPreview.currentTime);
+      updateSyncAnalysis();
+    });
+    vsMarkAudioEnd.addEventListener('click', () => {
+      vsAudioTrimEnd.value = formatTime(vsAudioPreview.currentTime);
+      updateSyncAnalysis();
+    });
+
+    vsVideoTrimStart.addEventListener('change', updateSyncAnalysis);
+    vsVideoTrimEnd.addEventListener('change', updateSyncAnalysis);
+    vsAudioTrimStart.addEventListener('change', updateSyncAnalysis);
+    vsAudioTrimEnd.addEventListener('change', updateSyncAnalysis);
+
+    // --- Live Trim Capture Records ---
+    vsVideoTrimRecordBtn.addEventListener('click', () => {
+      if (!vsIsRecordingVideoTrim) {
+        vsIsRecordingVideoTrim = true;
+        vsVideoTrimStart.value = formatTime(vsVideoPreview.currentTime);
+        vsVideoTrimRecordBtn.textContent = '⏹ Stop Video Trim live capture';
+        vsVideoTrimRecordBtn.style.background = 'rgba(239, 68, 68, 0.15)';
+        vsVideoTrimRecordBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        vsVideoTrimRecordBtn.style.color = '#ef4444';
+      } else {
+        vsIsRecordingVideoTrim = false;
+        vsVideoTrimEnd.value = formatTime(vsVideoPreview.currentTime);
+        vsVideoTrimRecordBtn.textContent = '✂️ Capture Video Trim live (Click to Start / Stop)';
+        vsVideoTrimRecordBtn.style.background = 'rgba(96, 165, 250, 0.05)';
+        vsVideoTrimRecordBtn.style.borderColor = 'rgba(96, 165, 250, 0.4)';
+        vsVideoTrimRecordBtn.style.color = '#60a5fa';
+        updateSyncAnalysis();
+      }
+    });
+
+    vsAudioTrimRecordBtn.addEventListener('click', () => {
+      if (!vsIsRecordingAudioTrim) {
+        vsIsRecordingAudioTrim = true;
+        vsAudioTrimStart.value = formatTime(vsAudioPreview.currentTime);
+        vsAudioTrimRecordBtn.textContent = '⏹ Stop Audio Trim live capture';
+        vsAudioTrimRecordBtn.style.background = 'rgba(239, 68, 68, 0.15)';
+        vsAudioTrimRecordBtn.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        vsAudioTrimRecordBtn.style.color = '#ef4444';
+      } else {
+        vsIsRecordingAudioTrim = false;
+        vsAudioTrimEnd.value = formatTime(vsAudioPreview.currentTime);
+        vsAudioTrimRecordBtn.textContent = '✂️ Capture Audio Trim live (Click to Start / Stop)';
+        vsAudioTrimRecordBtn.style.background = 'rgba(251, 146, 96, 0.05)';
+        vsAudioTrimRecordBtn.style.borderColor = 'rgba(251, 146, 96, 0.4)';
+        vsAudioTrimRecordBtn.style.color = '#fb923c';
+        updateSyncAnalysis();
+      }
+    });
+
+    // --- Dynamic Speed Profile Recorder ---
+    vsRecordSpeedBtn.addEventListener('click', () => {
+      const target = vsSpeedTarget.value;
+      const speed = parseFloat(vsSpeedFactor.value);
+      const player = target === 'video' ? vsVideoPreview : vsAudioPreview;
+
+      if (!vsIsRecordingSpeed) {
+        vsIsRecordingSpeed = true;
+        vsSpeedRecordStartTime = player.currentTime;
+        
+        player.playbackRate = speed;
+
+        vsRecordSpeedBtn.textContent = `⏹ Stop Speed Segment (${speed}x)`;
+        vsRecordSpeedBtn.style.background = 'rgba(239, 68, 68, 0.2)';
+      } else {
+        vsIsRecordingSpeed = false;
+        const endTime = player.currentTime;
+        
+        player.playbackRate = 1.0;
+
+        vsRecordSpeedBtn.textContent = '🔴 Record Speed segment (Click to Start / Stop)';
+        vsRecordSpeedBtn.style.background = 'rgba(239, 68, 68, 0.08)';
+
+        const start = Math.min(vsSpeedRecordStartTime, endTime);
+        const end = Math.max(vsSpeedRecordStartTime, endTime);
+        if (end - start > 0.2) {
+          vsSpeedSegments.push({ target, start, end, speed });
+          renderSpeedSegmentsList();
+        }
+      }
+    });
+
+    function renderSpeedSegmentsList() {
+      vsSpeedSegmentsList.innerHTML = '';
+      if (vsSpeedSegments.length === 0) {
+        vsSpeedSegmentsContainer.style.display = 'none';
+        return;
+      }
+      vsSpeedSegmentsContainer.style.display = 'block';
+
+      vsSpeedSegments.forEach((seg, index) => {
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.justify = 'space-between';
+        div.style.alignItems = 'center';
+        div.style.fontSize = '0.72rem';
+        div.style.background = 'rgba(255,255,255,0.02)';
+        div.style.padding = '4px 8px';
+        div.style.borderRadius = '4px';
+
+        const info = document.createElement('span');
+        const icon = seg.target === 'video' ? '📹' : '🎙️';
+        info.innerHTML = `${icon} <strong>${seg.target.toUpperCase()}</strong>: ${formatTime(seg.start)} - ${formatTime(seg.end)} @ <strong>${seg.speed}x</strong>`;
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '❌';
+        deleteBtn.style.border = 'none';
+        deleteBtn.style.background = 'none';
+        deleteBtn.style.cursor = 'pointer';
+        deleteBtn.addEventListener('click', () => {
+          vsSpeedSegments.splice(index, 1);
+          renderSpeedSegmentsList();
+        });
+
+        div.appendChild(info);
+        div.appendChild(deleteBtn);
+        vsSpeedSegmentsList.appendChild(div);
+      });
+    }
+
+    function getCurrentSpeedFactor(target, time) {
+      for (const seg of vsSpeedSegments) {
+        if (seg.target === target && time >= seg.start && time <= seg.end) {
+          return seg.speed;
+        }
+      }
+      return 1.0;
+    }
 
     // --- Dual Playback Controls ---
     function stopVsPlayback() {
@@ -1606,9 +1867,13 @@
       vsVideoPreview.pause();
       vsAudioPreview.pause();
       
-      vsPlayVideoBtn.textContent = '📹 Play Video Only';
-      vsPlayAudioBtn.textContent = '🎙️ Play Audio Only';
-      vsPlayBothBtn.textContent = '▶ Synced Play (Both)';
+      // Reset play speeds
+      vsVideoPreview.playbackRate = 1.0;
+      vsAudioPreview.playbackRate = 1.0;
+      
+      vsPlayVideoBtn.textContent = '📹 Video Only';
+      vsPlayAudioBtn.textContent = '🎙️ Audio Only';
+      vsPlayBothBtn.textContent = '▶ Synced Play';
     }
 
     vsPlayVideoBtn.addEventListener('click', () => {
@@ -1619,6 +1884,13 @@
         vsIsPlaying = true;
         vsPlayMode = 'video';
         vsVideoPreview.muted = false;
+        
+        // Start from video trim start bound
+        const vStart = parseTime(vsVideoTrimStart.value) || 0;
+        if (vsVideoPreview.currentTime < vStart || vsVideoPreview.currentTime > (parseTime(vsVideoTrimEnd.value) || vsVideoDuration)) {
+          vsVideoPreview.currentTime = vStart;
+        }
+        
         vsVideoPreview.play();
         vsPlayVideoBtn.textContent = '⏸ Pause Video';
         vsTickPlayback();
@@ -1632,6 +1904,13 @@
         stopVsPlayback();
         vsIsPlaying = true;
         vsPlayMode = 'audio';
+        
+        // Start from audio trim start bound
+        const aStart = parseTime(vsAudioTrimStart.value) || 0;
+        if (vsAudioPreview.currentTime < aStart || vsAudioPreview.currentTime > (parseTime(vsAudioTrimEnd.value) || vsAudioBuffer.duration)) {
+          vsAudioPreview.currentTime = aStart;
+        }
+        
         vsAudioPreview.play();
         vsPlayAudioBtn.textContent = '⏸ Pause Audio';
         vsTickPlayback();
@@ -1647,10 +1926,14 @@
         vsPlayMode = 'both';
         
         vsVideoPreview.muted = true;
-        vsVideoPreview.currentTime = 0;
         
+        // Align playheads with trim ranges & offset
+        const vStart = parseTime(vsVideoTrimStart.value) || 0;
         const offset = parseFloat(vsOffsetSlider.value) || 0;
-        vsAudioPreview.currentTime = offset;
+        const aStart = parseTime(vsAudioTrimStart.value) || 0;
+        
+        vsVideoPreview.currentTime = vStart;
+        vsAudioPreview.currentTime = aStart + offset;
         
         vsVideoPreview.play();
         vsAudioPreview.play();
@@ -1662,30 +1945,142 @@
     function vsTickPlayback() {
       if (!vsIsPlaying) return;
       
+      const vStart = parseTime(vsVideoTrimStart.value) || 0;
+      const vEnd = parseTime(vsVideoTrimEnd.value) || vsVideoDuration;
+      const aStart = parseTime(vsAudioTrimStart.value) || 0;
+      const aEnd = parseTime(vsAudioTrimEnd.value) || vsAudioBuffer.duration;
+      
       if (vsPlayMode === 'video') {
-        vsPreviewTime.textContent = `Video Playback: ${formatTime(vsVideoPreview.currentTime)} / ${formatTime(vsVideoDuration)}`;
-        if (vsVideoPreview.ended) stopVsPlayback();
+        const speed = getCurrentSpeedFactor('video', vsVideoPreview.currentTime);
+        vsVideoPreview.playbackRate = speed;
+        
+        vsPreviewTime.textContent = `Video Playback: ${formatTime(vsVideoPreview.currentTime)} / ${formatTime(vEnd)} (${speed}x)`;
+        
+        if (vsVideoPreview.currentTime >= vEnd || vsVideoPreview.ended) {
+          stopVsPlayback();
+        }
       } 
       else if (vsPlayMode === 'audio') {
-        vsPreviewTime.textContent = `Audio Playback: ${formatTime(vsAudioPreview.currentTime)} / ${formatTime(vsAudioBuffer.duration)}`;
-        if (vsAudioPreview.ended) stopVsPlayback();
+        const speed = getCurrentSpeedFactor('audio', vsAudioPreview.currentTime);
+        vsAudioPreview.playbackRate = speed;
+        
+        vsPreviewTime.textContent = `Audio Playback: ${formatTime(vsAudioPreview.currentTime)} / ${formatTime(aEnd)} (${speed}x)`;
+        
+        if (vsAudioPreview.currentTime >= aEnd || vsAudioPreview.ended) {
+          stopVsPlayback();
+        }
       } 
       else if (vsPlayMode === 'both') {
         const tVideo = vsVideoPreview.currentTime;
         const offset = parseFloat(vsOffsetSlider.value) || 0;
-        const targetAudioTime = tVideo + offset;
+        
+        // Target audio time accounting for relative offset
+        const targetAudioTime = (tVideo - vStart) + aStart + offset;
         
         if (Math.abs(vsAudioPreview.currentTime - targetAudioTime) > 0.15) {
           vsAudioPreview.currentTime = targetAudioTime;
         }
+
+        const vSpeed = getCurrentSpeedFactor('video', tVideo);
+        const aSpeed = getCurrentSpeedFactor('audio', vsAudioPreview.currentTime);
+        vsVideoPreview.playbackRate = vSpeed;
+        vsAudioPreview.playbackRate = aSpeed;
         
-        vsPreviewTime.textContent = `Synced: Video ${formatTime(tVideo)} | Audio ${formatTime(vsAudioPreview.currentTime)}`;
+        vsPreviewTime.textContent = `Synced: Video ${formatTime(tVideo)} (${vSpeed}x) | Audio ${formatTime(vsAudioPreview.currentTime)} (${aSpeed}x)`;
         
-        if (vsVideoPreview.ended || vsAudioPreview.ended) {
+        if (tVideo >= vEnd || vsVideoPreview.ended || vsAudioPreview.currentTime >= aEnd || vsAudioPreview.ended) {
           stopVsPlayback();
         }
       }
       vsPlaybackRafId = requestAnimationFrame(vsTickPlayback);
+    }
+
+    // --- Complex filter graph builders for FFmpeg.wasm ---
+    function buildVideoFilter(vStart, vEnd, speedSegs) {
+      let segs = speedSegs.filter(s => s.target === 'video' && s.end > vStart && s.start < vEnd)
+        .map(s => ({
+          start: Math.max(vStart, s.start),
+          end: Math.min(vEnd, s.end),
+          speed: s.speed
+        }));
+        
+      segs.sort((a, b) => a.start - b.start);
+      
+      let intervals = [];
+      let current = vStart;
+      for (const seg of segs) {
+        if (seg.start > current) {
+          intervals.push({ start: current, end: seg.start, speed: 1.0 });
+        }
+        intervals.push(seg);
+        current = seg.end;
+      }
+      if (vEnd > current) {
+        intervals.push({ start: current, end: vEnd, speed: 1.0 });
+      }
+      
+      if (intervals.length === 1) {
+        const speedTerm = (1.0 / intervals[0].speed).toFixed(4);
+        return `[0:v]trim=start=${intervals[0].start.toFixed(2)}:end=${intervals[0].end.toFixed(2)},setpts=${speedTerm}*(PTS-STARTPTS)[v]`;
+      }
+      
+      let filter = '';
+      let inputs = '';
+      intervals.forEach((interval, idx) => {
+        const speedTerm = (1.0 / interval.speed).toFixed(4);
+        filter += `[0:v]trim=start=${interval.start.toFixed(2)}:end=${interval.end.toFixed(2)},setpts=${speedTerm}*(PTS-STARTPTS)[partv${idx}];`;
+        inputs += `[partv${idx}]`;
+      });
+      
+      filter += `${inputs}concat=n=${intervals.length}:v=1:a=0[v]`;
+      return filter;
+    }
+
+    function buildAudioFilter(aStart, aEnd, speedSegs) {
+      let segs = speedSegs.filter(s => s.target === 'audio' && s.end > aStart && s.start < aEnd)
+        .map(s => ({
+          start: Math.max(aStart, s.start),
+          end: Math.min(aEnd, s.end),
+          speed: s.speed
+        }));
+        
+      segs.sort((a, b) => a.start - b.start);
+      
+      let intervals = [];
+      let current = aStart;
+      for (const seg of segs) {
+        if (seg.start > current) {
+          intervals.push({ start: current, end: seg.start, speed: 1.0 });
+        }
+        intervals.push(seg);
+        current = seg.end;
+      }
+      if (aEnd > current) {
+        intervals.push({ start: current, end: aEnd, speed: 1.0 });
+      }
+      
+      if (intervals.length === 1) {
+        let filter = `[1:a]atrim=start=${intervals[0].start.toFixed(2)}:end=${intervals[0].end.toFixed(2)},asetpts=PTS-STARTPTS`;
+        if (intervals[0].speed !== 1.0) {
+          filter += `,atempo=${intervals[0].speed.toFixed(2)}`;
+        }
+        filter += `[a]`;
+        return filter;
+      }
+      
+      let filter = '';
+      let inputs = '';
+      intervals.forEach((interval, idx) => {
+        filter += `[1:a]atrim=start=${interval.start.toFixed(2)}:end=${interval.end.toFixed(2)},asetpts=PTS-STARTPTS`;
+        if (interval.speed !== 1.0) {
+          filter += `,atempo=${interval.speed.toFixed(2)}`;
+        }
+        filter += `[parta${idx}];`;
+        inputs += `[parta${idx}]`;
+      });
+      
+      filter += `${inputs}concat=n=${intervals.length}:v=0:a=1[a]`;
+      return filter;
     }
 
     // --- Export: real MP4 muxing via ffmpeg.wasm ---
@@ -1719,67 +2114,29 @@
         vsFfmpeg.FS('writeFile', `input_audio.${audioExt}`, audioData);
 
         vsExportStatus.textContent = 'Merging video and audio...';
-        const offset = vsAnalysis.offset;
-
-        if (vsAnalysis.mode === 'extend-video') {
-          // Freeze final frame
-          await vsFfmpeg.run(
-            '-i', 'input_video',
-            '-ss', offset.toFixed(2),
-            '-i', `input_audio.${audioExt}`,
-            '-filter_complex', `[0:v]tpad=stop_mode=clone:stop_duration=${vsAnalysis.extendBy.toFixed(2)}[v]`,
-            '-map', '[v]',
-            '-map', '1:a:0',
-            '-c:v', 'libx264',
-            '-preset', 'ultrafast',
-            '-c:a', 'aac',
-            '-shortest',
-            'output.mp4'
-          );
-        } else if (vsAnalysis.mode === 'loop-video') {
-          // Loop video
-          await vsFfmpeg.run(
-            '-stream_loop', '-1',
-            '-i', 'input_video',
-            '-ss', offset.toFixed(2),
-            '-i', `input_audio.${audioExt}`,
-            '-map', '0:v:0',
-            '-map', '1:a:0',
-            '-c:v', 'libx264',
-            '-preset', 'ultrafast',
-            '-c:a', 'aac',
-            '-shortest',
-            'output.mp4'
-          );
-        } else if (vsAnalysis.mode === 'speed-video') {
-          // Speed match video
-          await vsFfmpeg.run(
-            '-i', 'input_video',
-            '-ss', offset.toFixed(2),
-            '-i', `input_audio.${audioExt}`,
-            '-filter_complex', `[0:v]setpts=PTS*${vsAnalysis.speedRatio.toFixed(4)}[v]`,
-            '-map', '[v]',
-            '-map', '1:a:0',
-            '-c:v', 'libx264',
-            '-preset', 'ultrafast',
-            '-c:a', 'aac',
-            '-shortest',
-            'output.mp4'
-          );
-        } else {
-          // Trim / copy video
-          await vsFfmpeg.run(
-            '-i', 'input_video',
-            '-ss', offset.toFixed(2),
-            '-i', `input_audio.${audioExt}`,
-            '-map', '0:v:0',
-            '-map', '1:a:0',
-            '-t', vsAnalysis.targetDuration.toFixed(2),
-            '-c:v', 'copy',
-            '-c:a', 'aac',
-            'output.mp4'
-          );
+        
+        // Build Complex Filters
+        const vFilter = buildVideoFilter(vsAnalysis.vStart, vsAnalysis.vEnd, vsSpeedSegments);
+        const aFilter = buildAudioFilter(vsAnalysis.aStart, vsAnalysis.aEnd, vsSpeedSegments);
+        
+        let complexFilter = `${vFilter}; ${aFilter}`;
+        if (vsAnalysis.offset > 0) {
+          const delayMs = Math.round(vsAnalysis.offset * 1000);
+          complexFilter += `; [a]adelay=${delayMs}|${delayMs}[a]`;
         }
+
+        await vsFfmpeg.run(
+          '-i', 'input_video',
+          '-i', `input_audio.${audioExt}`,
+          '-filter_complex', complexFilter,
+          '-map', '[v]',
+          '-map', '[a]',
+          '-c:v', 'libx264',
+          '-preset', 'ultrafast',
+          '-c:a', 'aac',
+          '-shortest',
+          'output.mp4'
+        );
 
         const data = vsFfmpeg.FS('readFile', 'output.mp4');
         const blob = new Blob([data.buffer], { type: 'video/mp4' });
