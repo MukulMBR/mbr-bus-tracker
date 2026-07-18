@@ -327,6 +327,14 @@
     <input type="file" id="videoFileInput" accept="video/mp4,video/*" multiple style="display: none;">
   </div>
 
+  <!-- Sort Toolbar -->
+  <div id="sortToolbar" style="display: none; justify-content: flex-end; gap: 8px; margin-bottom: 12px; align-items: center;">
+    <span style="font-size: 0.78rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-right: auto;">Clips Timeline</span>
+    <button class="btn-action" id="btnSortAsc" style="width: auto; height: auto; padding: 6px 12px; font-size: 0.78rem; font-weight: 700; flex-direction: row; gap: 4px; display: inline-flex; align-items: center;" title="Sort Alphabetically A to Z">🔠 Sort A-Z</button>
+    <button class="btn-action" id="btnSortDesc" style="width: auto; height: auto; padding: 6px 12px; font-size: 0.78rem; font-weight: 700; flex-direction: row; gap: 4px; display: inline-flex; align-items: center;" title="Sort Alphabetically Z to A">🔤 Sort Z-A</button>
+    <button class="btn-action" id="btnReverse" style="width: auto; height: auto; padding: 6px 12px; font-size: 0.78rem; font-weight: 700; flex-direction: row; gap: 4px; display: inline-flex; align-items: center;" title="Reverse current order">🔄 Reverse</button>
+  </div>
+
   <!-- Track List -->
   <div class="track-list" id="trackList">
     <div class="empty-state">No video clips uploaded yet.</div>
@@ -489,7 +497,9 @@
   }
 
   function updateButtonState() {
-    generateBtn.disabled = videoClips.length < 2;
+    const hasMultiple = videoClips.length >= 2;
+    generateBtn.disabled = !hasMultiple;
+    document.getElementById('sortToolbar').style.display = hasMultiple ? 'flex' : 'none';
   }
 
   // ─── ffmpeg.wasm logic ──────────────────────────────────────────────────────
@@ -634,6 +644,19 @@
     } finally {
       generateBtn.disabled = false;
     }
+  });
+
+  document.getElementById('btnSortAsc').addEventListener('click', () => {
+    videoClips.sort((a, b) => a.name.localeCompare(b.name));
+    renderTrackList();
+  });
+  document.getElementById('btnSortDesc').addEventListener('click', () => {
+    videoClips.sort((a, b) => b.name.localeCompare(a.name));
+    renderTrackList();
+  });
+  document.getElementById('btnReverse').addEventListener('click', () => {
+    videoClips.reverse();
+    renderTrackList();
   });
 </script>
 </body>
