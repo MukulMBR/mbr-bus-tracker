@@ -1,267 +1,602 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MBR Video Editor</title>
-  <link rel="stylesheet" href="editor.css?v=12">
+  <title>MBR Video Merger (Zero Server Cost)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #08090d;
+      --panel: #121520;
+      --card: #1b1e2c;
+      --line: rgba(255,255,255,0.08);
+      --text: #f5f6f9;
+      --muted: #8f9cae;
+      --accent: linear-gradient(135deg, #06b6d4, #3b82f6);
+      --accent-hover: linear-gradient(135deg, #08c8ea, #4f93ff);
+      --rose: #fb7185;
+      --green: #34d399;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background:
+        radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+        var(--bg);
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 32px;
+      width: 100%;
+      max-width: 680px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+      position: relative;
+    }
+
+    .panel-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .back-link {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--text); }
+
+    .panel-brand {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #3b82f6;
+      background: rgba(59, 130, 246, 0.1);
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    h1 {
+      font-size: 1.85rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #fff, var(--muted));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    /* Upload Area */
+    .upload-zone {
+      border: 2px dashed rgba(255,255,255,0.15);
+      border-radius: 16px;
+      padding: 28px;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(0,0,0,0.2);
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 24px;
+    }
+    .upload-zone:hover {
+      border-color: rgba(6, 182, 212, 0.4);
+      background: rgba(0,0,0,0.3);
+    }
+    .upload-zone-icon {
+      font-size: 2.2rem;
+      margin-bottom: 8px;
+    }
+    .upload-zone-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .upload-zone-desc {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    /* Track List */
+    .track-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .track-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .track-idx {
+      font-size: 0.78rem;
+      font-weight: 800;
+      background: rgba(255,255,255,0.06);
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      color: var(--muted);
+    }
+
+    .track-name {
+      flex: 1;
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+    }
+
+    .track-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      background: rgba(255,255,255,0.04);
+      padding: 3px 8px;
+      border-radius: 6px;
+      color: var(--muted);
+    }
+
+    .track-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-action {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      color: var(--text);
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      display: grid;
+      place-items: center;
+      transition: all 0.2s;
+    }
+    .btn-action:hover:not(:disabled) {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.2);
+    }
+    .btn-action:disabled {
+      opacity: 0.25;
+      cursor: not-allowed;
+    }
+    .btn-action.remove {
+      color: var(--rose);
+      background: rgba(251, 113, 133, 0.05);
+      border-color: rgba(251, 113, 133, 0.15);
+    }
+    .btn-action.remove:hover {
+      background: rgba(251, 113, 133, 0.12);
+      border-color: rgba(251, 113, 133, 0.3);
+    }
+
+    /* Main Generate button */
+    .generate-btn {
+      width: 100%;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 16px;
+      border-radius: 14px;
+      font: inherit;
+      font-size: 0.95rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .generate-btn:hover:not(:disabled) {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+    .generate-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Progress Area */
+    .progress-area {
+      margin-top: 24px;
+      background: rgba(0,0,0,0.15);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .progress-step {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .progress-bar-wrap {
+      background: rgba(255,255,255,0.06);
+      height: 6px;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      border-radius: 999px;
+      transition: width 0.3s;
+    }
+
+    /* Result Card */
+    .result-card {
+      margin-top: 24px;
+      background: rgba(52, 211, 153, 0.08);
+      border: 1px solid rgba(52, 211, 153, 0.2);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+    }
+    .result-title {
+      font-weight: 800;
+      color: var(--green);
+      font-size: 1.05rem;
+      margin-bottom: 4px;
+    }
+    .result-desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.88rem;
+      text-decoration: none;
+      padding: 10px 24px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      transition: opacity 0.2s;
+    }
+    .download-link:hover { opacity: 0.9; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 30px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 24px 0;
+    }
+  </style>
 </head>
-
 <body>
-  <header>
-    <div class="header-container">
-      <div class="brand">
-        <div class="brand-icon">🎬</div>
-        <div>
-          <span class="brand-title">MBR Video Editor</span>
-          <span class="brand-subtitle">Remove any part, replace it, caption it, mix it, export it</span>
-        </div>
-      </div>
-      <a href="/editor" class="back-link" title="Return to hub">Back to Hub</a>
-    </div>
-  </header>
 
-  <main class="editor-workspace">
-    <section class="editor-sidebar">
-      <div class="sidebar-card">
-        <h3>1. Upload Main Video</h3>
-        <p class="desc">Select the primary video you want to edit.</p>
-        <div class="file-input-wrapper">
-          <input type="file" id="clip1File" accept="video/*" class="file-input" />
-          <label for="clip1File" class="file-label">Choose Main Video</label>
-        </div>
-        <div id="clip1Details" class="media-details" style="display: none;">
-          <span class="filename" id="clip1Name"></span>
-          <span class="dur-badge">Duration: <strong id="clip1DurationText">0.0s</strong></span>
-          <div class="slider-group" style="margin-top: 10px;">
-            <div class="slider-labels">
-              <span>Trim Start: <strong id="mainTrimStartVal">0.0s</strong></span>
-              <span>Trim End: <strong id="mainTrimEndVal">15.0s</strong></span>
-            </div>
-            <input type="range" id="mainTrimStart" min="0" max="30" step="0.1" value="0" />
-            <input type="range" id="mainTrimEnd" min="1" max="30" step="0.1" value="15" />
-          </div>
-        </div>
-      </div>
+<div class="panel">
+  <div class="panel-nav">
+    <a class="back-link" href="/editor">← Back to hub</a>
+    <span class="panel-brand">Zero Server Cost</span>
+  </div>
 
-      <div class="sidebar-card">
-        <h3>2. Remove or Replace Any Range</h3>
-        <p class="desc">Set the exact range to remove. Add an image or video when you want that range replaced.</p>
-        <div class="slider-group">
-          <div class="slider-labels">
-            <span>Range Starts: <strong id="cutStartVal">0.0s</strong></span>
-            <span>Range Ends: <strong id="cutEndVal">2.0s</strong></span>
-          </div>
-          <input type="range" id="c1Start" min="0" max="30" step="0.1" value="0" disabled />
-          <input type="range" id="c1End" min="1" max="30" step="0.1" value="2" disabled />
-        </div>
-        <div class="range-actions">
-          <button id="btnRangeIntro" class="mini-action" type="button" disabled>Intro</button>
-          <button id="btnRangeAtPlayhead" class="mini-action" type="button" disabled>From Playhead</button>
-          <button id="btnRangeTail" class="mini-action" type="button" disabled>Ending</button>
-        </div>
-        <div class="file-input-wrapper" style="margin-top: 10px;">
-          <input type="file" id="clip2File" accept="video/*,image/*" class="file-input" disabled />
-          <label for="clip2File" class="file-label disabled" id="clip2FileLabel">Choose Replacement File</label>
-        </div>
-        <div id="clip2Details" class="media-details" style="display: none;">
-          <span class="filename" id="clip2Name"></span>
-          <div class="slider-group">
-            <div class="slider-labels">
-              <span>Replacement Length: <strong id="c2DurVal">4.0s</strong></span>
-            </div>
-            <input type="range" id="c2Duration" min="1" max="15" step="0.1" value="4" />
-          </div>
-          <button id="btnRemoveClip2" class="secondary-action" type="button">Remove Replacement</button>
-        </div>
-      </div>
+  <h1>Video Merger</h1>
+  <p class="subtitle">Upload multiple video files, adjust their playback sequence, and merge them cleanly into a single MP4 inside your browser.</p>
 
-      <div class="sidebar-card">
-        <h3>3. Aspect Ratio & Pan</h3>
-        <p class="desc">Pick an export format. Drag the preview to reposition the crop.</p>
-        <div class="aspect-ratio-buttons">
-          <button id="btnRatioVertical" class="aspect-btn active" type="button" data-ratio="9:16">9:16</button>
-          <button id="btnRatioSquare" class="aspect-btn" type="button" data-ratio="1:1">1:1</button>
-          <button id="btnRatioHorizontal" class="aspect-btn" type="button" data-ratio="16:9">16:9</button>
-        </div>
-        <button id="btnResetPan" class="secondary-action" type="button">Center Crop</button>
-      </div>
+  <!-- Upload Area -->
+  <div class="upload-zone" id="uploadZone">
+    <div class="upload-zone-icon">🎞️</div>
+    <div class="upload-zone-title">Upload Video Files</div>
+    <div class="upload-zone-desc">Drag & drop video clips here, or click to browse</div>
+    <input type="file" id="videoFileInput" accept="video/mp4,video/*" multiple style="display: none;">
+  </div>
 
-      <div class="sidebar-card">
-        <h3>4. Video Filters</h3>
-        <p class="desc">Adjust the look of the finished composition.</p>
-        <div class="slider-group">
-          <div class="slider-labels"><span>Brightness</span><strong id="valBrightness">100%</strong></div>
-          <input type="range" id="sliderBrightness" min="50" max="150" value="100" />
-        </div>
-        <div class="slider-group" style="margin-top: 8px;">
-          <div class="slider-labels"><span>Contrast</span><strong id="valContrast">100%</strong></div>
-          <input type="range" id="sliderContrast" min="50" max="150" value="100" />
-        </div>
-        <div class="slider-group" style="margin-top: 8px;">
-          <div class="slider-labels"><span>Saturation</span><strong id="valSaturation">100%</strong></div>
-          <input type="range" id="sliderSaturation" min="0" max="200" value="100" />
-        </div>
-        <button id="btnResetFilters" class="secondary-action" type="button">Reset Filters</button>
-      </div>
+  <!-- Track List -->
+  <div class="track-list" id="trackList">
+    <div class="empty-state">No video clips uploaded yet.</div>
+  </div>
 
-      <div class="sidebar-card">
-        <h3>5. Audio Mixer</h3>
-        <p class="desc">Control original audio and optional background music.</p>
-        <div class="slider-group">
-          <div class="slider-labels"><span>Original Audio</span><strong id="valMainVolume">100%</strong></div>
-          <div class="inline-controls">
-            <input type="range" id="mainVolume" min="0" max="1" step="0.05" value="1" />
-            <button id="btnMuteMain" class="toggle-btn" title="Mute original video">M</button>
-            <button id="btnSoloMain" class="toggle-btn" title="Solo original video">S</button>
-          </div>
-        </div>
-        <div style="border-top: 1px dashed var(--border-color); margin-top: 10px; padding-top: 10px;">
-          <div class="file-input-wrapper">
-            <input type="file" id="bgmFile" accept="audio/*" class="file-input" />
-            <label for="bgmFile" class="file-label">Add Background Music</label>
-          </div>
-          <div id="bgmDetails" class="media-details" style="display: none;">
-            <span class="filename" id="bgmName"></span>
-            <div class="slider-group">
-              <div class="slider-labels"><span>BGM Volume</span><strong id="valBgmVolume">50%</strong></div>
-              <div class="inline-controls">
-                <input type="range" id="bgmVolume" min="0" max="1" step="0.05" value="0.5" />
-                <button id="btnMuteBgm" class="toggle-btn" title="Mute BGM">M</button>
-                <button id="btnSoloBgm" class="toggle-btn" title="Solo BGM">S</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+  <button class="generate-btn" id="generateBtn" disabled>Merge Videos</button>
 
-      <div class="sidebar-card">
-        <h3>6. Caption Layers</h3>
-        <p class="desc">Add text overlays with timing controls.</p>
-        <div id="captionsList" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;"></div>
-        <button id="btnAddCaption" class="file-label" style="background: #262628; border: 1px dashed var(--border-color); cursor: pointer;" disabled>Add Caption Layer</button>
-        <div id="captionEditorPanel" class="media-details" style="display: none; border-top: 1px solid var(--border-color); margin-top: 8px; padding-top: 8px;">
-          <input type="text" id="captionText" placeholder="Enter text..." class="text-input" />
-          <div class="settings-grid">
-            <div>
-              <label>Text Color</label>
-              <input type="color" id="captionColor" value="#ffffff" />
-            </div>
-            <div>
-              <label>Text Size</label>
-              <input type="range" id="captionSize" min="16" max="64" value="28" />
-            </div>
-          </div>
-          <div class="settings-grid" style="margin-top: 6px;">
-            <div>
-              <label>Position</label>
-              <select id="captionPosition" class="text-input" style="padding: 4px;">
-                <option value="bottom">Bottom</option>
-                <option value="center">Center</option>
-                <option value="top">Top</option>
-              </select>
-            </div>
-            <div>
-              <label>Timing</label>
-              <div style="font-size: 0.65rem; color: var(--text-secondary); margin-top: 2px;">
-                Show: <span id="captionStartVal">1.0s</span> | Hide: <span id="captionEndVal">5.0s</span>
-              </div>
-            </div>
-          </div>
-          <div class="slider-group" style="margin-top: 8px;">
-            <input type="range" id="captionStart" min="0" max="30" step="0.1" value="1" />
-            <input type="range" id="captionEnd" min="1" max="30" step="0.1" value="5" />
-          </div>
-          <button id="btnDeleteCaption" class="file-label danger-action" type="button">Delete Caption</button>
-        </div>
-      </div>
-
-      <div class="console-card">
-        <h4>Editor Log</h4>
-        <div id="editorConsole" class="console-box">
-          <div class="log-line">System initialized. Choose a main video to start.</div>
-        </div>
-      </div>
-    </section>
-
-    <section class="editor-preview-container">
-      <div class="preview-aspect-wrapper" id="previewAspectWrapper">
-        <canvas id="previewCanvas" width="720" height="1280"></canvas>
-      </div>
-
-      <div class="controls-bar">
-        <button id="btnPlayPause" class="play-btn" disabled>Play</button>
-        <button id="btnMute" class="control-btn-icon sound-icon-button" type="button" title="Mute preview audio" aria-label="Mute preview audio">
-          <svg class="sound-on" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 9v6h4l5 4V5L8 9H4z"></path>
-            <path d="M16 8.5a5 5 0 0 1 0 7"></path>
-            <path d="M18.5 6a8 8 0 0 1 0 12"></path>
-          </svg>
-        </button>
-        <div class="time-display">
-          <span id="currentTime">00:00</span>
-          <span>/</span>
-          <span id="totalDuration">00:00</span>
-        </div>
-      </div>
-
-      <div class="editor-timeline">
-        <div class="timeline-ruler">
-          <div class="ruler-grid"></div>
-        </div>
-        <div class="timeline-tracks">
-          <div class="timeline-track">
-            <div class="track-label">Main</div>
-            <div class="track-bar">
-              <div id="blockMainPart1" class="timeline-block block-main">Segment A</div>
-              <div id="blockCutZone" class="timeline-block block-cut">Cut</div>
-              <div id="blockMainPart2" class="timeline-block block-main">Segment C</div>
-            </div>
-          </div>
-          <div class="timeline-track">
-            <div class="track-label">Insert</div>
-            <div class="track-bar">
-              <div id="blockInsert" class="timeline-block block-insert">Replacement</div>
-            </div>
-          </div>
-          <div class="timeline-track">
-            <div class="track-label">Captions</div>
-            <div class="track-bar">
-              <div id="blockText" class="timeline-block block-caption" style="display: none;">Caption</div>
-            </div>
-          </div>
-          <div class="timeline-track" id="bgmTrackRow" style="display: none;">
-            <div class="track-label">BGM</div>
-            <div class="track-bar" style="position: relative; overflow: hidden; background: #121214;">
-              <canvas id="bgmWaveformCanvas" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.65;"></canvas>
-              <div id="blockBgm" class="timeline-block block-bgm" style="height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.72rem;">Background Music</div>
-            </div>
-          </div>
-          <div id="playhead" class="playhead-line"></div>
-        </div>
-      </div>
-
-      <button id="btnExport" class="export-btn" style="margin-top: 24px;" disabled>Export Video</button>
-    </section>
-  </main>
-
-  <div id="exportOverlay" class="export-overlay" style="display: none;">
-    <div class="export-card">
-      <div class="insta-spinner" style="margin-bottom: 16px;"></div>
-      <h3 style="color: #fff; margin-bottom: 8px;">Rendering Video</h3>
-      <p id="exportProgressText" style="color: var(--text-secondary); font-size: 0.82rem; margin-bottom: 12px;">Processing: 0%</p>
-      <div class="progress-bar-container" style="margin-bottom: 16px;">
-        <div id="exportProgressBar" class="progress-bar"></div>
-      </div>
-      <button id="btnCancelExport" class="file-label" style="background: transparent; border: 1px solid var(--border-color); cursor: pointer; padding: 6px 12px; font-size: 0.78rem;">Cancel Export</button>
+  <!-- Progress Area -->
+  <div class="progress-area" id="progressArea" style="display: none;">
+    <div class="progress-step" id="progressStep">📥 Loading engine...</div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressBarFill"></div>
     </div>
   </div>
 
-  <script src="editor.js?v=12"></script>
-</body>
+  <!-- Result Area -->
+  <div class="result-card" id="resultCard" style="display: none;">
+    <div class="result-title">✅ Merge Complete!</div>
+    <div class="result-desc">Your merged video is ready. Download it below.</div>
+    <a class="download-link" id="downloadLink" href="#" download="merged_video.mp4">⬇️ Download Merged MP4</a>
+  </div>
+</div>
 
+<script>
+  let videoClips = []; // List of File objects
+
+  const uploadZone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('videoFileInput');
+  const trackList = document.getElementById('trackList');
+  const generateBtn = document.getElementById('generateBtn');
+  const progressArea = document.getElementById('progressArea');
+  const progressStep = document.getElementById('progressStep');
+  const progressBarFill = document.getElementById('progressBarFill');
+  const resultCard = document.getElementById('resultCard');
+  const downloadLink = document.getElementById('downloadLink');
+
+  // Trigger file dialog on click
+  uploadZone.addEventListener('click', () => fileInput.click());
+
+  // Handle Drag & Drop events
+  uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.style.borderColor = 'rgba(6, 182, 212, 0.8)';
+  });
+  uploadZone.addEventListener('dragleave', () => {
+    uploadZone.style.borderColor = 'rgba(255,255,255,0.15)';
+  });
+  uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.style.borderColor = 'rgba(255,255,255,0.15)';
+    if (e.dataTransfer.files) {
+      addFiles(e.dataTransfer.files);
+    }
+  });
+
+  // Handle file choice
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files) {
+      addFiles(e.target.files);
+    }
+  });
+
+  function addFiles(files) {
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].type.startsWith('video/')) {
+        videoClips.push(files[i]);
+      }
+    }
+    renderTrackList();
+    updateButtonState();
+  }
+
+  function removeClip(idx) {
+    videoClips.splice(idx, 1);
+    renderTrackList();
+    updateButtonState();
+  }
+
+  function moveClipUp(idx) {
+    if (idx === 0) return;
+    const temp = videoClips[idx];
+    videoClips[idx] = videoClips[idx - 1];
+    videoClips[idx - 1] = temp;
+    renderTrackList();
+  }
+
+  function moveClipDown(idx) {
+    if (idx === videoClips.length - 1) return;
+    const temp = videoClips[idx];
+    videoClips[idx] = videoClips[idx + 1];
+    videoClips[idx + 1] = temp;
+    renderTrackList();
+  }
+
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  function renderTrackList() {
+    trackList.innerHTML = '';
+    if (videoClips.length === 0) {
+      trackList.innerHTML = '<div class="empty-state">No video clips uploaded yet.</div>';
+      return;
+    }
+
+    videoClips.forEach((file, index) => {
+      const card = document.createElement('div');
+      card.className = 'track-card';
+
+      const idxBadge = document.createElement('span');
+      idxBadge.className = 'track-idx';
+      idxBadge.textContent = index + 1;
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'track-name';
+      nameSpan.textContent = file.name;
+
+      const sizeBadge = document.createElement('span');
+      sizeBadge.className = 'track-badge';
+      sizeBadge.textContent = formatBytes(file.size);
+
+      const actionDiv = document.createElement('div');
+      actionDiv.className = 'track-actions';
+
+      const upBtn = document.createElement('button');
+      upBtn.className = 'btn-action';
+      upBtn.innerHTML = '▲';
+      upBtn.title = 'Move Up';
+      upBtn.disabled = index === 0;
+      upBtn.addEventListener('click', () => moveClipUp(index));
+
+      const downBtn = document.createElement('button');
+      downBtn.className = 'btn-action';
+      downBtn.innerHTML = '▼';
+      downBtn.title = 'Move Down';
+      downBtn.disabled = index === videoClips.length - 1;
+      downBtn.addEventListener('click', () => moveClipDown(index));
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-action remove';
+      delBtn.innerHTML = '❌';
+      delBtn.title = 'Remove Clip';
+      delBtn.addEventListener('click', () => removeClip(index));
+
+      actionDiv.appendChild(upBtn);
+      actionDiv.appendChild(downBtn);
+      actionDiv.appendChild(delBtn);
+
+      card.appendChild(idxBadge);
+      card.appendChild(nameSpan);
+      card.appendChild(sizeBadge);
+      card.appendChild(actionDiv);
+
+      trackList.appendChild(card);
+    });
+  }
+
+  function updateButtonState() {
+    generateBtn.disabled = videoClips.length < 2;
+  }
+
+  // ─── ffmpeg.wasm logic ──────────────────────────────────────────────────────
+  let ffmpegReady = false;
+  let ffmpegInst = null;
+
+  async function ensureFfmpeg(setStep) {
+    if (!window.FFmpeg) {
+      setStep('📥 Loading ffmpeg.wasm (~30 MB first time, cached after)…');
+      await new Promise((ok, fail) => {
+        const s = document.createElement('script');
+        s.crossOrigin = 'anonymous';
+        s.src = 'https://unpkg.com/@ffmpeg/ffmpeg@0.11.12/dist/ffmpeg.min.js';
+        s.onload = ok;
+        s.onerror = () => fail(new Error('Failed to load ffmpeg.js from CDN'));
+        document.head.appendChild(s);
+      });
+    }
+    if (!ffmpegInst) {
+      const { createFFmpeg } = FFmpeg;
+      ffmpegInst = createFFmpeg({
+        corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
+        log: false
+      });
+    }
+    if (!ffmpegReady) {
+      setStep('⚙️ Initialising ffmpeg engine…');
+      await ffmpegInst.load();
+      ffmpegReady = true;
+    }
+    return ffmpegInst;
+  }
+
+  generateBtn.addEventListener('click', async () => {
+    if (videoClips.length < 2) return;
+    
+    resultCard.style.display = 'none';
+    progressArea.style.display = 'block';
+    progressBarFill.style.width = '0%';
+    generateBtn.disabled = true;
+
+    const setStep = (t) => { progressStep.textContent = t; };
+
+    try {
+      const ffmpeg = await ensureFfmpeg(setStep);
+      
+      ffmpeg.setProgress(({ ratio }) => {
+        progressBarFill.style.width = Math.min(100, Math.round(ratio * 100)) + '%';
+      });
+
+      // Write video files into virtual filesystem
+      setStep('📂 Preparing video files…');
+      progressBarFill.style.width = '10%';
+      
+      const { fetchFile } = FFmpeg;
+      for (let i = 0; i < videoClips.length; i++) {
+        setStep(`📂 Writing clip ${i + 1}/${videoClips.length} to memory…`);
+        ffmpeg.FS('writeFile', `input${i}.mp4`, await fetchFile(videoClips[i]));
+      }
+
+      // Generate concat list
+      setStep('📝 Configuring merge sequence…');
+      progressBarFill.style.width = '25%';
+      
+      const concatList = videoClips.map((_, i) => `file 'input${i}.mp4'`).join('\n');
+      ffmpeg.FS('writeFile', 'concat.txt', new TextEncoder().encode(concatList));
+
+      // Execute merge
+      setStep('⚙️ Concatenating video streams...');
+      progressBarFill.style.width = '45%';
+      
+      await ffmpeg.run(
+        '-f', 'concat',
+        '-safe', '0',
+        '-i', 'concat.txt',
+        '-c', 'copy',
+        'output.mp4'
+      );
+
+      setStep('📦 Packaging output...');
+      progressBarFill.style.width = '95%';
+
+      const data = ffmpeg.FS('readFile', 'output.mp4');
+
+      // Cleanup virtual FS
+      videoClips.forEach((_, i) => {
+        try { ffmpeg.FS('unlink', `input${i}.mp4`); } catch(_) {}
+      });
+      try { ffmpeg.FS('unlink', 'concat.txt'); } catch(_) {}
+      try { ffmpeg.FS('unlink', 'output.mp4'); } catch(_) {}
+
+      const outBlob = new Blob([data.buffer], { type: 'video/mp4' });
+      downloadLink.href = URL.createObjectURL(outBlob);
+      progressBarFill.style.width = '100%';
+      progressArea.style.display = 'none';
+      resultCard.style.display = 'block';
+
+      // Auto trigger download
+      downloadLink.click();
+
+    } catch (err) {
+      progressArea.style.display = 'none';
+      alert('Video merging failed: ' + err.message);
+    } finally {
+      generateBtn.disabled = false;
+    }
+  });
+</script>
+</body>
 </html>
