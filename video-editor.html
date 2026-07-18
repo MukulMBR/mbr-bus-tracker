@@ -177,7 +177,7 @@
     let rejected = 0;
     for (let i = 0; i < files.length; i++) {
       if (files[i].type.startsWith('video/')) {
-        const clip = { id: nextClipId++, file: files[i], duration: null, thumbUrl: null };
+        const clip = { id: nextClipId++, file: files[i], duration: null, thumbUrl: null, rotation: 0, mirror: false };
         videoClips.push(clip);
         loadClipMetadata(clip);
       } else {
@@ -310,13 +310,24 @@
 
       const thumb = document.createElement('div');
       thumb.className = 'track-thumb';
+      let img = null;
       if (clip.thumbUrl) {
-        const img = document.createElement('img');
+        img = document.createElement('img');
         img.src = clip.thumbUrl;
         thumb.appendChild(img);
       } else {
         thumb.textContent = '🎬';
       }
+
+      function updateVisualTransform() {
+        if (img) {
+          const isRotatedSide = (clip.rotation === 90 || clip.rotation === 270);
+          const scale = isRotatedSide ? 1.65 : 1.0;
+          img.style.transform = `rotate(${clip.rotation}deg) scaleX(${clip.mirror ? -1 : 1}) scale(${scale})`;
+          img.style.transition = 'transform 0.25s ease';
+        }
+      }
+      updateVisualTransform();
 
       const info = document.createElement('div');
       info.className = 'track-info';
@@ -358,6 +369,24 @@
       downBtn.disabled = index === videoClips.length - 1;
       downBtn.addEventListener('click', () => moveClipDown(index));
 
+      const rotateBtn = document.createElement('button');
+      rotateBtn.className = 'btn-action';
+      rotateBtn.innerHTML = '🔄';
+      rotateBtn.title = 'Rotate 90°';
+      rotateBtn.addEventListener('click', () => {
+        clip.rotation = (clip.rotation + 90) % 360;
+        updateVisualTransform();
+      });
+
+      const mirrorBtn = document.createElement('button');
+      mirrorBtn.className = 'btn-action';
+      mirrorBtn.innerHTML = '↔️';
+      mirrorBtn.title = 'Mirror Clip';
+      mirrorBtn.addEventListener('click', () => {
+        clip.mirror = !clip.mirror;
+        updateVisualTransform();
+      });
+
       const playBtn = document.createElement('button');
       playBtn.className = 'btn-action';
       playBtn.innerHTML = '👁️';
@@ -372,6 +401,8 @@
 
       actionDiv.appendChild(upBtn);
       actionDiv.appendChild(downBtn);
+      actionDiv.appendChild(rotateBtn);
+      actionDiv.appendChild(mirrorBtn);
       actionDiv.appendChild(playBtn);
       actionDiv.appendChild(delBtn);
 
@@ -422,24 +453,69 @@
         ffmpeg.FS('writeFile', `input${i}.mp4`, await fetchFile(videoClips[i].file));
       }
 
-      // Generate concat list
-      setStep('📝 Configuring merge sequence…');
-      progressBarFill.style.width = '25%';
-      
-      const concatList = videoClips.map((_, i) => `file 'input${i}.mp4'`).join('\n');
-      ffmpeg.FS('writeFile', 'concat.txt', new TextEncoder().encode(concatList));
+      const hasAnyTransform = videoClips.some(c => c.rotation !== 0 || c.mirror);
 
-      // Execute merge
-      setStep('⚙️ Concatenating video streams...');
-      progressBarFill.style.width = '45%';
-      
-      await ffmpeg.run(
-        '-f', 'concat',
-        '-safe', '0',
-        '-i', 'concat.txt',
-        '-c', 'copy',
-        'output.mp4'
-      );
+      if (hasAnyTransform) {
+        setStep('⚙️ Applying transformations and merging (takes a moment)…');
+        progressBarFill.style.width = '35%';
+        
+        const args = [];
+        for (let i = 0; i < videoClips.length; i++) {
+          args.push('-i', `input${i}.mp4`);
+        }
+        
+        const filters = [];
+        const concatInputs = [];
+        for (let i = 0; i < videoClips.length; i++) {
+          const clip = videoClips[i];
+          let vFilters = [];
+          
+          if (clip.rotation === 90) vFilters.push('transpose=1');
+          else if (clip.rotation === 180) vFilters.push('transpose=2,transpose=2');
+          else if (clip.rotation === 270) vFilters.push('transpose=2');
+          
+          if (clip.mirror) vFilters.push('hflip');
+          
+          // Force match scale & aspect ratio using letterboxing
+          vFilters.push('scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1');
+          
+          filters.push(`[${i}:v]${vFilters.join(',')}[v${i}]`);
+          concatInputs.push(`[v${i}][${i}:a]`);
+        }
+        
+        filters.push(`${concatInputs.join('')}concat=n=${videoClips.length}:v=1:a=1[outv][outa]`);
+        
+        args.push(
+          '-filter_complex', filters.join('; '),
+          '-map', '[outv]',
+          '-map', '[outa]',
+          '-c:v', 'libx264',
+          '-preset', 'ultrafast',
+          '-c:a', 'aac',
+          'output.mp4'
+        );
+        
+        await ffmpeg.run(...args);
+      } else {
+        // Generate concat list
+        setStep('📝 Configuring merge sequence…');
+        progressBarFill.style.width = '25%';
+        
+        const concatList = videoClips.map((_, i) => `file 'input${i}.mp4'`).join('\n');
+        ffmpeg.FS('writeFile', 'concat.txt', new TextEncoder().encode(concatList));
+
+        // Execute merge
+        setStep('⚙️ Concatenating video streams...');
+        progressBarFill.style.width = '45%';
+        
+        await ffmpeg.run(
+          '-f', 'concat',
+          '-safe', '0',
+          '-i', 'concat.txt',
+          '-c', 'copy',
+          'output.mp4'
+        );
+      }
 
       setStep('📦 Packaging output...');
       progressBarFill.style.width = '95%';

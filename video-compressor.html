@@ -87,6 +87,16 @@
             <option value="360">360p (Low Bandwidth)</option>
           </select>
         </div>
+        <div class="field">
+          <label>Aspect Ratio Crop</label>
+          <select id="cropSelect" class="select-input">
+            <option value="none" selected>No Crop (Keep original)</option>
+            <option value="16:9">16:9 (Widescreen)</option>
+            <option value="9:16">9:16 (Vertical / Reels)</option>
+            <option value="1:1">1:1 (Square)</option>
+            <option value="4:3">4:3 (Traditional)</option>
+          </select>
+        </div>
       </div>
 
       <div class="row">
@@ -135,12 +145,15 @@
 
   <script>
     let videoFile = null;
+    let originalWidth = 0;
+    let originalHeight = 0;
 
     const dropZone = document.getElementById('dropZone');
     const videoInput = document.getElementById('videoInput');
     const fileName = document.getElementById('fileName');
     const settingsCard = document.getElementById('settingsCard');
     const resolutionSelect = document.getElementById('resolutionSelect');
+    const cropSelect = document.getElementById('cropSelect');
     const qualitySelect = document.getElementById('qualitySelect');
     const btnCompress = document.getElementById('btnCompress');
 
@@ -181,8 +194,17 @@
       }
       videoFile = file;
       fileName.textContent = `${file.name} (${formatBytes(file.size)})`;
-      settingsCard.style.display = 'block';
-      resultCard.style.display = 'none';
+      
+      const probe = document.createElement('video');
+      probe.preload = 'metadata';
+      probe.src = URL.createObjectURL(file);
+      probe.onloadedmetadata = () => {
+        originalWidth = probe.videoWidth;
+        originalHeight = probe.videoHeight;
+        URL.revokeObjectURL(probe.src);
+        settingsCard.style.display = 'block';
+        resultCard.style.display = 'none';
+      };
     }
 
     resolutionSelect.addEventListener('change', (e) => {
@@ -219,10 +241,44 @@
         
         const args = ['-i', 'input.mp4'];
         
-        // Resolution Scaling Filter
+        let iw = originalWidth;
+        let ih = originalHeight;
+        const cropVal = cropSelect.value;
+        const vFilters = [];
+        
+        // 1. Calculate Crop
+        if (cropVal !== 'none') {
+          const parts = cropVal.split(':').map(Number);
+          const targetRatio = parts[0] / parts[1];
+          let cw = iw;
+          let ch = ih;
+          
+          if (iw / ih > targetRatio) {
+            cw = ih * targetRatio;
+          } else {
+            ch = iw / targetRatio;
+          }
+          
+          // Ensure even dimensions
+          cw = Math.floor(cw / 2) * 2;
+          ch = Math.floor(ch / 2) * 2;
+          
+          const cx = Math.floor((iw - cw) / 2);
+          const cy = Math.floor((ih - ch) / 2);
+          
+          vFilters.push(`crop=${cw}:${ch}:${cx}:${cy}`);
+          iw = cw;
+          ih = ch;
+        }
+        
+        // 2. Calculate Scale
         if (resVal !== 'original') {
-          // scale=1280:-2 ensures even width/height pixels for H.264
-          args.push('-vf', `scale=-2:${resVal}`);
+          vFilters.push(`scale=-2:${resVal}`);
+        }
+        
+        // 3. Inject filters if any exist
+        if (vFilters.length > 0) {
+          args.push('-vf', vFilters.join(','));
         }
         
         args.push(

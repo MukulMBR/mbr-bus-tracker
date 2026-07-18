@@ -455,6 +455,36 @@
       </div>
     </div>
 
+    <!-- Local Storage & Offline Cache Manager -->
+    <div class="sub-card" style="margin: 0 auto 36px auto; max-width: 900px; display: flex; flex-direction: column; gap: 16px; background: rgba(30, 41, 59, 0.4); border: 1px solid var(--line); border-radius: 16px; padding: 24px; backdrop-filter: blur(16px);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div style="flex: 1; min-width: 250px;">
+          <h2 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">⚙️ Local Engine Storage &amp; Cache</h2>
+          <p class="subtitle" style="margin: 4px 0 0 0; font-size: 0.82rem; line-height: 1.4;">Preload the video and audio editing engine files in your local browser cache to enable full offline support.</p>
+        </div>
+        <div style="text-align: right; min-width: 140px;">
+          <div id="cacheSpaceUsed" style="font-size: 1.25rem; font-weight: 700; color: var(--cyan); font-family: var(--font-mono);">0.00 MB</div>
+          <div style="font-size: 0.72rem; color: var(--muted);">Browser Storage Used</div>
+        </div>
+      </div>
+      
+      <div id="cachePreloadProgress" style="display: none; background: rgba(0,0,0,0.3); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 0.8rem; line-height: 1.4;">
+        <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 6px;">
+          <span id="cacheProgressLabel">Downloading offline engine components...</span>
+          <span id="cacheProgressPercent">0%</span>
+        </div>
+        <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden;">
+          <div id="cacheProgressBar" style="width: 0%; height: 100%; background: var(--cyan); transition: width 0.2s ease;"></div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <button id="btnPreloadCache" class="btn btn-primary" style="padding: 10px 18px; font-size: 0.82rem; display: flex; align-items: center; gap: 6px;">⚡ Preload Offline Engine</button>
+        <button id="btnClearCache" class="btn" style="padding: 10px 18px; font-size: 0.82rem; border-color: rgba(239, 68, 68, 0.4); color: var(--rose);">🗑️ Clear Offline Cache</button>
+      </div>
+      <div id="cacheStatusMessage" style="font-size: 0.8rem; color: var(--muted); margin-top: -4px; display: none;"></div>
+    </div>
+
     <!-- Cards Grid -->
     <div class="cards">
 
@@ -646,6 +676,115 @@
       installBadge.style.display = 'none';
       systemsBadge.style.display = 'flex';
     });
+
+    // ─── Local Storage & Offline Cache Management ───
+    async function updateCacheStats() {
+      const cacheSpaceUsed = document.getElementById('cacheSpaceUsed');
+      const cacheStatusMessage = document.getElementById('cacheStatusMessage');
+      if (!cacheSpaceUsed || !cacheStatusMessage) return;
+      if (!('caches' in window)) {
+        cacheSpaceUsed.textContent = "N/A";
+        return;
+      }
+      try {
+        const cache = await caches.open('motion-hub-cache-v1');
+        const keys = await cache.keys();
+        let totalBytes = 0;
+        let count = 0;
+        for (const req of keys) {
+          const res = await cache.match(req);
+          if (res) {
+            const cl = res.headers.get('content-length');
+            if (cl) {
+              totalBytes += parseInt(cl, 10);
+            } else {
+              const blob = await res.clone().blob();
+              totalBytes += blob.size;
+            }
+            count++;
+          }
+        }
+        const mb = (totalBytes / (1024 * 1024)).toFixed(2);
+        cacheSpaceUsed.textContent = `${mb} MB`;
+        if (count >= 5) {
+          cacheStatusMessage.textContent = `🟢 All engine assets preloaded successfully (${count} files cached).`;
+          cacheStatusMessage.style.color = 'var(--cyan)';
+          cacheStatusMessage.style.display = 'block';
+        } else if (count > 0) {
+          cacheStatusMessage.textContent = `⚠️ Engine partially cached (${count}/6 assets). Preload to complete offline support.`;
+          cacheStatusMessage.style.color = 'var(--orange)';
+          cacheStatusMessage.style.display = 'block';
+        } else {
+          cacheStatusMessage.textContent = `⚪ Offline engine is not cached yet. Ready to preload.`;
+          cacheStatusMessage.style.color = 'var(--muted)';
+          cacheStatusMessage.style.display = 'block';
+        }
+      } catch (err) {
+        console.error('Failed to query storage stats:', err);
+        cacheSpaceUsed.textContent = "Error";
+      }
+    }
+
+    async function preloadCache() {
+      const cachePreloadProgress = document.getElementById('cachePreloadProgress');
+      const cacheProgressLabel = document.getElementById('cacheProgressLabel');
+      const cacheProgressPercent = document.getElementById('cacheProgressPercent');
+      const cacheProgressBar = document.getElementById('cacheProgressBar');
+      const btnPreloadCache = document.getElementById('btnPreloadCache');
+      if (!btnPreloadCache) return;
+      btnPreloadCache.disabled = true;
+      cachePreloadProgress.style.display = 'block';
+      cacheProgressBar.style.width = '0%';
+      cacheProgressPercent.textContent = '0%';
+      const assets = [
+        '/editor',
+        '/motion-hub-core.css',
+        '/motion-hub-utils.js',
+        '/libs/ffmpeg.min.js',
+        '/libs/ffmpeg-core.js',
+        '/libs/ffmpeg-core.wasm'
+      ];
+      try {
+        const cache = await caches.open('motion-hub-cache-v1');
+        let completed = 0;
+        for (let i = 0; i < assets.length; i++) {
+          const url = assets[i];
+          cacheProgressLabel.textContent = `Fetching ${url.split('/').pop() || 'index'} (${i + 1}/${assets.length})...`;
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          await cache.put(url, response.clone());
+          completed++;
+          const percent = Math.round((completed / assets.length) * 100);
+          cacheProgressBar.style.width = `${percent}%`;
+          cacheProgressPercent.textContent = `${percent}%`;
+        }
+        cacheProgressLabel.textContent = "Offline engine successfully preloaded!";
+        setTimeout(() => {
+          cachePreloadProgress.style.display = 'none';
+          btnPreloadCache.disabled = false;
+        }, 2000);
+        await updateCacheStats();
+      } catch (err) {
+        console.error('Preload failed:', err);
+        cacheProgressLabel.textContent = `Preload failed: ${err.message}`;
+        btnPreloadCache.disabled = false;
+      }
+    }
+
+    async function clearCache() {
+      if (confirm('Clear local offline engine cache? You will need an internet connection to load media tools next time.')) {
+        if ('caches' in window) {
+          await caches.delete('motion-hub-cache-v1');
+          await updateCacheStats();
+        }
+      }
+    }
+
+    document.getElementById('btnPreloadCache').addEventListener('click', preloadCache);
+    document.getElementById('btnClearCache').addEventListener('click', clearCache);
+    
+    // Initialize stats
+    updateCacheStats();
 
     // Register Service Worker
     if ('serviceWorker' in navigator) {
