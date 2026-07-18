@@ -1014,7 +1014,7 @@ async function exportVideo() {
     console.warn(error);
   }
 
-  const mimeTypes = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  const mimeTypes = ['video/mp4;codecs=h264,aac', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
   const mimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || '';
   const recorder = new MediaRecorder(mixedStream, mimeType ? { mimeType } : undefined);
   const chunks = [];
@@ -1029,11 +1029,11 @@ async function exportVideo() {
       logToEditorConsole('Export cancelled.', 'error');
       return;
     }
-    const blob = new Blob(chunks, { type: mimeType || 'video/webm' });
+    const blob = new Blob(chunks, { type: mimeType || 'video/mp4' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `mbr_studio_render_${Date.now()}.webm`;
+    a.download = `mbr_studio_render_${Date.now()}.mp4`;
     document.body.appendChild(a);
     a.click();
     a.remove();

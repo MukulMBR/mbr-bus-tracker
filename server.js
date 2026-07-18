@@ -344,6 +344,53 @@ const server = http.createServer((req, res) => {
       }
     })();
 
+  } else if (pathname === '/api/wav-to-mp3') {
+    if (req.method !== 'POST') {
+      res.writeHead(405, { 'Content-Type': 'text/plain' });
+      res.end('Method Not Allowed');
+      return;
+    }
+    const id = Date.now();
+    const wavFile = path.join(TMP_DIR, `conv_${id}.wav`);
+    const mp3File = path.join(TMP_DIR, `conv_${id}.mp3`);
+    
+    const writeStream = fs.createWriteStream(wavFile);
+    req.pipe(writeStream);
+    
+    writeStream.on('finish', async () => {
+      try {
+        const args = ['-i', wavFile, '-codec:a', 'libmp3lame', '-qscale:a', '2', '-y', mp3File];
+        await runProcess(ffmpegPath, args);
+        
+        if (!fs.existsSync(mp3File)) {
+          throw new Error('ffmpeg failed to convert to mp3');
+        }
+        
+        const stat = fs.statSync(mp3File);
+        res.writeHead(200, {
+          'Content-Type': 'audio/mpeg',
+          'Content-Disposition': 'attachment; filename="output.mp3"',
+          'Content-Length': stat.size,
+          'Access-Control-Allow-Origin': '*'
+        });
+        
+        const readStream = fs.createReadStream(mp3File);
+        readStream.pipe(res);
+        readStream.on('end', () => {
+          tryUnlink(wavFile);
+          tryUnlink(mp3File);
+        });
+      } catch (err) {
+        console.error('WAV to MP3 conversion failed:', err.message);
+        tryUnlink(wavFile);
+        tryUnlink(mp3File);
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'text/plain' });
+        }
+        res.end('Conversion failed: ' + err.message);
+      }
+    });
+
   } else {
     // Serve static files
 
