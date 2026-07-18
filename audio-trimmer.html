@@ -226,29 +226,60 @@
       </div>
 
       <div class="sub-card" id="vsMatchCard" style="display:none">
-        <h2>⚖️ Match & Sync</h2>
+        <h2>⚖️ Match &amp; Sync</h2>
 
-        <div class="row">
-          <div class="field">
-            <label>Audio start offset (mm:ss)</label>
-            <input type="text" id="vsOffsetInput" class="time-field" placeholder="0:00" value="0:00">
+        <!-- Interactive Timeline Widget -->
+        <div style="margin: 16px 0; background: rgba(0,0,0,0.3); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; position: relative;">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--muted); font-family: var(--font-mono); margin-bottom: 2px;">
+            <span>Timeline Matcher</span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span>Zoom:</span>
+              <input type="range" id="vsZoomSlider" min="5" max="100" value="30" style="width: 60px; height: 4px; accent-color: var(--cyan); cursor: pointer;">
+            </div>
           </div>
-          <button id="vsAnalyzeBtn" class="btn btn-primary">Analyze match</button>
+          
+          <!-- Track area -->
+          <div style="position: relative; height: 60px; background: rgba(255,255,255,0.02); border-radius: 8px; overflow: hidden;">
+            <!-- Video Track -->
+            <div id="vsTimelineVideoTrack" style="position: absolute; top: 8px; left: 0; height: 16px; background: linear-gradient(90deg, #60a5fa, #3b82f6); border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 0.68rem; font-weight: 700; color: #fff; white-space: nowrap; transition: width 0.15s ease;">
+              Video: 0s
+            </div>
+            <!-- Audio Track -->
+            <div id="vsTimelineAudioTrack" style="position: absolute; top: 32px; left: 0; height: 16px; background: linear-gradient(90deg, #fb923c, #ea580c); border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 0.68rem; font-weight: 700; color: #fff; white-space: nowrap; transition: width 0.15s ease, transform 0.15s ease;">
+              Audio: 0s
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 14px;">
+          <div style="flex: 1;">
+            <label style="font-size: 0.72rem; margin-bottom: 2px;">Audio Start Offset (seconds)</label>
+            <input type="range" id="vsOffsetSlider" min="0" max="100" value="0" style="width: 100%; accent-color: var(--orange); cursor: pointer;">
+          </div>
+          <div style="width: 80px;">
+            <label style="font-size: 0.72rem; margin-bottom: 2px;">Offset</label>
+            <input type="text" id="vsOffsetInput" class="time-field" style="padding: 6px 8px; text-align: center;" value="0:00">
+          </div>
+        </div>
+
+        <!-- Sync Strategies Selection -->
+        <div style="margin-bottom: 18px;">
+          <label>Sync / Matching Strategy</label>
+          <select id="vsStrategySelect" class="select-input">
+            <option value="trim" selected>✂️ Trim Audio (Cut extra narration at the end)</option>
+            <option value="extend">❄️ Freeze Frame Video (Freeze last frame to cover narration)</option>
+            <option value="loop">🔄 Loop Video (Repeat video from start to cover narration)</option>
+            <option value="speed">⚡ Speed Match (Stretch/compress video speed to match audio)</option>
+          </select>
         </div>
 
         <div class="status" id="vsMatchStatus" style="margin-top: 10px; line-height: 1.6;"></div>
 
-        <div id="vsMismatchOptions" style="display:none; margin-top: 14px; padding: 14px; background: rgba(251,146,60,0.04); border: 1px solid rgba(251,146,60,0.15); border-radius: 14px;">
-          <label>Your audio is longer than the video. What should happen to the extra narration?</label>
-          <select id="vsMismatchMode" class="select-input">
-            <option value="extend">Extend video — freeze the last frame so no narration is lost (recommended)</option>
-            <option value="trim">Trim the audio to match the video length (extra narration will be cut)</option>
-          </select>
-        </div>
-
-        <div style="display:flex; gap:10px; margin-top: 16px;">
-          <button id="vsPreviewBtn" class="btn" style="flex:1;" disabled>▶ Preview synced</button>
-          <button id="vsStopPreviewBtn" class="btn" style="flex:1; display:none;">⏹ Stop preview</button>
+        <!-- Dual Playback Controls -->
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0;">
+          <button id="vsPlayVideoBtn" class="btn" style="flex: 1; padding: 10px; font-size: 0.8rem;">📹 Play Video Only</button>
+          <button id="vsPlayAudioBtn" class="btn" style="flex: 1; padding: 10px; font-size: 0.8rem;">🎙️ Play Audio Only</button>
+          <button id="vsPlayBothBtn" class="btn btn-primary" style="flex: 1; padding: 10px; font-size: 0.8rem; min-width: 140px;">▶ Synced Play (Both)</button>
         </div>
         <div class="hint" id="vsPreviewTime" style="margin-top: 8px; text-align:center;"></div>
 
@@ -1354,24 +1385,30 @@
 
     const vsMatchCard = document.getElementById('vsMatchCard');
     const vsOffsetInput = document.getElementById('vsOffsetInput');
-    const vsAnalyzeBtn = document.getElementById('vsAnalyzeBtn');
-    const vsMatchStatus = document.getElementById('vsMatchStatus');
-    const vsMismatchOptions = document.getElementById('vsMismatchOptions');
-    const vsMismatchMode = document.getElementById('vsMismatchMode');
-    const vsPreviewBtn = document.getElementById('vsPreviewBtn');
-    const vsStopPreviewBtn = document.getElementById('vsStopPreviewBtn');
+    const vsOffsetSlider = document.getElementById('vsOffsetSlider');
+    const vsZoomSlider = document.getElementById('vsZoomSlider');
+    const vsStrategySelect = document.getElementById('vsStrategySelect');
+    const vsPlayVideoBtn = document.getElementById('vsPlayVideoBtn');
+    const vsPlayAudioBtn = document.getElementById('vsPlayAudioBtn');
+    const vsPlayBothBtn = document.getElementById('vsPlayBothBtn');
     const vsPreviewTime = document.getElementById('vsPreviewTime');
     const vsExportBtn = document.getElementById('vsExportBtn');
     const vsExportStatus = document.getElementById('vsExportStatus');
+    const vsTimelineVideoTrack = document.getElementById('vsTimelineVideoTrack');
+    const vsTimelineAudioTrack = document.getElementById('vsTimelineAudioTrack');
+    const vsAudioPreview = document.getElementById('vsAudioPreview');
 
     let vsVideoFile = null;
     let vsVideoDuration = null;
     let vsAudioFile = null;
-    let vsAudioBuffer = null;   // decoded via the same audioCtx used elsewhere in the app
-    let vsAnalysis = null;      // { targetDuration, offset, mode: 'copy'|'trim-audio'|'extend-video', extendBy }
-    let vsPreviewSource = null;
-    let vsPreviewRaf = null;
-    let vsFfmpeg = null;        // cached ffmpeg.wasm instance, loaded once
+    let vsAudioBuffer = null;   
+    let vsAnalysis = null;      
+    let vsFfmpeg = null;        
+    let vsIsPlaying = false;
+    let vsPlayMode = null; // 'video' | 'audio' | 'both'
+    let vsPlaybackStartOffset = 0;
+    let vsPlaybackStartTime = 0;
+    let vsPlaybackRafId = null;
 
     // --- Load video ---
     dropVideo.addEventListener('click', () => videoInput.click());
@@ -1425,12 +1462,19 @@
       vsAudioStatus.textContent = 'Decoding audio...';
       vsAudioStatus.className = 'status';
 
+      vsAudioPreview.src = URL.createObjectURL(file);
+
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
           audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
           vsAudioBuffer = await audioCtx.decodeAudioData(e.target.result);
           vsAudioStatus.textContent = 'Audio duration: ' + formatTime(vsAudioBuffer.duration);
+          
+          vsOffsetSlider.max = Math.floor(vsAudioBuffer.duration);
+          vsOffsetSlider.value = 0;
+          vsOffsetInput.value = "0:00";
+          
           checkBothLoaded();
         } catch (err) {
           vsAudioStatus.textContent = 'Could not decode this audio file (' + err.message + ').';
@@ -1447,147 +1491,211 @@
     function checkBothLoaded() {
       if (vsVideoDuration && vsAudioBuffer) {
         vsMatchCard.style.display = 'block';
+        updateSyncAnalysis();
       }
     }
 
-    // --- Analyze match ---
-    vsAnalyzeBtn.addEventListener('click', () => {
+    // --- Update sync analysis & visual timelines ---
+    function updateSyncAnalysis() {
       if (!vsVideoDuration || !vsAudioBuffer) return;
-      const offset = parseTime(vsOffsetInput.value) || 0;
+      
+      const offset = parseFloat(vsOffsetSlider.value) || 0;
       const availableAudio = Math.max(0, vsAudioBuffer.duration - offset);
+      const strategy = vsStrategySelect.value;
+      
+      let mode = 'trim-audio';
+      let targetDuration = vsVideoDuration;
+      let extendBy = 0;
+      let speedRatio = 1.0;
+      let statusHtml = '';
 
-      vsMismatchOptions.style.display = 'none';
-      vsExportBtn.disabled = true;
-
-      const diff = Math.abs(vsVideoDuration - availableAudio);
-
-      if (diff < 0.4) {
-        vsAnalysis = { offset, targetDuration: Math.min(vsVideoDuration, availableAudio), mode: 'copy' };
-        vsMatchStatus.textContent =
-          'Video: ' + formatTime(vsVideoDuration) + ' — Audio (from offset): ' + formatTime(availableAudio) +
-          '. These match closely — ready to export as-is.';
-        vsMatchStatus.className = 'status';
-        vsPreviewBtn.disabled = false;
-        vsExportBtn.disabled = false;
-      } else if (vsVideoDuration > availableAudio) {
-        // Video longer than audio — trim video tail to match. No content lost from narration.
-        vsAnalysis = { offset, targetDuration: availableAudio, mode: 'trim-video' };
-        vsMatchStatus.textContent =
-          'Video (' + formatTime(vsVideoDuration) + ') is longer than your audio (' + formatTime(availableAudio) +
-          ' from the chosen offset). The extra ' + formatTime(vsVideoDuration - availableAudio) +
-          ' of video at the end will be trimmed off. No narration is lost.';
-        vsMatchStatus.className = 'status';
-        vsPreviewBtn.disabled = false;
-        vsExportBtn.disabled = false;
-      } else {
-        // Audio longer than video — this is the important case: don't silently cut narration.
-        const extra = availableAudio - vsVideoDuration;
-        vsAnalysis = { offset, videoDuration: vsVideoDuration, availableAudio, extra, mode: null };
-        vsMatchStatus.textContent =
-          'Audio (' + formatTime(availableAudio) + ' from offset) is longer than your video (' + formatTime(vsVideoDuration) +
-          ') by ' + formatTime(extra) + '. Choose how to handle the extra narration below.';
-        vsMatchStatus.className = 'status';
-        vsMismatchOptions.style.display = 'block';
-        applyMismatchMode();
-        vsPreviewBtn.disabled = false;
-        vsExportBtn.disabled = false;
+      if (strategy === 'trim') {
+        mode = 'trim-audio';
+        targetDuration = Math.min(vsVideoDuration, availableAudio);
+        statusHtml = `✂️ <strong>Trim Mode:</strong> Audio will start after ${formatTime(offset)} offset. `;
+        if (availableAudio > vsVideoDuration) {
+          statusHtml += `Extra audio tail of <strong>${formatTime(availableAudio - vsVideoDuration)}</strong> will be trimmed to fit the video.`;
+        } else {
+          statusHtml += `Extra video tail of <strong>${formatTime(vsVideoDuration - availableAudio)}</strong> will be trimmed to fit the audio.`;
+        }
+      } 
+      else if (strategy === 'extend') {
+        mode = 'extend-video';
+        if (availableAudio > vsVideoDuration) {
+          targetDuration = availableAudio;
+          extendBy = availableAudio - vsVideoDuration;
+          statusHtml = `❄️ <strong>Freeze Frame Mode:</strong> Video will freeze on its final frame for <strong>${formatTime(extendBy)}</strong> to cover all narration.`;
+        } else {
+          mode = 'trim-video';
+          targetDuration = availableAudio;
+          statusHtml = `⚖️ Video is longer than audio. Video tail of <strong>${formatTime(vsVideoDuration - availableAudio)}</strong> will be trimmed.`;
+        }
+      } 
+      else if (strategy === 'loop') {
+        mode = 'loop-video';
+        if (availableAudio > vsVideoDuration) {
+          targetDuration = availableAudio;
+          statusHtml = `🔄 <strong>Loop Video Mode:</strong> Video is shorter than audio. Video will repeat/loop from the beginning until all narration finishes.`;
+        } else {
+          mode = 'trim-video';
+          targetDuration = availableAudio;
+          statusHtml = `⚖️ Video is longer than audio. Video tail of <strong>${formatTime(vsVideoDuration - availableAudio)}</strong> will be trimmed.`;
+        }
+      } 
+      else if (strategy === 'speed') {
+        mode = 'speed-video';
+        targetDuration = availableAudio;
+        speedRatio = vsVideoDuration / availableAudio;
+        const percent = Math.round(speedRatio * 100);
+        statusHtml = `⚡ <strong>Speed Match Mode:</strong> Video speed will adjust to <strong>${percent}%</strong> to align exactly with narration.`;
       }
+
+      vsAnalysis = { offset, targetDuration, mode, extendBy, speedRatio };
+      
+      const vsMatchStatus = document.getElementById('vsMatchStatus');
+      if (vsMatchStatus) {
+        vsMatchStatus.innerHTML = statusHtml;
+      }
+      
+      vsExportBtn.disabled = false;
+      renderTimelineWidget();
+    }
+
+    function renderTimelineWidget() {
+      if (!vsVideoDuration || !vsAudioBuffer) return;
+      
+      const offset = parseFloat(vsOffsetSlider.value) || 0;
+      const zoom = parseFloat(vsZoomSlider.value) || 30; // px per second
+      
+      vsTimelineVideoTrack.style.width = `${vsVideoDuration * zoom}px`;
+      vsTimelineVideoTrack.textContent = `Video: ${formatTime(vsVideoDuration)}`;
+      
+      vsTimelineAudioTrack.style.width = `${vsAudioBuffer.duration * zoom}px`;
+      vsTimelineAudioTrack.textContent = `Audio: ${formatTime(vsAudioBuffer.duration)}`;
+      
+      vsTimelineAudioTrack.style.transform = `translateX(${offset * zoom}px)`;
+    }
+
+    // Input Listeners
+    vsOffsetSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      vsOffsetInput.value = formatTime(val);
+      updateSyncAnalysis();
     });
 
-    vsMismatchMode.addEventListener('change', applyMismatchMode);
-
-    function applyMismatchMode() {
-      if (!vsAnalysis || vsAnalysis.extra === undefined) return;
-      const mode = vsMismatchMode.value;
-      if (mode === 'extend') {
-        vsAnalysis.mode = 'extend-video';
-        vsAnalysis.targetDuration = vsAnalysis.availableAudio;
-        vsAnalysis.extendBy = vsAnalysis.extra;
+    vsOffsetInput.addEventListener('change', () => {
+      const val = parseTime(vsOffsetInput.value);
+      if (val !== null && val >= 0 && val <= vsAudioBuffer.duration) {
+        vsOffsetSlider.value = val;
       } else {
-        vsAnalysis.mode = 'trim-audio';
-        vsAnalysis.targetDuration = vsAnalysis.videoDuration;
+        vsOffsetInput.value = formatTime(parseFloat(vsOffsetSlider.value));
       }
-    }
+      updateSyncAnalysis();
+    });
 
-    // --- Slice an AudioBuffer into a new AudioBuffer (used for offset + target duration) ---
-    function sliceAudioBuffer(buffer, startSec, durationSec) {
-      const sampleRate = buffer.sampleRate;
-      const startSample = Math.floor(startSec * sampleRate);
-      const numSamples = Math.max(0, Math.min(Math.floor(durationSec * sampleRate), buffer.length - startSample));
-      const out = audioCtx.createBuffer(buffer.numberOfChannels, numSamples, sampleRate);
-      for (let c = 0; c < buffer.numberOfChannels; c++) {
-        const srcData = buffer.getChannelData(c);
-        const outData = out.getChannelData(c);
-        for (let i = 0; i < numSamples; i++) {
-          outData[i] = srcData[startSample + i] || 0;
-        }
-      }
-      return out;
-    }
+    vsZoomSlider.addEventListener('input', renderTimelineWidget);
+    vsStrategySelect.addEventListener('change', updateSyncAnalysis);
 
-    // --- Synced preview (plays video + the relevant audio slice together, no export needed) ---
-    function vsStopPreview() {
-      if (vsPreviewSource) {
-        try { vsPreviewSource.onended = null; vsPreviewSource.stop(); } catch (e) {}
-        vsPreviewSource = null;
-      }
-      if (vsPreviewRaf) { cancelAnimationFrame(vsPreviewRaf); vsPreviewRaf = null; }
+    // --- Dual Playback Controls ---
+    function stopVsPlayback() {
+      vsIsPlaying = false;
+      vsPlayMode = null;
+      if (vsPlaybackRafId) { cancelAnimationFrame(vsPlaybackRafId); vsPlaybackRafId = null; }
+      
       vsVideoPreview.pause();
-      vsPreviewBtn.style.display = 'inline-block';
-      vsStopPreviewBtn.style.display = 'none';
+      vsAudioPreview.pause();
+      
+      vsPlayVideoBtn.textContent = '📹 Play Video Only';
+      vsPlayAudioBtn.textContent = '🎙️ Play Audio Only';
+      vsPlayBothBtn.textContent = '▶ Synced Play (Both)';
     }
 
-    vsPreviewBtn.addEventListener('click', () => {
-      if (!vsAnalysis) return;
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-
-      const slice = sliceAudioBuffer(vsAudioBuffer, vsAnalysis.offset, vsAnalysis.targetDuration);
-      vsPreviewSource = audioCtx.createBufferSource();
-      vsPreviewSource.buffer = slice;
-      vsPreviewSource.connect(audioCtx.destination);
-
-      vsVideoPreview.currentTime = 0;
-      vsVideoPreview.play();
-      vsPreviewSource.start(0);
-
-      vsPreviewBtn.style.display = 'none';
-      vsStopPreviewBtn.style.display = 'inline-block';
-
-      const startedAt = performance.now();
-      const targetMs = vsAnalysis.targetDuration * 1000;
-      function tickPreview() {
-        const elapsed = performance.now() - startedAt;
-        if (elapsed >= targetMs) {
-          vsStopPreview();
-          vsPreviewTime.textContent = 'Preview finished (' + formatTime(vsAnalysis.targetDuration) + ')';
-          return;
-        }
-        vsPreviewTime.textContent = formatTime(elapsed / 1000) + ' / ' + formatTime(vsAnalysis.targetDuration);
-        vsPreviewRaf = requestAnimationFrame(tickPreview);
+    vsPlayVideoBtn.addEventListener('click', () => {
+      if (vsIsPlaying && vsPlayMode === 'video') {
+        stopVsPlayback();
+      } else {
+        stopVsPlayback();
+        vsIsPlaying = true;
+        vsPlayMode = 'video';
+        vsVideoPreview.muted = false;
+        vsVideoPreview.play();
+        vsPlayVideoBtn.textContent = '⏸ Pause Video';
+        vsTickPlayback();
       }
-      tickPreview();
-
-      vsPreviewSource.onended = () => { vsStopPreview(); };
     });
 
-    vsStopPreviewBtn.addEventListener('click', vsStopPreview);
+    vsPlayAudioBtn.addEventListener('click', () => {
+      if (vsIsPlaying && vsPlayMode === 'audio') {
+        stopVsPlayback();
+      } else {
+        stopVsPlayback();
+        vsIsPlaying = true;
+        vsPlayMode = 'audio';
+        vsAudioPreview.play();
+        vsPlayAudioBtn.textContent = '⏸ Pause Audio';
+        vsTickPlayback();
+      }
+    });
 
-    // --- Export: real MP4 muxing via ffmpeg.wasm (client-side, no server) ---
+    vsPlayBothBtn.addEventListener('click', () => {
+      if (vsIsPlaying && vsPlayMode === 'both') {
+        stopVsPlayback();
+      } else {
+        stopVsPlayback();
+        vsIsPlaying = true;
+        vsPlayMode = 'both';
+        
+        vsVideoPreview.muted = true;
+        vsVideoPreview.currentTime = 0;
+        
+        const offset = parseFloat(vsOffsetSlider.value) || 0;
+        vsAudioPreview.currentTime = offset;
+        
+        vsVideoPreview.play();
+        vsAudioPreview.play();
+        vsPlayBothBtn.textContent = '⏸ Pause Synced';
+        vsTickPlayback();
+      }
+    });
+
+    function vsTickPlayback() {
+      if (!vsIsPlaying) return;
+      
+      if (vsPlayMode === 'video') {
+        vsPreviewTime.textContent = `Video Playback: ${formatTime(vsVideoPreview.currentTime)} / ${formatTime(vsVideoDuration)}`;
+        if (vsVideoPreview.ended) stopVsPlayback();
+      } 
+      else if (vsPlayMode === 'audio') {
+        vsPreviewTime.textContent = `Audio Playback: ${formatTime(vsAudioPreview.currentTime)} / ${formatTime(vsAudioBuffer.duration)}`;
+        if (vsAudioPreview.ended) stopVsPlayback();
+      } 
+      else if (vsPlayMode === 'both') {
+        const tVideo = vsVideoPreview.currentTime;
+        const offset = parseFloat(vsOffsetSlider.value) || 0;
+        const targetAudioTime = tVideo + offset;
+        
+        if (Math.abs(vsAudioPreview.currentTime - targetAudioTime) > 0.15) {
+          vsAudioPreview.currentTime = targetAudioTime;
+        }
+        
+        vsPreviewTime.textContent = `Synced: Video ${formatTime(tVideo)} | Audio ${formatTime(vsAudioPreview.currentTime)}`;
+        
+        if (vsVideoPreview.ended || vsAudioPreview.ended) {
+          stopVsPlayback();
+        }
+      }
+      vsPlaybackRafId = requestAnimationFrame(vsTickPlayback);
+    }
+
+    // --- Export: real MP4 muxing via ffmpeg.wasm ---
     vsExportBtn.addEventListener('click', async () => {
-      if (!vsAnalysis || !vsVideoFile || !vsAudioBuffer) return;
-      vsStopPreview();
+      if (!vsAnalysis || !vsVideoFile || !vsAudioFile) return;
+      stopVsPlayback();
       vsExportBtn.disabled = true;
-      vsAnalyzeBtn.disabled = true;
 
       try {
-        // Step 1: build the final trimmed/offset audio slice and encode to WAV
-        vsExportStatus.textContent = 'Preparing audio...';
-        vsExportStatus.className = 'status';
-        const finalAudioDuration = vsAnalysis.mode === 'extend-video' ? vsAnalysis.availableAudio : vsAnalysis.targetDuration;
-        const slice = sliceAudioBuffer(vsAudioBuffer, vsAnalysis.offset, finalAudioDuration);
-        const wavBuffer = audioBufferToWav(slice);
-
-        // Step 2: load ffmpeg.wasm (one-time download, cached after first use in this session)
+        const audioExt = vsAudioFile.name.split('.').pop() || 'mp3';
+        
         if (!vsFfmpeg) {
           vsExportStatus.textContent = 'Loading video engine (ffmpeg.wasm, ~25MB, first time only)...';
           const { createFFmpeg } = FFmpeg;
@@ -1595,47 +1703,83 @@
             log: false,
             progress: (p) => {
               if (p.ratio >= 0 && p.ratio <= 1) {
-                vsExportStatus.textContent = 'Processing video... ' + Math.round(p.ratio * 100) + '%';
+                vsExportStatus.textContent = 'Processing output video... ' + Math.round(p.ratio * 100) + '%';
               }
             }
           });
           await vsFfmpeg.load();
         }
 
-        // Step 3: write files into ffmpeg's virtual filesystem
         vsExportStatus.textContent = 'Loading files into the video engine...';
         const videoData = new Uint8Array(await vsVideoFile.arrayBuffer());
+        const audioData = new Uint8Array(await vsAudioFile.arrayBuffer());
+        
         vsFfmpeg.FS('writeFile', 'input_video', videoData);
-        vsFfmpeg.FS('writeFile', 'input_audio.wav', new Uint8Array(wavBuffer));
+        vsFfmpeg.FS('writeFile', `input_audio.${audioExt}`, audioData);
 
-        // Step 4: run the mux command
         vsExportStatus.textContent = 'Merging video and audio...';
+        const offset = vsAnalysis.offset;
 
         if (vsAnalysis.mode === 'extend-video') {
-          // Freeze the last frame to extend the video so no narration is cut.
+          // Freeze final frame
           await vsFfmpeg.run(
             '-i', 'input_video',
-            '-i', 'input_audio.wav',
-            '-filter_complex', '[0:v]tpad=stop_mode=clone:stop_duration=' + vsAnalysis.extendBy.toFixed(2) + '[v]',
-            '-map', '[v]', '-map', '1:a:0',
-            '-c:v', 'libx264', '-preset', 'veryfast', '-c:a', 'aac',
+            '-ss', offset.toFixed(2),
+            '-i', `input_audio.${audioExt}`,
+            '-filter_complex', `[0:v]tpad=stop_mode=clone:stop_duration=${vsAnalysis.extendBy.toFixed(2)}[v]`,
+            '-map', '[v]',
+            '-map', '1:a:0',
+            '-c:v', 'libx264',
+            '-preset', 'ultrafast',
+            '-c:a', 'aac',
+            '-shortest',
+            'output.mp4'
+          );
+        } else if (vsAnalysis.mode === 'loop-video') {
+          // Loop video
+          await vsFfmpeg.run(
+            '-stream_loop', '-1',
+            '-i', 'input_video',
+            '-ss', offset.toFixed(2),
+            '-i', `input_audio.${audioExt}`,
+            '-map', '0:v:0',
+            '-map', '1:a:0',
+            '-c:v', 'libx264',
+            '-preset', 'ultrafast',
+            '-c:a', 'aac',
+            '-shortest',
+            'output.mp4'
+          );
+        } else if (vsAnalysis.mode === 'speed-video') {
+          // Speed match video
+          await vsFfmpeg.run(
+            '-i', 'input_video',
+            '-ss', offset.toFixed(2),
+            '-i', `input_audio.${audioExt}`,
+            '-filter_complex', `[0:v]setpts=PTS*${vsAnalysis.speedRatio.toFixed(4)}[v]`,
+            '-map', '[v]',
+            '-map', '1:a:0',
+            '-c:v', 'libx264',
+            '-preset', 'ultrafast',
+            '-c:a', 'aac',
             '-shortest',
             'output.mp4'
           );
         } else {
-          // Video stream copy (no re-encode, no quality loss) — audio pre-trimmed to the right length,
-          // -shortest is a safety net in case of rounding.
+          // Trim / copy video
           await vsFfmpeg.run(
             '-i', 'input_video',
-            '-i', 'input_audio.wav',
-            '-map', '0:v:0', '-map', '1:a:0',
-            '-c:v', 'copy', '-c:a', 'aac',
-            '-shortest',
+            '-ss', offset.toFixed(2),
+            '-i', `input_audio.${audioExt}`,
+            '-map', '0:v:0',
+            '-map', '1:a:0',
+            '-t', vsAnalysis.targetDuration.toFixed(2),
+            '-c:v', 'copy',
+            '-c:a', 'aac',
             'output.mp4'
           );
         }
 
-        // Step 5: read the result and trigger download
         const data = vsFfmpeg.FS('readFile', 'output.mp4');
         const blob = new Blob([data.buffer], { type: 'video/mp4' });
         const url = URL.createObjectURL(blob);
@@ -1648,15 +1792,17 @@
 
         vsExportStatus.textContent = 'Done — downloaded synced_output.mp4';
         vsExportBtn.disabled = false;
-        vsAnalyzeBtn.disabled = false;
 
-        // Clean up ffmpeg FS for next run
-        try { vsFfmpeg.FS('unlink', 'input_video'); vsFfmpeg.FS('unlink', 'input_audio.wav'); vsFfmpeg.FS('unlink', 'output.mp4'); } catch (e) {}
+        // Cleanup virtual FS
+        try { 
+          vsFfmpeg.FS('unlink', 'input_video'); 
+          vsFfmpeg.FS('unlink', `input_audio.${audioExt}`); 
+          vsFfmpeg.FS('unlink', 'output.mp4'); 
+        } catch (e) {}
       } catch (err) {
         vsExportStatus.textContent = 'Export failed: ' + err.message;
         vsExportStatus.className = 'status err';
         vsExportBtn.disabled = false;
-        vsAnalyzeBtn.disabled = false;
       }
     });
   </script>
