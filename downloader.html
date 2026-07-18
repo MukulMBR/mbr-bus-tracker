@@ -565,13 +565,14 @@ let ffmpegInst  = null;
 
 async function ensureFfmpeg(setStep) {
   if (!window.FFmpeg) {
-    setStep('📥 Loading ffmpeg.wasm from CDN…');
-    const cdnUrls = [
-      'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.12/dist/ffmpeg.min.js',
-      'https://unpkg.com/@ffmpeg/ffmpeg@0.11.12/dist/ffmpeg.min.js'
+    setStep('📥 Loading ffmpeg.wasm…');
+    const sources = [
+      '/libs/ffmpeg.min.js',
+      'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js',
+      'https://unpkg.com/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js'
     ];
     let loaded = false;
-    for (const url of cdnUrls) {
+    for (const url of sources) {
       try {
         await new Promise((ok, fail) => {
           const s = document.createElement('script');
@@ -584,17 +585,17 @@ async function ensureFfmpeg(setStep) {
         loaded = true;
         break;
       } catch (e) {
-        console.warn(`Failed to load from CDN: ${url}`);
+        console.warn(`Failed to load from source: ${url}`);
       }
     }
     if (!loaded) {
-      throw new Error('Failed to load ffmpeg.js from any CDN.');
+      throw new Error('Failed to load ffmpeg.js from local server or CDNs.');
     }
   }
   if (!ffmpegInst) {
     const { createFFmpeg } = FFmpeg;
     ffmpegInst = createFFmpeg({
-      corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
+      corePath: '/libs/ffmpeg-core.js',
       log: false
     });
   }
@@ -604,14 +605,24 @@ async function ensureFfmpeg(setStep) {
       await ffmpegInst.load();
       ffmpegReady = true;
     } catch (err) {
-      console.warn('Failed to load ffmpeg-core from primary CDN, retrying with fallback…');
+      console.warn('Failed to load ffmpeg-core locally, falling back to CDNs…');
       const { createFFmpeg } = FFmpeg;
-      ffmpegInst = createFFmpeg({
-        corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
-        log: false
-      });
-      await ffmpegInst.load();
-      ffmpegReady = true;
+      try {
+        ffmpegInst = createFFmpeg({
+          corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
+          log: false
+        });
+        await ffmpegInst.load();
+        ffmpegReady = true;
+      } catch (err2) {
+        console.warn('Failed to load from jsdelivr, trying unpkg…');
+        ffmpegInst = createFFmpeg({
+          corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
+          log: false
+        });
+        await ffmpegInst.load();
+        ffmpegReady = true;
+      }
     }
   }
   return ffmpegInst;
