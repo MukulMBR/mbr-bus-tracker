@@ -565,26 +565,54 @@ let ffmpegInst  = null;
 
 async function ensureFfmpeg(setStep) {
   if (!window.FFmpeg) {
-    setStep('📥 Loading ffmpeg.wasm (~30 MB first time, cached after)…');
-    await new Promise((ok, fail) => {
-      const s = document.createElement('script');
-      s.crossOrigin = 'anonymous';
-      s.src = 'https://unpkg.com/@ffmpeg/ffmpeg@0.11.12/dist/ffmpeg.min.js';
-      s.onload = ok; s.onerror = () => fail(new Error('Failed to load ffmpeg.js from CDN'));
-      document.head.appendChild(s);
-    });
+    setStep('📥 Loading ffmpeg.wasm from CDN…');
+    const cdnUrls = [
+      'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.12/dist/ffmpeg.min.js',
+      'https://unpkg.com/@ffmpeg/ffmpeg@0.11.12/dist/ffmpeg.min.js'
+    ];
+    let loaded = false;
+    for (const url of cdnUrls) {
+      try {
+        await new Promise((ok, fail) => {
+          const s = document.createElement('script');
+          s.crossOrigin = 'anonymous';
+          s.src = url;
+          s.onload = ok;
+          s.onerror = fail;
+          document.head.appendChild(s);
+        });
+        loaded = true;
+        break;
+      } catch (e) {
+        console.warn(`Failed to load from CDN: ${url}`);
+      }
+    }
+    if (!loaded) {
+      throw new Error('Failed to load ffmpeg.js from any CDN.');
+    }
   }
   if (!ffmpegInst) {
     const { createFFmpeg } = FFmpeg;
     ffmpegInst = createFFmpeg({
-      corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
+      corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
       log: false
     });
   }
   if (!ffmpegReady) {
     setStep('⚙️ Initialising ffmpeg engine…');
-    await ffmpegInst.load();
-    ffmpegReady = true;
+    try {
+      await ffmpegInst.load();
+      ffmpegReady = true;
+    } catch (err) {
+      console.warn('Failed to load ffmpeg-core from primary CDN, retrying with fallback…');
+      const { createFFmpeg } = FFmpeg;
+      ffmpegInst = createFFmpeg({
+        corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
+        log: false
+      });
+      await ffmpegInst.load();
+      ffmpegReady = true;
+    }
   }
   return ffmpegInst;
 }
