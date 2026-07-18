@@ -204,6 +204,18 @@
         <button class="inline-btn inline-clear" id="clearBtnVideo" title="Clear URL">❌</button>
       </div>
     </div>
+    
+    <div style="margin-top: 14px; margin-bottom: 4px;">
+      <label class="field-label">Video Quality</label>
+      <select id="videoQuality" class="url-input" style="padding: 10px 14px; cursor: pointer; height: auto;">
+        <option value="best" selected>Highest Available (1080p/4K/Best)</option>
+        <option value="1080p">1080p Full HD</option>
+        <option value="720p">720p HD</option>
+        <option value="480p">480p SD</option>
+        <option value="360p">360p Low</option>
+      </select>
+    </div>
+
     <button class="dl-btn dl-btn-video" id="videoBtn">Download Video</button>
     <p class="hint">Best available MP4 quality. Instagram reels must be from a public account.</p>
     <div class="dl-log" id="videoLog"></div>
@@ -217,6 +229,17 @@
         <button class="inline-btn inline-clear" id="clearBtnAudio" title="Clear URL">❌</button>
       </div>
     </div>
+
+    <div style="margin-top: 14px; margin-bottom: 4px;">
+      <label class="field-label">Audio Quality / Bitrate</label>
+      <select id="audioQuality" class="url-input" style="padding: 10px 14px; cursor: pointer; height: auto;">
+        <option value="best" selected>Highest Available (320kbps)</option>
+        <option value="192k">High (192kbps)</option>
+        <option value="128k">Medium (128kbps)</option>
+        <option value="96k">Low (96kbps)</option>
+      </select>
+    </div>
+
     <button class="dl-btn dl-btn-audio" id="audioBtn">Extract Audio (MP3)</button>
     <p class="hint">Extracts high-quality MP3 from any supported video URL.</p>
     <div class="dl-log" id="audioLog"></div>
@@ -230,6 +253,29 @@
         <button class="inline-btn inline-clear" id="clearBtnBoth" title="Clear URL">❌</button>
       </div>
     </div>
+
+    <div style="margin-top: 14px; margin-bottom: 4px; display: flex; gap: 12px;">
+      <div style="flex: 1;">
+        <label class="field-label">Video Quality</label>
+        <select id="bothVideoQuality" class="url-input" style="padding: 10px 14px; cursor: pointer; height: auto;">
+          <option value="best" selected>Highest Available</option>
+          <option value="1080p">1080p</option>
+          <option value="720p">720p</option>
+          <option value="480p">480p</option>
+          <option value="360p">360p</option>
+        </select>
+      </div>
+      <div style="flex: 1;">
+        <label class="field-label">Audio Quality</label>
+        <select id="bothAudioQuality" class="url-input" style="padding: 10px 14px; cursor: pointer; height: auto;">
+          <option value="best" selected>Highest Available</option>
+          <option value="192k">192kbps</option>
+          <option value="128k">128kbps</option>
+          <option value="96k">96kbps</option>
+        </select>
+      </div>
+    </div>
+
     <button class="dl-btn dl-btn-both" id="bothBtn">Download Both (Video + Audio)</button>
     <p class="hint">Downloads the video file first, then automatically starts downloading the audio file.</p>
     <div class="dl-log" id="bothLog"></div>
@@ -434,21 +480,29 @@ document.getElementById('pasteBtnMerge').addEventListener('click', () => pasteIn
 document.getElementById('clearBtnMerge').addEventListener('click', () => clearInput('mergeUrl', 'mergeError'));
 
 // Helper to trigger sequential browser downloads via simulated link click
-function triggerDownload(url, type) {
+function triggerDownload(url, type, quality) {
   const a = document.createElement('a');
-  a.href = `/api/download-video?url=${encodeURIComponent(url)}&type=${type}`;
+  a.href = `/api/download-video?url=${encodeURIComponent(url)}&type=${type}&quality=${quality || 'best'}`;
   a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
 }
 
-// ─── Download trigger (unchanged) ────────────────────────────────────────────
-function startDownload(url, type, logEl, btn) {
+// ─── Download trigger ────────────────────────────────────────────
+function startDownload(url, type, logEl, btn, quality) {
   if (!url) return;
   logEl.textContent = type === 'audio' ? '🎵 Extracting audio…' : '📹 Fetching video…';
   btn.disabled = true; btn.textContent = 'Starting…';
-  window.location.href = `/api/download-video?url=${encodeURIComponent(url)}&type=${type}`;
+  
+  let qVal = quality;
+  if (!qVal) {
+    qVal = type === 'video'
+      ? document.getElementById('videoQuality').value
+      : document.getElementById('audioQuality').value;
+  }
+  
+  window.location.href = `/api/download-video?url=${encodeURIComponent(url)}&type=${type}&quality=${qVal}`;
   setTimeout(() => {
     logEl.textContent = 'If download didn\'t start, check the link is public.';
     btn.disabled = false;
@@ -467,8 +521,11 @@ document.getElementById('bothBtn').addEventListener('click', () => {
   logEl.textContent = '📹 Fetching video, then audio…';
   btn.disabled = true; btn.textContent = 'Downloading Both…';
 
-  triggerDownload(url, 'video');
-  setTimeout(() => { triggerDownload(url, 'audio'); }, 1500);
+  const vQ = document.getElementById('bothVideoQuality').value;
+  const aQ = document.getElementById('bothAudioQuality').value;
+
+  triggerDownload(url, 'video', vQ);
+  setTimeout(() => { triggerDownload(url, 'audio', aQ); }, 1500);
 
   setTimeout(() => {
     logEl.textContent = 'Downloads started! Check your downloads folder.';

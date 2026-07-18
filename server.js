@@ -118,11 +118,34 @@ const server = http.createServer((req, res) => {
     const ext = type === 'audio' ? 'mp3' : 'mp4';
     const tempFile = path.join(TMP_DIR, `dl_${id}.${ext}`);
 
-    let ytdlpArgs;
+    const quality = parsedUrl.searchParams.get('quality') || 'best';
+
+    let ytdlpArgs = ['--js-runtimes', 'node:' + process.execPath];
     if (type === 'audio') {
-      ytdlpArgs = ['--js-runtimes', 'node:' + process.execPath, '-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', tempFile];
+      let formatStr = 'bestaudio';
+      ytdlpArgs.push('-f', formatStr, '-x', '--audio-format', 'mp3');
+      if (quality === '192k') {
+        ytdlpArgs.push('--audio-quality', '192K');
+      } else if (quality === '128k') {
+        ytdlpArgs.push('--audio-quality', '128K');
+      } else if (quality === '96k') {
+        ytdlpArgs.push('--audio-quality', '96K');
+      } else {
+        ytdlpArgs.push('--audio-quality', '320K');
+      }
+      ytdlpArgs.push('-o', tempFile);
     } else {
-      ytdlpArgs = ['--js-runtimes', 'node:' + process.execPath, '-f', 'best[ext=mp4]/best', '-o', tempFile];
+      let formatStr = 'bestvideo+bestaudio/best';
+      if (quality === '1080p') {
+        formatStr = 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best';
+      } else if (quality === '720p') {
+        formatStr = 'bestvideo[height<=720]+bestaudio/best[height<=720]/best';
+      } else if (quality === '480p') {
+        formatStr = 'bestvideo[height<=480]+bestaudio/best[height<=480]/best';
+      } else if (quality === '360p') {
+        formatStr = 'bestvideo[height<=360]+bestaudio/best[height<=360]/best';
+      }
+      ytdlpArgs.push('-f', formatStr, '--merge-output-format', 'mp4', '-o', tempFile);
     }
     if (ffmpegLocation) {
       ytdlpArgs.push('--ffmpeg-location', ffmpegLocation);
