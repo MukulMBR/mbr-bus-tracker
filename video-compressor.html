@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MBR Creator Studio - Video Compressor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/motion-hub-core.css">
+  <script src="/motion-hub-utils.js"></script>
+  <style>
+    :root {
+      --accent: var(--purple);
+    }
+    .panel::before {
+      background: linear-gradient(90deg, var(--purple), var(--cyan), var(--blue));
+    }
+    .panel-brand {
+      color: var(--purple);
+      background: rgba(167,139,250,0.12);
+      border: 1px solid rgba(167,139,250,0.25);
+    }
+    .panel-icon {
+      background: rgba(167,139,250,0.1);
+      box-shadow: 0 0 30px rgba(167,139,250,0.2);
+    }
+
+    /* Comparison Card */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .comparison-box {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+    }
+    .comparison-box.after {
+      border-color: var(--green);
+      background: rgba(52,211,153,0.02);
+    }
+    .comparison-box strong {
+      font-size: 1.15rem;
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="panel">
+    <div class="panel-nav">
+      <a class="back-link" href="/editor">← Back to hub</a>
+      <span class="panel-brand">Video Optimizer</span>
+    </div>
+
+    <div class="panel-icon">🗜️</div>
+    <h1>Video Compressor</h1>
+    <p class="subtitle">Reduce high video file sizes by adjusting target resolutions and bitrates. Perfect before merging clips.</p>
+
+    <!-- Step 1: Upload -->
+    <div class="sub-card">
+      <h2>📁 Select Video</h2>
+      <div class="drop" id="dropZone">
+        <div id="dropText">Drag and drop a video file here, or click to browse</div>
+        <div class="filename" id="fileName"></div>
+      </div>
+      <input type="file" id="videoInput" accept="video/*" style="display: none;">
+    </div>
+
+    <!-- Step 2: Settings -->
+    <div class="sub-card" id="settingsCard" style="display: none;">
+      <h2>⚙️ Compression Presets</h2>
+      
+      <div class="row">
+        <div class="field">
+          <label>Target Resolution</label>
+          <select id="resolutionSelect" class="select-input">
+            <option value="original" selected>Original Aspect Ratio</option>
+            <option value="1080">1080p (Full HD)</option>
+            <option value="720">720p (HD)</option>
+            <option value="480">480p (Standard Definition)</option>
+            <option value="360">360p (Low Bandwidth)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Target Quality / Bitrate</label>
+          <select id="qualitySelect" class="select-input">
+            <option value="2500k">High Quality (2.5 Mbps)</option>
+            <option value="1500k" selected>Standard quality (1.5 Mbps)</option>
+            <option value="800k">Compact (800 Kbps)</option>
+            <option value="400k">Extra-small (400 Kbps)</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="generate-btn" id="btnCompress">Optimize &amp; Compress</button>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-area" id="progressArea" style="display: none;">
+      <div class="progress-step" id="progressStep">📥 Initialising engine...</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressBarFill"></div>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div class="result-card" id="resultCard" style="display: none;">
+      <div class="result-title">✅ Video Compressed!</div>
+      
+      <!-- Before / After Comparison -->
+      <div class="comparison-grid">
+        <div class="comparison-box">
+          <span style="font-size: 0.72rem; color: var(--muted); display: block; text-transform: uppercase;">Original Size</span>
+          <strong id="origSizeLabel">0 MB</strong>
+        </div>
+        <div class="comparison-box after">
+          <span style="font-size: 0.72rem; color: var(--green); display: block; text-transform: uppercase;" id="savingPercentLabel">Optimized Size</span>
+          <strong id="newSizeLabel" style="color: var(--green);">0 MB</strong>
+        </div>
+      </div>
+      
+      <div class="result-desc" style="margin-top: 16px;">Click the button below to download the optimized file.</div>
+      <a class="download-link" id="downloadLink" href="#" download="compressed_video.mp4">⬇️ Download Compressed Video</a>
+    </div>
+  </div>
+
+  <script>
+    let videoFile = null;
+
+    const dropZone = document.getElementById('dropZone');
+    const videoInput = document.getElementById('videoInput');
+    const fileName = document.getElementById('fileName');
+    const settingsCard = document.getElementById('settingsCard');
+    const resolutionSelect = document.getElementById('resolutionSelect');
+    const qualitySelect = document.getElementById('qualitySelect');
+    const btnCompress = document.getElementById('btnCompress');
+
+    const progressArea = document.getElementById('progressArea');
+    const progressStep = document.getElementById('progressStep');
+    const progressBarFill = document.getElementById('progressBarFill');
+    const resultCard = document.getElementById('resultCard');
+    const downloadLink = document.getElementById('downloadLink');
+
+    const origSizeLabel = document.getElementById('origSizeLabel');
+    const newSizeLabel = document.getElementById('newSizeLabel');
+    const savingPercentLabel = document.getElementById('savingPercentLabel');
+
+    // Restore settings
+    resolutionSelect.value = getHubSetting('video_compressor', 'resolution', 'original');
+
+    dropZone.addEventListener('click', () => videoInput.click());
+    
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    videoInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+      if (!file.type.startsWith('video/')) {
+        alert('Please choose a valid video file.');
+        return;
+      }
+      videoFile = file;
+      fileName.textContent = `${file.name} (${formatBytes(file.size)})`;
+      settingsCard.style.display = 'block';
+      resultCard.style.display = 'none';
+    }
+
+    resolutionSelect.addEventListener('change', (e) => {
+      setHubSetting('video_compressor', 'resolution', e.target.value);
+    });
+
+    btnCompress.addEventListener('click', async () => {
+      if (!videoFile) return;
+      
+      const resVal = resolutionSelect.value;
+      const bitrate = qualitySelect.value;
+      
+      resultCard.style.display = 'none';
+      progressArea.style.display = 'block';
+      progressBarFill.style.width = '0%';
+      btnCompress.disabled = true;
+      
+      const setStep = (t) => { progressStep.textContent = t; };
+      
+      try {
+        const ffmpeg = await getSharedFfmpeg(setStep);
+        
+        ffmpeg.setProgress(({ ratio }) => {
+          progressBarFill.style.width = Math.min(100, Math.round(ratio * 100)) + '%';
+        });
+        
+        setStep('📂 Loading video to memory…');
+        progressBarFill.style.width = '15%';
+        const { fetchFile } = FFmpeg;
+        ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(videoFile));
+        
+        setStep('⚙️ Re-encoding and resizing video (takes a moment)…');
+        progressBarFill.style.width = '35%';
+        
+        const args = ['-i', 'input.mp4'];
+        
+        // Resolution Scaling Filter
+        if (resVal !== 'original') {
+          // scale=1280:-2 ensures even width/height pixels for H.264
+          args.push('-vf', `scale=-2:${resVal}`);
+        }
+        
+        args.push(
+          '-b:v', bitrate,
+          '-c:a', 'copy', // Copy audio directly to save encoding time
+          'output.mp4'
+        );
+        
+        await ffmpeg.run(...args);
+        
+        setStep('📦 Packaging compressed stream…');
+        progressBarFill.style.width = '90%';
+        
+        const data = ffmpeg.FS('readFile', 'output.mp4');
+        
+        // Cleanup virtual FS
+        try { ffmpeg.FS('unlink', 'input.mp4'); } catch(_) {}
+        try { ffmpeg.FS('unlink', 'output.mp4'); } catch(_) {}
+        
+        const outBlob = new Blob([data.buffer], { type: 'video/mp4' });
+        downloadLink.href = URL.createObjectURL(outBlob);
+        
+        // Update before / after labels
+        origSizeLabel.textContent = formatBytes(videoFile.size);
+        newSizeLabel.textContent = formatBytes(outBlob.size);
+        
+        const saving = Math.round((1 - (outBlob.size / videoFile.size)) * 100);
+        savingPercentLabel.textContent = saving > 0 ? `Optimized (${saving}% saved)` : 'Optimized';
+        
+        const baseName = videoFile.name.substring(0, videoFile.name.lastIndexOf('.')) || videoFile.name;
+        downloadLink.download = `${baseName}_optimized.mp4`;
+        
+        progressBarFill.style.width = '100%';
+        progressArea.style.display = 'none';
+        resultCard.style.display = 'block';
+        downloadLink.click();
+        
+      } catch (err) {
+        progressArea.style.display = 'none';
+        alert('Video compression failed: ' + err.message);
+      } finally {
+        btnCompress.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

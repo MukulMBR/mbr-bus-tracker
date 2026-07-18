@@ -7,6 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/motion-hub-core.css">
+  <script src="/motion-hub-utils.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -560,74 +562,6 @@ bindPicker('vPick2', 'vLabel2', 'video');
 bindPicker('aPick2', 'aLabel2', 'audio');
 
 // ─── Browser-side merge (ffmpeg.wasm) ────────────────────────────────────────
-let ffmpegReady = false;
-let ffmpegInst  = null;
-
-async function ensureFfmpeg(setStep) {
-  if (!window.FFmpeg) {
-    setStep('📥 Loading ffmpeg.wasm…');
-    const sources = [
-      '/libs/ffmpeg.min.js',
-      'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js',
-      'https://unpkg.com/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js'
-    ];
-    let loaded = false;
-    for (const url of sources) {
-      try {
-        await new Promise((ok, fail) => {
-          const s = document.createElement('script');
-          s.crossOrigin = 'anonymous';
-          s.src = url;
-          s.onload = ok;
-          s.onerror = fail;
-          document.head.appendChild(s);
-        });
-        loaded = true;
-        break;
-      } catch (e) {
-        console.warn(`Failed to load from source: ${url}`);
-      }
-    }
-    if (!loaded) {
-      throw new Error('Failed to load ffmpeg.js from local server or CDNs.');
-    }
-  }
-  if (!ffmpegInst) {
-    const { createFFmpeg } = FFmpeg;
-    ffmpegInst = createFFmpeg({
-      corePath: '/libs/ffmpeg-core.js',
-      log: false
-    });
-  }
-  if (!ffmpegReady) {
-    setStep('⚙️ Initialising ffmpeg engine…');
-    try {
-      await ffmpegInst.load();
-      ffmpegReady = true;
-    } catch (err) {
-      console.warn('Failed to load ffmpeg-core locally, falling back to CDNs…');
-      const { createFFmpeg } = FFmpeg;
-      try {
-        ffmpegInst = createFFmpeg({
-          corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
-          log: false
-        });
-        await ffmpegInst.load();
-        ffmpegReady = true;
-      } catch (err2) {
-        console.warn('Failed to load from jsdelivr, trying unpkg…');
-        ffmpegInst = createFFmpeg({
-          corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
-          log: false
-        });
-        await ffmpegInst.load();
-        ffmpegReady = true;
-      }
-    }
-  }
-  return ffmpegInst;
-}
-
 const browserMergeBtn  = document.getElementById('browserMergeBtn');
 const mergeProgressArea= document.getElementById('mergeProgressArea');
 const mergeStepText    = document.getElementById('mergeStepText');
@@ -653,7 +587,7 @@ browserMergeBtn.addEventListener('click', async () => {
   const setStep = t => { mergeStepText.textContent = t; };
 
   try {
-    const ffmpeg = await ensureFfmpeg(setStep);
+    const ffmpeg = await getSharedFfmpeg(setStep);
     ffmpeg.setProgress(({ ratio }) => {
       mergeProgBar.style.width = Math.min(100, Math.round(ratio * 100)) + '%';
     });

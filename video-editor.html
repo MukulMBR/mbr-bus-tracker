@@ -6,305 +6,65 @@
   <title>MBR Video Merger (Zero Server Cost)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/motion-hub-core.css">
+  <script src="/motion-hub-utils.js"></script>
   <style>
     :root {
-      --bg: #08090d;
-      --panel: #121520;
-      --card: #1b1e2c;
-      --line: rgba(255,255,255,0.08);
-      --text: #f5f6f9;
-      --muted: #8f9cae;
-      --accent: linear-gradient(135deg, #06b6d4, #3b82f6);
-      --accent-hover: linear-gradient(135deg, #08c8ea, #4f93ff);
-      --rose: #fb7185;
-      --green: #34d399;
+      --accent: linear-gradient(135deg, #22d3ee, #3b82f6);
+      --accent-hover: linear-gradient(135deg, #4fe0f2, #5b93ff);
+      --accent-solid: #3b82f6;
+    }
+    
+    .panel::before {
+      background: linear-gradient(90deg, var(--cyan), var(--blue), var(--violet));
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      background:
-        radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
-        var(--bg);
-      color: var(--text);
-      font-family: 'Outfit', sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
+    .upload-notice {
+      font-size: 0.78rem; color: var(--rose); text-align: center;
+      margin-bottom: 16px; display: none;
     }
 
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 24px;
-      padding: 32px;
-      width: 100%;
-      max-width: 680px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-      position: relative;
+    /* Summary bar */
+    .summary-bar {
+      display: none; align-items: center; justify-content: space-between;
+      gap: 10px; flex-wrap: wrap;
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+      padding: 10px 16px; margin-bottom: 16px;
+      font-size: 0.78rem; color: var(--muted); font-family: var(--mono);
     }
+    .summary-bar strong { color: var(--text); }
 
-    .panel-nav {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-    }
+    .track-card.dragging { opacity: 0.35; }
+    .track-card.drag-over { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan) inset; }
 
-    .back-link {
-      color: var(--muted);
-      text-decoration: none;
-      font-size: 0.85rem;
-      font-weight: 700;
-      transition: color 0.2s;
+    .drag-handle {
+      cursor: grab; color: var(--muted-2); font-size: 0.9rem; flex: none;
+      padding: 4px; user-select: none; letter-spacing: -2px;
     }
-    .back-link:hover { color: var(--text); }
+    .drag-handle:active { cursor: grabbing; }
 
-    .panel-brand {
-      font-size: 0.72rem;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: #3b82f6;
-      background: rgba(59, 130, 246, 0.1);
-      padding: 4px 10px;
-      border-radius: 999px;
+    .track-thumb {
+      flex: none; width: 56px; height: 34px; border-radius: 8px;
+      background: rgba(0,0,0,0.4); border: 1px solid var(--line);
+      display: grid; place-items: center; overflow: hidden;
+      color: var(--muted-2); font-size: 1rem;
     }
+    .track-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-    h1 {
-      font-size: 1.85rem;
-      font-weight: 800;
-      margin-bottom: 8px;
-      background: linear-gradient(135deg, #fff, var(--muted));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .subtitle {
-      font-size: 0.9rem;
-      color: var(--muted);
-      margin-bottom: 28px;
-      line-height: 1.5;
-    }
-
-    /* Upload Area */
-    .upload-zone {
-      border: 2px dashed rgba(255,255,255,0.15);
-      border-radius: 16px;
-      padding: 28px;
-      text-align: center;
-      cursor: pointer;
-      background: rgba(0,0,0,0.2);
-      transition: border-color 0.2s, background 0.2s;
-      margin-bottom: 24px;
-    }
-    .upload-zone:hover {
-      border-color: rgba(6, 182, 212, 0.4);
-      background: rgba(0,0,0,0.3);
-    }
-    .upload-zone-icon {
-      font-size: 2.2rem;
-      margin-bottom: 8px;
-    }
-    .upload-zone-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .upload-zone-desc {
-      font-size: 0.78rem;
-      color: var(--muted);
-    }
-
-    /* Track List */
-    .track-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-
-    .track-card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .track-idx {
-      font-size: 0.78rem;
-      font-weight: 800;
-      background: rgba(255,255,255,0.06);
-      width: 24px;
-      height: 24px;
-      display: grid;
-      place-items: center;
-      border-radius: 6px;
-      color: var(--muted);
-    }
-
-    .track-name {
-      flex: 1;
-      font-size: 0.85rem;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      color: var(--text);
-    }
-
-    .track-badge {
-      font-size: 0.72rem;
-      font-weight: 700;
-      background: rgba(255,255,255,0.04);
-      padding: 3px 8px;
-      border-radius: 6px;
-      color: var(--muted);
-    }
-
-    .track-actions {
-      display: flex;
-      gap: 6px;
-    }
-
-    .btn-action {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--line);
-      color: var(--text);
-      cursor: pointer;
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      display: grid;
-      place-items: center;
-      transition: all 0.2s;
-    }
-    .btn-action:hover:not(:disabled) {
-      background: rgba(255,255,255,0.1);
-      border-color: rgba(255,255,255,0.2);
-    }
-    .btn-action:disabled {
-      opacity: 0.25;
-      cursor: not-allowed;
-    }
-    .btn-action.remove {
-      color: var(--rose);
-      background: rgba(251, 113, 133, 0.05);
-      border-color: rgba(251, 113, 133, 0.15);
-    }
-    .btn-action.remove:hover {
-      background: rgba(251, 113, 133, 0.12);
-      border-color: rgba(251, 113, 133, 0.3);
-    }
-
-    /* Main Generate button */
-    .generate-btn {
-      width: 100%;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 16px;
-      border-radius: 14px;
-      font: inherit;
-      font-size: 0.95rem;
-      font-weight: 800;
-      cursor: pointer;
-      transition: opacity 0.2s, transform 0.15s;
-    }
-    .generate-btn:hover:not(:disabled) {
-      background: var(--accent-hover);
-      transform: translateY(-1px);
-    }
-    .generate-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    /* Progress Area */
-    .progress-area {
-      margin-top: 24px;
-      background: rgba(0,0,0,0.15);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 16px;
-    }
-    .progress-step {
-      font-size: 0.82rem;
-      font-weight: 700;
-      text-align: center;
-      margin-bottom: 10px;
-    }
-    .progress-bar-wrap {
-      background: rgba(255,255,255,0.06);
-      height: 6px;
-      border-radius: 999px;
-      overflow: hidden;
-    }
-    .progress-bar-fill {
-      height: 100%;
-      width: 0%;
-      background: var(--accent);
-      border-radius: 999px;
-      transition: width 0.3s;
-    }
-
-    /* Result Card */
-    .result-card {
-      margin-top: 24px;
-      background: rgba(52, 211, 153, 0.08);
-      border: 1px solid rgba(52, 211, 153, 0.2);
-      border-radius: 16px;
-      padding: 20px;
-      text-align: center;
-    }
-    .result-title {
-      font-weight: 800;
-      color: var(--green);
-      font-size: 1.05rem;
-      margin-bottom: 4px;
-    }
-    .result-desc {
-      font-size: 0.8rem;
-      color: var(--muted);
-      margin-bottom: 16px;
-    }
-    .download-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: linear-gradient(135deg, #10b981, #059669);
-      color: #fff;
-      font-weight: 800;
-      font-size: 0.88rem;
-      text-decoration: none;
-      padding: 10px 24px;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-      transition: opacity 0.2s;
-    }
-    .download-link:hover { opacity: 0.9; }
-
-    /* Empty state */
-    .empty-state {
-      text-align: center;
-      padding: 30px;
-      color: var(--muted);
-      font-size: 0.85rem;
-    }
+    .track-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .track-meta { display: flex; gap: 6px; flex-wrap: wrap; }
 
     hr {
       border: none;
       border-top: 1px solid var(--line);
-      margin: 24px 0;
+      margin: 22px 0;
+    }
+
+    @media (max-width: 480px) {
+      .panel { padding: 22px; border-radius: 20px; }
+      h1 { font-size: 1.6rem; }
+      .track-name { max-width: 120px; }
     }
   </style>
 </head>
@@ -323,8 +83,16 @@
   <div class="upload-zone" id="uploadZone">
     <div class="upload-zone-icon">🎞️</div>
     <div class="upload-zone-title">Upload Video Files</div>
-    <div class="upload-zone-desc">Drag & drop video clips here, or click to browse</div>
+    <div class="upload-zone-desc">Drag &amp; drop video clips here, or click to browse</div>
     <input type="file" id="videoFileInput" accept="video/mp4,video/*" multiple style="display: none;">
+  </div>
+  <div class="upload-notice" id="uploadNotice"></div>
+
+  <!-- Summary Bar -->
+  <div class="summary-bar" id="summaryBar">
+    <span>Clips: <strong id="summaryCount">0</strong></span>
+    <span>Total size: <strong id="summarySize">0 B</strong></span>
+    <span>Total duration: <strong id="summaryDuration">0:00</strong></span>
   </div>
 
   <!-- Sort Toolbar -->
@@ -333,11 +101,12 @@
     <button class="btn-action" id="btnSortAsc" style="width: auto; height: auto; padding: 6px 12px; font-size: 0.78rem; font-weight: 700; flex-direction: row; gap: 4px; display: inline-flex; align-items: center;" title="Sort Alphabetically A to Z">🔠 Sort A-Z</button>
     <button class="btn-action" id="btnSortDesc" style="width: auto; height: auto; padding: 6px 12px; font-size: 0.78rem; font-weight: 700; flex-direction: row; gap: 4px; display: inline-flex; align-items: center;" title="Sort Alphabetically Z to A">🔤 Sort Z-A</button>
     <button class="btn-action" id="btnReverse" style="width: auto; height: auto; padding: 6px 12px; font-size: 0.78rem; font-weight: 700; flex-direction: row; gap: 4px; display: inline-flex; align-items: center;" title="Reverse current order">🔄 Reverse</button>
+    <button class="btn-action remove" id="btnClearAll" style="width: auto; height: auto; padding: 6px 12px; font-size: 0.78rem; font-weight: 700; flex-direction: row; gap: 4px; display: inline-flex; align-items: center; background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.2); color: var(--rose);" title="Remove all uploaded clips">🗑️ Clear All</button>
   </div>
 
   <!-- Track List -->
   <div class="track-list" id="trackList">
-    <div class="empty-state">No video clips uploaded yet.</div>
+    <div class="empty-state">No video clips uploaded yet — drop some above to build your timeline.</div>
   </div>
 
   <button class="generate-btn" id="generateBtn" disabled>Merge Videos</button>
@@ -359,10 +128,13 @@
 </div>
 
 <script>
-  let videoClips = []; // List of File objects
+  let videoClips = []; // List of { id, file, duration, thumbUrl }
+  let nextClipId = 1;
+  let draggedIndex = null;
 
   const uploadZone = document.getElementById('uploadZone');
   const fileInput = document.getElementById('videoFileInput');
+  const uploadNotice = document.getElementById('uploadNotice');
   const trackList = document.getElementById('trackList');
   const generateBtn = document.getElementById('generateBtn');
   const progressArea = document.getElementById('progressArea');
@@ -370,6 +142,10 @@
   const progressBarFill = document.getElementById('progressBarFill');
   const resultCard = document.getElementById('resultCard');
   const downloadLink = document.getElementById('downloadLink');
+  const summaryBar = document.getElementById('summaryBar');
+  const summaryCount = document.getElementById('summaryCount');
+  const summarySize = document.getElementById('summarySize');
+  const summaryDuration = document.getElementById('summaryDuration');
 
   // Trigger file dialog on click
   uploadZone.addEventListener('click', () => fileInput.click());
@@ -377,14 +153,14 @@
   // Handle Drag & Drop events
   uploadZone.addEventListener('dragover', (e) => {
     e.preventDefault();
-    uploadZone.style.borderColor = 'rgba(6, 182, 212, 0.8)';
+    uploadZone.classList.add('drag');
   });
   uploadZone.addEventListener('dragleave', () => {
-    uploadZone.style.borderColor = 'rgba(255,255,255,0.15)';
+    uploadZone.classList.remove('drag');
   });
   uploadZone.addEventListener('drop', (e) => {
     e.preventDefault();
-    uploadZone.style.borderColor = 'rgba(255,255,255,0.15)';
+    uploadZone.classList.remove('drag');
     if (e.dataTransfer.files) {
       addFiles(e.dataTransfer.files);
     }
@@ -398,13 +174,68 @@
   });
 
   function addFiles(files) {
+    let rejected = 0;
     for (let i = 0; i < files.length; i++) {
       if (files[i].type.startsWith('video/')) {
-        videoClips.push(files[i]);
+        const clip = { id: nextClipId++, file: files[i], duration: null, thumbUrl: null };
+        videoClips.push(clip);
+        loadClipMetadata(clip);
+      } else {
+        rejected++;
       }
     }
     renderTrackList();
     updateButtonState();
+    if (rejected > 0) {
+      uploadNotice.textContent = rejected + (rejected === 1 ? ' file was' : ' files were') + ' skipped — not a supported video format.';
+      uploadNotice.style.display = 'block';
+    } else {
+      uploadNotice.style.display = 'none';
+    }
+  }
+
+  function loadClipMetadata(clip) {
+    const probe = document.createElement('video');
+    probe.preload = 'metadata';
+    probe.muted = true;
+    probe.playsInline = true;
+    const objectUrl = URL.createObjectURL(clip.file);
+    probe.src = objectUrl;
+
+    probe.addEventListener('loadedmetadata', () => {
+      clip.duration = probe.duration;
+      renderTrackList();
+      const seekTo = isFinite(probe.duration) ? Math.min(0.5, probe.duration / 2) : 0;
+      try { probe.currentTime = seekTo; } catch (e) { /* ignore */ }
+    });
+    probe.addEventListener('seeked', () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 160;
+        canvas.height = 90;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(probe, 0, 0, canvas.width, canvas.height);
+        clip.thumbUrl = canvas.toDataURL('image/jpeg', 0.72);
+      } catch (e) { /* cross-origin or decode issue — keep placeholder icon */ }
+      URL.revokeObjectURL(objectUrl);
+      renderTrackList();
+    });
+    probe.addEventListener('error', () => {
+      URL.revokeObjectURL(objectUrl);
+    });
+  }
+
+  function updateSummaryBar() {
+    if (videoClips.length === 0) {
+      summaryBar.style.display = 'none';
+      return;
+    }
+    summaryBar.style.display = 'flex';
+    summaryCount.textContent = videoClips.length;
+    summarySize.textContent = formatBytes(videoClips.reduce((sum, c) => sum + c.file.size, 0));
+    const allLoaded = videoClips.every(c => c.duration !== null);
+    const totalDuration = videoClips.reduce((sum, c) => sum + (c.duration || 0), 0);
+    summaryDuration.textContent = allLoaded ? formatTime(totalDuration) : 'calculating…';
   }
 
   function removeClip(idx) {
@@ -429,36 +260,86 @@
     renderTrackList();
   }
 
-  function formatBytes(bytes) {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  }
-
   function renderTrackList() {
     trackList.innerHTML = '';
+    updateSummaryBar();
     if (videoClips.length === 0) {
-      trackList.innerHTML = '<div class="empty-state">No video clips uploaded yet.</div>';
+      trackList.innerHTML = '<div class="empty-state">No video clips uploaded yet — drop some above to build your timeline.</div>';
       return;
     }
 
-    videoClips.forEach((file, index) => {
+    videoClips.forEach((clip, index) => {
+      const file = clip.file;
       const card = document.createElement('div');
       card.className = 'track-card';
+      card.draggable = true;
+
+      // drag reorder logic
+      card.addEventListener('dragstart', (e) => {
+        draggedIndex = index;
+        card.classList.add('dragging');
+      });
+      card.addEventListener('dragend', () => {
+        draggedIndex = null;
+        card.classList.remove('dragging');
+      });
+      card.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        card.classList.add('drag-over');
+      });
+      card.addEventListener('dragleave', () => {
+        card.classList.remove('drag-over');
+      });
+      card.addEventListener('drop', () => {
+        card.classList.remove('drag-over');
+        if (draggedIndex !== null && draggedIndex !== index) {
+          const moved = videoClips.splice(draggedIndex, 1)[0];
+          videoClips.splice(index, 0, moved);
+          renderTrackList();
+        }
+      });
+
+      const handle = document.createElement('div');
+      handle.className = 'drag-handle';
+      handle.innerHTML = '⋮⋮';
+      handle.title = 'Drag to reorder';
 
       const idxBadge = document.createElement('span');
       idxBadge.className = 'track-idx';
       idxBadge.textContent = index + 1;
 
+      const thumb = document.createElement('div');
+      thumb.className = 'track-thumb';
+      if (clip.thumbUrl) {
+        const img = document.createElement('img');
+        img.src = clip.thumbUrl;
+        thumb.appendChild(img);
+      } else {
+        thumb.textContent = '🎬';
+      }
+
+      const info = document.createElement('div');
+      info.className = 'track-info';
+
       const nameSpan = document.createElement('span');
       nameSpan.className = 'track-name';
       nameSpan.textContent = file.name;
+      info.appendChild(nameSpan);
+
+      const metaRow = document.createElement('div');
+      metaRow.className = 'track-meta';
+
+      const durBadge = document.createElement('span');
+      durBadge.className = 'track-badge';
+      durBadge.textContent = clip.duration !== null ? formatTime(clip.duration) : '…';
 
       const sizeBadge = document.createElement('span');
       sizeBadge.className = 'track-badge';
       sizeBadge.textContent = formatBytes(file.size);
+
+      metaRow.appendChild(durBadge);
+      metaRow.appendChild(sizeBadge);
+      info.appendChild(metaRow);
 
       const actionDiv = document.createElement('div');
       actionDiv.className = 'track-actions';
@@ -494,9 +375,10 @@
       actionDiv.appendChild(playBtn);
       actionDiv.appendChild(delBtn);
 
+      card.appendChild(handle);
       card.appendChild(idxBadge);
-      card.appendChild(nameSpan);
-      card.appendChild(sizeBadge);
+      card.appendChild(thumb);
+      card.appendChild(info);
       card.appendChild(actionDiv);
 
       trackList.appendChild(card);
@@ -504,78 +386,13 @@
   }
 
   function updateButtonState() {
+    const hasAny = videoClips.length >= 1;
     const hasMultiple = videoClips.length >= 2;
     generateBtn.disabled = !hasMultiple;
-    document.getElementById('sortToolbar').style.display = hasMultiple ? 'flex' : 'none';
-  }
-
-  // ─── ffmpeg.wasm logic ──────────────────────────────────────────────────────
-  let ffmpegReady = false;
-  let ffmpegInst = null;
-
-  async function ensureFfmpeg(setStep) {
-    if (!window.FFmpeg) {
-      setStep('📥 Loading ffmpeg.wasm…');
-      const sources = [
-        '/libs/ffmpeg.min.js',
-        'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js',
-        'https://unpkg.com/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js'
-      ];
-      let loaded = false;
-      for (const url of sources) {
-        try {
-          await new Promise((ok, fail) => {
-            const s = document.createElement('script');
-            s.crossOrigin = 'anonymous';
-            s.src = url;
-            s.onload = ok;
-            s.onerror = fail;
-            document.head.appendChild(s);
-          });
-          loaded = true;
-          break;
-        } catch (e) {
-          console.warn(`Failed to load from source: ${url}`);
-        }
-      }
-      if (!loaded) {
-        throw new Error('Failed to load ffmpeg.js from local server or CDNs.');
-      }
-    }
-    if (!ffmpegInst) {
-      const { createFFmpeg } = FFmpeg;
-      ffmpegInst = createFFmpeg({
-        corePath: '/libs/ffmpeg-core.js',
-        log: false
-      });
-    }
-    if (!ffmpegReady) {
-      setStep('⚙️ Initialising ffmpeg engine…');
-      try {
-        await ffmpegInst.load();
-        ffmpegReady = true;
-      } catch (err) {
-        console.warn('Failed to load ffmpeg-core locally, falling back to CDNs…');
-        const { createFFmpeg } = FFmpeg;
-        try {
-          ffmpegInst = createFFmpeg({
-            corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
-            log: false
-          });
-          await ffmpegInst.load();
-          ffmpegReady = true;
-        } catch (err2) {
-          console.warn('Failed to load from jsdelivr, trying unpkg…');
-          ffmpegInst = createFFmpeg({
-            corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
-            log: false
-          });
-          await ffmpegInst.load();
-          ffmpegReady = true;
-        }
-      }
-    }
-    return ffmpegInst;
+    document.getElementById('sortToolbar').style.display = hasAny ? 'flex' : 'none';
+    document.getElementById('btnSortAsc').style.display = hasMultiple ? 'inline-flex' : 'none';
+    document.getElementById('btnSortDesc').style.display = hasMultiple ? 'inline-flex' : 'none';
+    document.getElementById('btnReverse').style.display = hasMultiple ? 'inline-flex' : 'none';
   }
 
   generateBtn.addEventListener('click', async () => {
@@ -589,7 +406,7 @@
     const setStep = (t) => { progressStep.textContent = t; };
 
     try {
-      const ffmpeg = await ensureFfmpeg(setStep);
+      const ffmpeg = await getSharedFfmpeg(setStep);
       
       ffmpeg.setProgress(({ ratio }) => {
         progressBarFill.style.width = Math.min(100, Math.round(ratio * 100)) + '%';
@@ -602,7 +419,7 @@
       const { fetchFile } = FFmpeg;
       for (let i = 0; i < videoClips.length; i++) {
         setStep(`📂 Writing clip ${i + 1}/${videoClips.length} to memory…`);
-        ffmpeg.FS('writeFile', `input${i}.mp4`, await fetchFile(videoClips[i]));
+        ffmpeg.FS('writeFile', `input${i}.mp4`, await fetchFile(videoClips[i].file));
       }
 
       // Generate concat list
@@ -654,16 +471,23 @@
   });
 
   document.getElementById('btnSortAsc').addEventListener('click', () => {
-    videoClips.sort((a, b) => a.name.localeCompare(b.name));
+    videoClips.sort((a, b) => a.file.name.localeCompare(b.file.name));
     renderTrackList();
   });
   document.getElementById('btnSortDesc').addEventListener('click', () => {
-    videoClips.sort((a, b) => b.name.localeCompare(a.name));
+    videoClips.sort((a, b) => b.file.name.localeCompare(a.file.name));
     renderTrackList();
   });
   document.getElementById('btnReverse').addEventListener('click', () => {
     videoClips.reverse();
     renderTrackList();
+  });
+  document.getElementById('btnClearAll').addEventListener('click', () => {
+    if (videoClips.length > 0 && confirm('Remove all clips from the timeline?')) {
+      videoClips = [];
+      renderTrackList();
+      updateButtonState();
+    }
   });
 
   function previewClip(file) {

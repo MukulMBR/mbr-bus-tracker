@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MBR Creator Studio - GIF Maker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/motion-hub-core.css">
+  <script src="/motion-hub-utils.js"></script>
+  <style>
+    :root {
+      --accent: var(--orange);
+    }
+    .panel::before {
+      background: linear-gradient(90deg, var(--orange), var(--amber), var(--cyan));
+    }
+    .panel-brand {
+      color: var(--orange);
+      background: rgba(245,158,11,0.12);
+      border: 1px solid rgba(245,158,11,0.25);
+    }
+    .panel-icon {
+      background: rgba(245,158,11,0.1);
+      box-shadow: 0 0 30px rgba(245,158,11,0.2);
+    }
+
+    /* Range settings styles */
+    .range-inputs {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="panel">
+    <div class="panel-nav">
+      <a class="back-link" href="/editor">← Back to hub</a>
+      <span class="panel-brand">Animation Studio</span>
+    </div>
+
+    <div class="panel-icon">🖼️</div>
+    <h1>GIF Maker</h1>
+    <p class="subtitle">Convert a segment of any video file into a loopable, high-fidelity GIF animation entirely inside your browser.</p>
+
+    <!-- Step 1: Upload -->
+    <div class="sub-card">
+      <h2>📁 Select Source Video</h2>
+      <div class="drop" id="dropZone">
+        <div id="dropText">Drag and drop a video file here, or click to browse</div>
+        <div class="filename" id="fileName"></div>
+      </div>
+      <input type="file" id="videoInput" accept="video/*" style="display: none;">
+    </div>
+
+    <!-- Step 2: Settings -->
+    <div class="sub-card" id="workspaceCard" style="display: none;">
+      <h2>⚙️ GIF Timeline &amp; Settings</h2>
+      
+      <video id="previewPlayer" controls style="width: 100%; max-height: 340px; border-radius: 12px; background: #000; display: block; margin-bottom: 16px;"></video>
+      
+      <div class="range-inputs">
+        <div class="row">
+          <div class="field">
+            <label>Start Segment (sec)</label>
+            <input type="number" id="startTimeInput" class="time-field" step="0.1" value="0">
+          </div>
+          <div class="field" style="flex: none; width: auto;">
+            <button class="btn" id="markStartBtn" style="padding: 10px 14px;">📍 Mark Start</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>End Segment (sec)</label>
+            <input type="number" id="endTimeInput" class="time-field" step="0.1" value="0">
+          </div>
+          <div class="field" style="flex: none; width: auto;">
+            <button class="btn" id="markEndBtn" style="padding: 10px 14px;">📍 Mark End</button>
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 8px; margin-top: 14px;">
+          <button class="btn" id="btnPreviewSegment" style="flex: 1;">⏯️ Preview Loop</button>
+          <button class="btn" id="btnResetSegment">🔄 Reset Range</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top: 16px;">
+        <div class="field">
+          <label>Framerate (FPS)</label>
+          <select id="fpsSelect" class="select-input">
+            <option value="15" selected>15 fps (Smooth, larger size)</option>
+            <option value="10">10 fps (Standard)</option>
+            <option value="5">5 fps (Compact / Dotted)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Max Scale Width</label>
+          <select id="widthSelect" class="select-input">
+            <option value="480">480px (Large)</option>
+            <option value="320" selected>320px (Standard)</option>
+            <option value="240">240px (Compact)</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="generate-btn" id="btnCompileGif">Compile Loopable GIF</button>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-area" id="progressArea" style="display: none;">
+      <div class="progress-step" id="progressStep">📥 Initialising engine...</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressBarFill"></div>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div class="result-card" id="resultCard" style="display: none;">
+      <div class="result-title">✅ GIF Compiled!</div>
+      <div style="display: flex; justify-content: center; margin: 16px 0;">
+        <img id="gifPreview" style="max-width: 100%; border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 8px 30px rgba(0,0,0,0.4);" alt="GIF Preview">
+      </div>
+      <div class="result-desc">Your loopable GIF is ready. Download it below.</div>
+      <a class="download-link" id="downloadLink" href="#" download="compiled_animation.gif">⬇️ Download GIF File</a>
+    </div>
+  </div>
+
+  <script>
+    let videoFile = null;
+    let videoDuration = 0;
+
+    const dropZone = document.getElementById('dropZone');
+    const videoInput = document.getElementById('videoInput');
+    const fileName = document.getElementById('fileName');
+    const workspaceCard = document.getElementById('workspaceCard');
+    const previewPlayer = document.getElementById('previewPlayer');
+
+    const startTimeInput = document.getElementById('startTimeInput');
+    const endTimeInput = document.getElementById('endTimeInput');
+    const markStartBtn = document.getElementById('markStartBtn');
+    const markEndBtn = document.getElementById('markEndBtn');
+    const btnPreviewSegment = document.getElementById('btnPreviewSegment');
+    const btnResetSegment = document.getElementById('btnResetSegment');
+    
+    const fpsSelect = document.getElementById('fpsSelect');
+    const widthSelect = document.getElementById('widthSelect');
+    const btnCompileGif = document.getElementById('btnCompileGif');
+
+    const progressArea = document.getElementById('progressArea');
+    const progressStep = document.getElementById('progressStep');
+    const progressBarFill = document.getElementById('progressBarFill');
+    const resultCard = document.getElementById('resultCard');
+    const gifPreview = document.getElementById('gifPreview');
+    const downloadLink = document.getElementById('downloadLink');
+
+    // Restore settings
+    fpsSelect.value = getHubSetting('gif_maker', 'fps', '15');
+    widthSelect.value = getHubSetting('gif_maker', 'width', '320');
+
+    dropZone.addEventListener('click', () => videoInput.click());
+    
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    videoInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+      if (!file.type.startsWith('video/')) {
+        alert('Please choose a valid video file.');
+        return;
+      }
+      videoFile = file;
+      fileName.textContent = `${file.name} (${formatBytes(file.size)})`;
+      
+      const objectUrl = URL.createObjectURL(file);
+      previewPlayer.src = objectUrl;
+      
+      previewPlayer.onloadedmetadata = () => {
+        videoDuration = previewPlayer.duration;
+        startTimeInput.value = 0;
+        // Default to max 5s loop for safety (large GIFs consume lots of memory/disk)
+        endTimeInput.value = Math.min(5, videoDuration).toFixed(1);
+        
+        workspaceCard.style.display = 'block';
+        resultCard.style.display = 'none';
+      };
+    }
+
+    markStartBtn.addEventListener('click', () => {
+      startTimeInput.value = previewPlayer.currentTime.toFixed(1);
+    });
+
+    markEndBtn.addEventListener('click', () => {
+      endTimeInput.value = previewPlayer.currentTime.toFixed(1);
+    });
+
+    btnResetSegment.addEventListener('click', () => {
+      startTimeInput.value = 0;
+      endTimeInput.value = Math.min(5, videoDuration).toFixed(1);
+    });
+
+    fpsSelect.addEventListener('change', (e) => {
+      setHubSetting('gif_maker', 'fps', e.target.value);
+    });
+
+    widthSelect.addEventListener('change', (e) => {
+      setHubSetting('gif_maker', 'width', e.target.value);
+    });
+
+    let previewInterval = null;
+    btnPreviewSegment.addEventListener('click', () => {
+      const start = parseFloat(startTimeInput.value) || 0;
+      const end = parseFloat(endTimeInput.value) || videoDuration;
+      
+      previewPlayer.currentTime = start;
+      previewPlayer.play();
+      
+      if (previewInterval) clearInterval(previewInterval);
+      previewInterval = setInterval(() => {
+        if (previewPlayer.currentTime >= end || previewPlayer.paused) {
+          previewPlayer.pause();
+          clearInterval(previewInterval);
+        }
+      }, 100);
+    });
+
+    btnCompileGif.addEventListener('click', async () => {
+      if (!videoFile) return;
+      
+      const start = parseFloat(startTimeInput.value) || 0;
+      const end = parseFloat(endTimeInput.value) || videoDuration;
+      
+      if (end - start > 15) {
+        alert('Please choose a segment under 15 seconds. Creating long GIFs can freeze your browser due to memory limits.');
+        return;
+      }
+      
+      const fps = fpsSelect.value;
+      const width = widthSelect.value;
+      
+      resultCard.style.display = 'none';
+      progressArea.style.display = 'block';
+      progressBarFill.style.width = '0%';
+      btnCompileGif.disabled = true;
+      
+      const setStep = (t) => { progressStep.textContent = t; };
+      
+      try {
+        const ffmpeg = await getSharedFfmpeg(setStep);
+        
+        ffmpeg.setProgress(({ ratio }) => {
+          progressBarFill.style.width = Math.min(100, Math.round(ratio * 100)) + '%';
+        });
+        
+        setStep('📂 Loading video to memory…');
+        progressBarFill.style.width = '15%';
+        const { fetchFile } = FFmpeg;
+        ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(videoFile));
+        
+        setStep('🎨 Generating optimized GIF palette & frames…');
+        progressBarFill.style.width = '35%';
+        
+        // High quality two-pass palette compilation for crisp GIF colors
+        const filterGraph = `fps=${fps},scale=${width}:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse`;
+        
+        await ffmpeg.run(
+          '-ss', start.toString(),
+          '-to', end.toString(),
+          '-i', 'input.mp4',
+          '-vf', filterGraph,
+          '-loop', '0',
+          'output.gif'
+        );
+        
+        setStep('📦 Compiling final loopable GIF…');
+        progressBarFill.style.width = '90%';
+        
+        const data = ffmpeg.FS('readFile', 'output.gif');
+        
+        // Cleanup virtual FS
+        try { ffmpeg.FS('unlink', 'input.mp4'); } catch(_) {}
+        try { ffmpeg.FS('unlink', 'output.gif'); } catch(_) {}
+        
+        const outBlob = new Blob([data.buffer], { type: 'image/gif' });
+        const gifUrl = URL.createObjectURL(outBlob);
+        
+        gifPreview.src = gifUrl;
+        downloadLink.href = gifUrl;
+        
+        const baseName = videoFile.name.substring(0, videoFile.name.lastIndexOf('.')) || videoFile.name;
+        downloadLink.download = `${baseName}_animation.gif`;
+        
+        progressBarFill.style.width = '100%';
+        progressArea.style.display = 'none';
+        resultCard.style.display = 'block';
+        
+      } catch (err) {
+        progressArea.style.display = 'none';
+        alert('GIF compilation failed: ' + err.message);
+      } finally {
+        btnCompileGif.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MBR Creator Studio - Screen &amp; Webcam Recorder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/motion-hub-core.css">
+  <script src="/motion-hub-utils.js"></script>
+  <style>
+    :root {
+      --accent: var(--rose);
+    }
+    .panel::before {
+      background: linear-gradient(90deg, var(--rose), var(--red), var(--purple));
+    }
+    .panel-brand {
+      color: var(--rose);
+      background: rgba(251,113,133,0.12);
+      border: 1px solid rgba(251,113,133,0.25);
+    }
+    .panel-icon {
+      background: rgba(251,113,133,0.1);
+      box-shadow: 0 0 30px rgba(251,113,133,0.2);
+    }
+
+    /* Record indicator */
+    .record-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: var(--rose);
+      margin-bottom: 12px;
+    }
+    .record-dot {
+      width: 10px;
+      height: 10px;
+      background: var(--rose);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--rose);
+      animation: pulse 1.5s infinite;
+    }
+
+    .preview-card {
+      position: relative;
+      width: 100%;
+      max-height: 340px;
+      border-radius: 12px;
+      background: #000;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .preview-video {
+      width: 100%;
+      height: 100%;
+      max-height: 340px;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="panel">
+    <div class="panel-nav">
+      <a class="back-link" href="/editor">← Back to hub</a>
+      <span class="panel-brand">Live Capture</span>
+    </div>
+
+    <div class="panel-icon">📹</div>
+    <h1>Screen &amp; Webcam Recorder</h1>
+    <p class="subtitle">Record your desktop screen, camera feed, or browser tabs locally. Safe, private, and instant.</p>
+
+    <!-- Settings Card -->
+    <div class="sub-card" id="settingsCard">
+      <h2>⚙️ Recorder Settings</h2>
+      
+      <div class="row">
+        <div class="field">
+          <label>Capture Source</label>
+          <select id="sourceSelect" class="select-input">
+            <option value="screen" selected>💻 Entire Screen / Browser Tab</option>
+            <option value="webcam">📹 Front Camera / Webcam Feed</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Audio Settings</label>
+          <select id="audioSelect" class="select-input">
+            <option value="mic" selected>🎙️ Microphone Audio</option>
+            <option value="none">🔇 No Audio Track</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="generate-btn" id="btnStartCapture">Start Recording Session</button>
+    </div>
+
+    <!-- Active Recording Card -->
+    <div class="sub-card" id="recordingCard" style="display: none;">
+      <div class="record-indicator">
+        <span class="record-dot"></span>
+        <span id="recordingTimer">00:00</span>
+      </div>
+      
+      <div class="preview-card">
+        <video class="preview-video" id="livePreview" autoplay muted playsinline></video>
+      </div>
+
+      <button class="generate-btn" id="btnStopCapture" style="background: var(--rose); border-color: var(--rose); color: #fff;">⏹️ Stop Recording</button>
+    </div>
+
+    <!-- Review / Export Card -->
+    <div class="sub-card" id="reviewCard" style="display: none;">
+      <h2>✅ Recording Completed</h2>
+      
+      <div class="preview-card">
+        <video class="preview-video" id="reviewPlayer" controls></video>
+      </div>
+
+      <div class="row" style="margin-top: 14px; gap: 8px;">
+        <button class="btn btn-primary" id="btnDownloadRecording" style="flex: 1; padding: 12px;">⬇️ Download MP4</button>
+        <button class="btn" id="btnSendToTrimmer" style="flex: 1; padding: 12px; background: rgba(96,165,250,0.15); border-color: rgba(96,165,250,0.3); color: var(--blue);">✂️ Send to Trimmer</button>
+      </div>
+      
+      <button class="btn" id="btnDiscardRecording" style="width: 100%; margin-top: 8px; border-color: rgba(239,68,68,0.2); color: var(--rose);">🗑️ Discard &amp; Record Again</button>
+    </div>
+  </div>
+
+  <script>
+    let mediaStream = null;
+    let audioStream = null;
+    let combinedStream = null;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let recordTimerInterval = null;
+    let recordSeconds = 0;
+    let finalBlob = null;
+
+    const settingsCard = document.getElementById('settingsCard');
+    const recordingCard = document.getElementById('recordingCard');
+    const reviewCard = document.getElementById('reviewCard');
+    
+    const sourceSelect = document.getElementById('sourceSelect');
+    const audioSelect = document.getElementById('audioSelect');
+    const btnStartCapture = document.getElementById('btnStartCapture');
+    const btnStopCapture = document.getElementById('btnStopCapture');
+    
+    const livePreview = document.getElementById('livePreview');
+    const reviewPlayer = document.getElementById('reviewPlayer');
+    const recordingTimer = document.getElementById('recordingTimer');
+
+    const btnDownloadRecording = document.getElementById('btnDownloadRecording');
+    const btnSendToTrimmer = document.getElementById('btnSendToTrimmer');
+    const btnDiscardRecording = document.getElementById('btnDiscardRecording');
+
+    // Restore settings
+    sourceSelect.value = getHubSetting('screen_recorder', 'source', 'screen');
+
+    sourceSelect.addEventListener('change', (e) => {
+      setHubSetting('screen_recorder', 'source', e.target.value);
+    });
+
+    btnStartCapture.addEventListener('click', async () => {
+      const source = sourceSelect.value;
+      const audioMode = audioSelect.value;
+      recordedChunks = [];
+      recordSeconds = 0;
+      recordingTimer.textContent = '00:00';
+      
+      try {
+        // 1. Get Video Stream
+        if (source === 'screen') {
+          mediaStream = await navigator.mediaDevices.getDisplayMedia({
+            video: { cursor: 'always' },
+            audio: true // try getting system audio
+          });
+        } else {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 1280, height: 720 },
+            audio: false
+          });
+        }
+        
+        // 2. Get Audio Stream if requested
+        if (audioMode === 'mic') {
+          try {
+            audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          } catch (e) {
+            console.warn('Microphone permission denied or not available.');
+          }
+        }
+        
+        // 3. Mix Tracks
+        const tracks = [...mediaStream.getVideoTracks()];
+        if (audioStream && audioStream.getAudioTracks().length) {
+          tracks.push(audioStream.getAudioTracks()[0]);
+        } else if (mediaStream.getAudioTracks().length) {
+          tracks.push(mediaStream.getAudioTracks()[0]);
+        }
+        
+        combinedStream = new MediaStream(tracks);
+        livePreview.srcObject = combinedStream;
+        
+        // Setup MediaRecorder
+        let options = { mimeType: 'video/webm;codecs=vp9,opus' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          options = { mimeType: 'video/webm;codecs=vp8,opus' };
+        }
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          options = { mimeType: 'video/webm' };
+        }
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          options = { mimeType: 'video/mp4' };
+        }
+        
+        mediaRecorder = new MediaRecorder(combinedStream, options);
+        
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            recordedChunks.push(e.data);
+          }
+        };
+        
+        mediaRecorder.onstop = () => {
+          finalBlob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+          const videoUrl = URL.createObjectURL(finalBlob);
+          reviewPlayer.src = videoUrl;
+          
+          // Toggle UI panels
+          recordingCard.style.display = 'none';
+          reviewCard.style.display = 'block';
+        };
+        
+        // Handle stop event if user cancels browser screen sharing menu
+        mediaStream.getVideoTracks()[0].onended = () => {
+          if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            stopRecordingSession();
+          }
+        };
+
+        // Start Recording
+        mediaRecorder.start(1000); // chunk intervals
+        
+        // Show Live UI
+        settingsCard.style.display = 'none';
+        recordingCard.style.display = 'block';
+        
+        // Start Timer
+        recordTimerInterval = setInterval(() => {
+          recordSeconds++;
+          const m = String(Math.floor(recordSeconds / 60)).padStart(2, '0');
+          const s = String(recordSeconds % 60).padStart(2, '0');
+          recordingTimer.textContent = `${m}:${s}`;
+        }, 1000);
+        
+      } catch (err) {
+        console.error(err);
+        alert('Failed to start recording stream: ' + err.message);
+        cleanupStreams();
+      }
+    });
+
+    btnStopCapture.addEventListener('click', () => {
+      stopRecordingSession();
+    });
+
+    function stopRecordingSession() {
+      if (recordTimerInterval) clearInterval(recordTimerInterval);
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      cleanupStreams();
+    }
+
+    function cleanupStreams() {
+      if (livePreview.srcObject) {
+        livePreview.srcObject = null;
+      }
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+      }
+      if (audioStream) {
+        audioStream.getTracks().forEach(t => t.stop());
+        audioStream = null;
+      }
+      if (combinedStream) {
+        combinedStream.getTracks().forEach(t => t.stop());
+        combinedStream = null;
+      }
+    }
+
+    btnDownloadRecording.addEventListener('click', () => {
+      if (!finalBlob) return;
+      const downloadUrl = URL.createObjectURL(finalBlob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `recording_${Date.now()}.mp4`;
+      a.click();
+      URL.revokeObjectURL(downloadUrl);
+    });
+
+    btnDiscardRecording.addEventListener('click', () => {
+      reviewPlayer.src = '';
+      if (finalBlob) {
+        finalBlob = null;
+      }
+      reviewCard.style.display = 'none';
+      settingsCard.style.display = 'block';
+    });
+
+    // ─── INDEXEDDB BLOB TRANSFER SYSTEM ───
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('motion_hub_db', 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('shared_blob')) {
+            db.createObjectStore('shared_blob', { keyPath: 'id' });
+          }
+        };
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = (e) => reject(e.target.error);
+      });
+    }
+
+    function saveSharedBlob(db, blob, name) {
+      return new Promise((resolve, reject) => {
+        const file = new File([blob], name, { type: blob.type });
+        const tx = db.transaction('shared_blob', 'readwrite');
+        const store = tx.objectStore('shared_blob');
+        const req = store.put({ id: 'transfer', file: file });
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    btnSendToTrimmer.addEventListener('click', async () => {
+      if (!finalBlob) return;
+      btnSendToTrimmer.disabled = true;
+      btnSendToTrimmer.textContent = 'Saving…';
+      try {
+        const db = await openDB();
+        await saveSharedBlob(db, finalBlob, 'recording.mp4');
+        window.location.href = '/video-trimmer';
+      } catch (err) {
+        alert('Failed to send recording to trimmer: ' + err.message);
+        btnSendToTrimmer.disabled = false;
+        btnSendToTrimmer.textContent = 'Send to Trimmer';
+      }
+    });
+  </script>
+</body>
+</html>

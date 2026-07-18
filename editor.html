@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MBR Motion Hub</title>
+  <title>MBR Motion Hub - Creator Workspace</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="manifest" href="/manifest.json">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -18,6 +19,9 @@
       --rose: #fb7185;
       --lime: #bef264;
       --orange: #fb923c;
+      --violet: #8b7cf6;
+      --amber: #f59e0b;
+      --red: #ef4444;
       --text: #f1f5f9;
       --muted: #94a3b8;
       --line: rgba(255,255,255,0.08);
@@ -60,7 +64,6 @@
       66%       { transform: translate(-20px, 30px) scale(0.97); }
     }
 
-    /* Grid noise texture overlay */
     .bg-grid {
       position: fixed;
       inset: 0;
@@ -72,7 +75,6 @@
       background-size: 48px 48px;
     }
 
-    /* ─── PARTICLES CANVAS ─── */
     #particleCanvas {
       position: fixed;
       inset: 0;
@@ -81,7 +83,6 @@
       opacity: 0.5;
     }
 
-    /* ─── CONTENT WRAPPER ─── */
     .shell {
       position: relative;
       z-index: 1;
@@ -160,8 +161,8 @@
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 80px 40px 60px;
-      gap: 24px;
+      padding: 60px 40px 40px;
+      gap: 20px;
     }
 
     .hero-badge {
@@ -177,15 +178,13 @@
       border: 1px solid rgba(45,212,191,0.18);
       border-radius: 999px;
       padding: 8px 18px;
-      animation: fadeUp 0.6s ease both;
     }
 
     h1 {
-      font-size: clamp(2.8rem, 7vw, 6rem);
+      font-size: clamp(2.4rem, 6vw, 4.5rem);
       font-weight: 900;
-      line-height: 0.95;
+      line-height: 1.05;
       letter-spacing: -0.02em;
-      animation: fadeUp 0.7s ease 0.1s both;
     }
 
     h1 .gradient-text {
@@ -196,22 +195,16 @@
     }
 
     .hero-sub {
-      max-width: 560px;
+      max-width: 580px;
       color: var(--muted);
-      font-size: 1.05rem;
-      line-height: 1.65;
-      animation: fadeUp 0.7s ease 0.2s both;
-    }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(24px); }
-      to   { opacity: 1; transform: translateY(0); }
+      font-size: 1rem;
+      line-height: 1.6;
     }
 
     /* ─── CARDS GRID ─── */
     .cards {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
       gap: 20px;
       padding: 0 40px 80px;
       max-width: 1280px;
@@ -225,7 +218,7 @@
       border: 1px solid var(--line);
       background: rgba(12,14,22,0.7);
       backdrop-filter: blur(20px);
-      padding: 28px;
+      padding: 24px;
       display: flex;
       flex-direction: column;
       gap: 0;
@@ -233,16 +226,10 @@
       text-decoration: none;
       color: inherit;
       transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
-      animation: fadeUp 0.7s ease both;
       cursor: pointer;
-      min-height: 280px;
+      min-height: 270px;
     }
-    .card:nth-child(1) { animation-delay: 0.25s; }
-    .card:nth-child(2) { animation-delay: 0.35s; }
-    .card:nth-child(3) { animation-delay: 0.45s; }
-    .card:nth-child(4) { animation-delay: 0.55s; }
 
-    /* card glow on hover using pseudo-element */
     .card::before {
       content: '';
       position: absolute;
@@ -251,36 +238,52 @@
       opacity: 0;
       transition: opacity 0.3s ease;
     }
-    .card-tracker::before  { background: radial-gradient(ellipse at top left,  rgba(190,242,100,0.12) 0%, transparent 65%); }
+    
+    .card-tracker::before  { background: radial-gradient(ellipse at top left, rgba(190,242,100,0.12) 0%, transparent 65%); }
     .card-downloader::before { background: radial-gradient(ellipse at top left, rgba(96,165,250,0.12) 0%, transparent 65%); }
-    .card-editor::before   { background: radial-gradient(ellipse at top left,  rgba(251,113,133,0.12) 0%, transparent 65%); }
-    .card-trimmer::before   { background: radial-gradient(ellipse at top left,  rgba(251,146,60,0.12) 0%, transparent 65%); }
- 
+    .card-editor::before   { background: radial-gradient(ellipse at top left, rgba(45,212,191,0.12) 0%, transparent 65%); }
+    .card-trimmer::before   { background: radial-gradient(ellipse at top left, rgba(251,146,60,0.12) 0%, transparent 65%); }
+    .card-vtrimmer::before  { background: radial-gradient(ellipse at top left, rgba(96,165,250,0.12) 0%, transparent 65%); }
+    .card-extractor::before { background: radial-gradient(ellipse at top left, rgba(167,139,250,0.12) 0%, transparent 65%); }
+    .card-compressor::before { background: radial-gradient(ellipse at top left, rgba(167,139,250,0.12) 0%, transparent 65%); }
+    .card-gif::before      { background: radial-gradient(ellipse at top left, rgba(245,158,11,0.12) 0%, transparent 65%); }
+    .card-recorder::before  { background: radial-gradient(ellipse at top left, rgba(239,68,68,0.12) 0%, transparent 65%); }
+
     .card:hover { transform: translateY(-6px); box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
     .card:hover::before { opacity: 1; }
-    .card-tracker:hover  { border-color: rgba(190,242,100,0.35); }
+    
+    .card-tracker:hover    { border-color: rgba(190,242,100,0.35); }
     .card-downloader:hover { border-color: rgba(96,165,250,0.35); }
-    .card-editor:hover   { border-color: rgba(251,113,133,0.35); }
-    .card-trimmer:hover   { border-color: rgba(251,146,60,0.35); }
+    .card-editor:hover     { border-color: rgba(45,212,191,0.35); }
+    .card-trimmer:hover    { border-color: rgba(251,146,60,0.35); }
+    .card-vtrimmer:hover   { border-color: rgba(96,165,250,0.35); }
+    .card-extractor:hover  { border-color: rgba(167,139,250,0.35); }
+    .card-compressor:hover { border-color: rgba(167,139,250,0.35); }
+    .card-gif:hover        { border-color: rgba(245,158,11,0.35); }
+    .card-recorder:hover   { border-color: rgba(239,68,68,0.35); }
 
-    /* card icon */
     .card-icon {
-      width: 52px; height: 52px;
-      border-radius: 16px;
+      width: 48px; height: 48px;
+      border-radius: 14px;
       display: grid;
       place-items: center;
-      font-size: 1.5rem;
-      margin-bottom: 20px;
+      font-size: 1.4rem;
+      margin-bottom: 16px;
       position: relative;
       z-index: 1;
     }
-    .card-tracker   .card-icon { background: rgba(190,242,100,0.1); box-shadow: 0 0 30px rgba(190,242,100,0.2); }
+    .card-tracker .card-icon   { background: rgba(190,242,100,0.1); box-shadow: 0 0 30px rgba(190,242,100,0.2); }
     .card-downloader .card-icon { background: rgba(96,165,250,0.1);  box-shadow: 0 0 30px rgba(96,165,250,0.2); }
-    .card-editor    .card-icon { background: rgba(251,113,133,0.1); box-shadow: 0 0 30px rgba(251,113,133,0.2); }
-    .card-trimmer    .card-icon { background: rgba(251,146,60,0.1); box-shadow: 0 0 30px rgba(251,146,60,0.2); }
+    .card-editor .card-icon    { background: rgba(45,212,191,0.1);   box-shadow: 0 0 30px rgba(45,212,191,0.2); }
+    .card-trimmer .card-icon   { background: rgba(251,146,60,0.1);   box-shadow: 0 0 30px rgba(251,146,60,0.2); }
+    .card-vtrimmer .card-icon  { background: rgba(96,165,250,0.1);   box-shadow: 0 0 30px rgba(96,165,250,0.2); }
+    .card-extractor .card-icon { background: rgba(167,139,250,0.1);  box-shadow: 0 0 30px rgba(167,139,250,0.2); }
+    .card-compressor .card-icon { background: rgba(167,139,250,0.1); box-shadow: 0 0 30px rgba(167,139,250,0.2); }
+    .card-gif .card-icon      { background: rgba(245,158,11,0.1);    box-shadow: 0 0 30px rgba(245,158,11,0.2); }
+    .card-recorder .card-icon  { background: rgba(239,68,68,0.1);    box-shadow: 0 0 30px rgba(239,68,68,0.2); }
 
     .card-kicker {
-      font-size: 0.68rem;
+      font-size: 0.65rem;
       font-weight: 800;
       letter-spacing: 0.12em;
       text-transform: uppercase;
@@ -290,19 +293,37 @@
     }
 
     .card-title {
-      font-size: 1.6rem;
+      font-size: 1.4rem;
       font-weight: 800;
-      margin: 10px 0 12px;
+      margin: 8px 0 10px;
       position: relative;
       z-index: 1;
     }
 
     .card-desc {
       color: var(--muted);
-      line-height: 1.6;
-      font-size: 0.9rem;
+      line-height: 1.5;
+      font-size: 0.85rem;
       flex: 1;
       position: relative;
+      z-index: 1;
+    }
+
+    .badge-browser {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.62rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--cyan);
+      background: rgba(45,212,191,0.08);
+      border: 1px solid rgba(45,212,191,0.2);
+      border-radius: 6px;
+      padding: 3px 8px;
+      margin-top: 14px;
+      align-self: flex-start;
       z-index: 1;
     }
 
@@ -310,20 +331,25 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       font-weight: 800;
-      margin-top: 24px;
+      margin-top: 18px;
       position: relative;
       z-index: 1;
       transition: gap 0.2s ease;
     }
     .card:hover .card-cta { gap: 10px; }
-    .card-tracker   .card-cta { color: var(--lime); }
+    
+    .card-tracker .card-cta    { color: var(--lime); }
     .card-downloader .card-cta { color: var(--blue); }
-    .card-editor    .card-cta { color: var(--rose); }
-    .card-trimmer    .card-cta { color: var(--orange); }
+    .card-editor .card-cta     { color: var(--cyan); }
+    .card-trimmer .card-cta    { color: var(--orange); }
+    .card-vtrimmer .card-cta   { color: var(--blue); }
+    .card-extractor .card-cta  { color: var(--purple); }
+    .card-compressor .card-cta { color: var(--purple); }
+    .card-gif .card-cta        { color: var(--amber); }
+    .card-recorder .card-cta   { color: var(--red); }
 
-    /* corner accent lines */
     .card-accent {
       position: absolute;
       top: 0; right: 0;
@@ -332,10 +358,15 @@
       border-radius: 0 24px 0 0;
       z-index: 0;
     }
-    .card-tracker   .card-accent { background: radial-gradient(circle at top right, var(--lime), transparent 70%); }
+    .card-tracker .card-accent   { background: radial-gradient(circle at top right, var(--lime), transparent 70%); }
     .card-downloader .card-accent { background: radial-gradient(circle at top right, var(--blue), transparent 70%); }
-    .card-editor    .card-accent { background: radial-gradient(circle at top right, var(--rose), transparent 70%); }
-    .card-trimmer    .card-accent { background: radial-gradient(circle at top right, var(--orange), transparent 70%); }
+    .card-editor .card-accent    { background: radial-gradient(circle at top right, var(--cyan), transparent 70%); }
+    .card-trimmer .card-accent   { background: radial-gradient(circle at top right, var(--orange), transparent 70%); }
+    .card-vtrimmer .card-accent  { background: radial-gradient(circle at top right, var(--blue), transparent 70%); }
+    .card-extractor .card-accent { background: radial-gradient(circle at top right, var(--purple), transparent 70%); }
+    .card-compressor .card-accent { background: radial-gradient(circle at top right, var(--purple), transparent 70%); }
+    .card-gif .card-accent      { background: radial-gradient(circle at top right, var(--amber), transparent 70%); }
+    .card-recorder .card-accent  { background: radial-gradient(circle at top right, var(--red), transparent 70%); }
 
     /* ─── STATS BAR ─── */
     .stats-bar {
@@ -343,36 +374,31 @@
       align-items: center;
       justify-content: center;
       gap: 48px;
-      padding: 28px 40px;
+      padding: 22px 40px;
       border-top: 1px solid var(--line);
       border-bottom: 1px solid var(--line);
       background: rgba(255,255,255,0.015);
       backdrop-filter: blur(10px);
-      margin-bottom: 0;
-      animation: fadeUp 0.7s ease 0.55s both;
+      margin-bottom: 40px;
     }
     .stat { text-align: center; }
-    .stat-val { font-size: 1.6rem; font-weight: 900; color: var(--text); display: block; }
+    .stat-val { font-size: 1.5rem; font-weight: 900; color: var(--text); display: block; }
     .stat-lbl { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 2px; }
 
-    /* ─── FOOTER ─── */
     footer {
       text-align: center;
-      padding: 24px 40px;
+      padding: 24px 40px 40px;
       color: var(--muted);
       font-size: 0.78rem;
+      border-top: 1px solid var(--line);
+      margin-top: auto;
     }
 
-    /* ─── RESPONSIVE ─── */
     @media (max-width: 860px) {
       nav { padding: 16px 20px; }
-      .hero { padding: 60px 20px 40px; }
+      .hero { padding: 40px 20px; }
       .cards { grid-template-columns: 1fr; padding: 0 20px 60px; }
       .stats-bar { gap: 28px; flex-wrap: wrap; padding: 20px; }
-    }
-    @media (max-width: 480px) {
-      h1 { font-size: 2.4rem; }
-      .stats-bar { gap: 20px; }
     }
   </style>
 </head>
@@ -398,39 +424,41 @@
           <small>Travel tools &amp; creator studio</small>
         </div>
       </a>
-      <div class="nav-badge">All systems live</div>
+      <div id="pwaInstallBadge" class="nav-badge" style="cursor: pointer; display: none;">Install Hub App</div>
+      <div id="systemsBadge" class="nav-badge">All systems local</div>
     </nav>
 
     <!-- Hero -->
     <section class="hero">
       <span class="hero-badge">✦ Choose your workspace</span>
-      <h1>Your tools.<br><span class="gradient-text">One hub.</span></h1>
-      <p class="hero-sub">Track buses live, download media from any platform, or edit video — each with its own focused interface built for speed.</p>
+      <h1>Your tools.<br><span class="gradient-text">Processed entirely local.</span></h1>
+      <p class="hero-sub">Edit video, trim clips, extract high-quality audio tracks, record screens or webcams — all completely inside your browser with zero server uploads.</p>
     </section>
 
     <!-- Stats bar -->
     <div class="stats-bar">
       <div class="stat">
-        <span class="stat-val">4</span>
-        <span class="stat-lbl">Tools</span>
+        <span class="stat-val">7</span>
+        <span class="stat-lbl">Browser Tools</span>
       </div>
       <div class="stat">
         <span class="stat-val">0<span style="color:var(--cyan)">ms</span></span>
-        <span class="stat-lbl">Server Storage</span>
+        <span class="stat-lbl">Server Storage Cost</span>
       </div>
       <div class="stat">
-        <span class="stat-val">∞</span>
-        <span class="stat-lbl">Downloads</span>
+        <span class="stat-val">100%</span>
+        <span class="stat-lbl">Private &amp; Offline</span>
       </div>
       <div class="stat">
-        <span class="stat-val">Live</span>
-        <span class="stat-lbl">Bus Tracking</span>
+        <span class="stat-val">Local</span>
+        <span class="stat-lbl">Execution</span>
       </div>
     </div>
 
-    <!-- Cards -->
+    <!-- Cards Grid -->
     <div class="cards">
 
+      <!-- Tracker (Original server tool) -->
       <a class="card card-tracker" href="/">
         <div class="card-accent"></div>
         <div class="card-icon">📡</div>
@@ -440,36 +468,97 @@
         <span class="card-cta">Open tracker →</span>
       </a>
 
+      <!-- Downloader -->
       <a class="card card-downloader" href="/downloader">
         <div class="card-accent"></div>
         <div class="card-icon">⬇️</div>
         <span class="card-kicker">Media Capture</span>
         <div class="card-title">Downloader</div>
-        <p class="card-desc">Download videos as MP4 or extract audio as MP3 from Instagram, YouTube, Twitter/X and more. Streams directly — nothing stored.</p>
+        <p class="card-desc">Download videos as MP4 or extract audio as MP3 from Instagram, YouTube, Twitter/X and more. Streams directly.</p>
+        <span class="badge-browser">100% Client-Side</span>
         <span class="card-cta">Open downloader →</span>
       </a>
 
+      <!-- Video Merger -->
       <a class="card card-editor" href="/video-editor">
         <div class="card-accent"></div>
         <div class="card-icon">🎬</div>
         <span class="card-kicker">Creator Studio</span>
-        <div class="card-title">Video Editor</div>
-        <p class="card-desc">Trim clips, remove ranges, overlay images or video, add captions, mix audio, and export — all in the browser.</p>
-        <span class="card-cta">Open editor →</span>
+        <div class="card-title">Video Merger</div>
+        <p class="card-desc">Combine multiple video clips into one timeline, sort or drag-arrange sequence order, and merge into a single MP4.</p>
+        <span class="badge-browser">100% Client-Side</span>
+        <span class="card-cta">Open merger →</span>
       </a>
- 
+
+      <!-- Audio Trimmer -->
       <a class="card card-trimmer" href="/audio-trimmer">
         <div class="card-accent"></div>
         <div class="card-icon">✂️</div>
         <span class="card-kicker">Audio Studio</span>
         <div class="card-title">Audio Trimmer</div>
-        <p class="card-desc">Cut segments out of audio, trim audio lengths, and export merged files. Processed entirely inside your browser.</p>
+        <p class="card-desc">Cut segments out of audio, trim files, rephrase tracks, and export to high-quality MP3 directly in the browser.</p>
+        <span class="badge-browser">100% Client-Side</span>
         <span class="card-cta">Open trimmer →</span>
+      </a>
+
+      <!-- Video Trimmer -->
+      <a class="card card-vtrimmer" href="/video-trimmer">
+        <div class="card-accent"></div>
+        <div class="card-icon">🎥</div>
+        <span class="card-kicker">Video Studio</span>
+        <div class="card-title">Video Trimmer</div>
+        <p class="card-desc">Crop or trim a single video file using a draggable filmstrip-timeline timeline. Zero quality loss export.</p>
+        <span class="badge-browser">100% Client-Side</span>
+        <span class="card-cta">Open trimmer →</span>
+      </a>
+
+      <!-- Audio Extractor -->
+      <a class="card card-extractor" href="/audio-extractor">
+        <div class="card-accent"></div>
+        <div class="card-icon">📻</div>
+        <span class="card-kicker">Media Extractor</span>
+        <div class="card-title">Audio Extractor</div>
+        <p class="card-desc">Upload any video format, extract its audio stream, and save it directly as high-quality MP3 or WAV.</p>
+        <span class="badge-browser">100% Client-Side</span>
+        <span class="card-cta">Open extractor →</span>
+      </a>
+
+      <!-- Video Compressor -->
+      <a class="card card-compressor" href="/video-compressor">
+        <div class="card-accent"></div>
+        <div class="card-icon">🗜️</div>
+        <span class="card-kicker">Video Optimizer</span>
+        <div class="card-title">Compressor / Resizer</div>
+        <p class="card-desc">Downscale video resolution or adjust bitrates to reduce heavy file sizes before uploading or merging.</p>
+        <span class="badge-browser">100% Client-Side</span>
+        <span class="card-cta">Open compressor →</span>
+      </a>
+
+      <!-- GIF Maker -->
+      <a class="card card-gif" href="/gif-maker">
+        <div class="card-accent"></div>
+        <div class="card-icon">🖼️</div>
+        <span class="card-kicker">Animation</span>
+        <div class="card-title">GIF Maker</div>
+        <p class="card-desc">Select any segment of a video, crop, adjust framerates, and compile into a loopable, compact GIF file.</p>
+        <span class="badge-browser">100% Client-Side</span>
+        <span class="card-cta">Open maker →</span>
+      </a>
+
+      <!-- Screen Recorder -->
+      <a class="card card-recorder" href="/screen-recorder">
+        <div class="card-accent"></div>
+        <div class="card-icon">📹</div>
+        <span class="card-kicker">Live Capture</span>
+        <div class="card-title">Screen Recorder</div>
+        <p class="card-desc">Record your screen, webcam, or browser tabs. Live preview, download MP4, or trim the output immediately.</p>
+        <span class="badge-browser">100% Client-Side</span>
+        <span class="card-cta">Open recorder →</span>
       </a>
 
     </div>
 
-    <footer>Built by MBR &nbsp;·&nbsp; No data stored on server &nbsp;·&nbsp; <span style="color:var(--cyan)">Always streaming, never saving</span></footer>
+    <footer>Built by MBR &nbsp;·&nbsp; No data stored on server &nbsp;·&nbsp; <span style="color:var(--cyan)">Offline-capable creator hub</span></footer>
 
   </div>
 
@@ -478,7 +567,7 @@
     const canvas = document.getElementById('particleCanvas');
     const ctx = canvas.getContext('2d');
     let particles = [];
-    const COUNT = 55;
+    const COUNT = 45;
 
     function resize() {
       canvas.width  = window.innerWidth;
@@ -535,6 +624,39 @@
         card.style.setProperty('--my', y + '%');
       });
     });
+
+    // ─── PWA Installation Promotion ───
+    let deferredPrompt;
+    const installBadge = document.getElementById('pwaInstallBadge');
+    const systemsBadge = document.getElementById('systemsBadge');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBadge.style.display = 'flex';
+      systemsBadge.style.display = 'none';
+    });
+
+    installBadge.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`PWA install prompt decision: ${outcome}`);
+      deferredPrompt = null;
+      installBadge.style.display = 'none';
+      systemsBadge.style.display = 'flex';
+    });
+
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(reg => {
+          console.log('PWA ServiceWorker registered successfully!');
+        }).catch(err => {
+          console.warn('PWA ServiceWorker registration failed: ', err);
+        });
+      });
+    }
   </script>
 
 </body>

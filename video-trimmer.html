@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MBR Creator Studio - Video Trimmer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/motion-hub-core.css">
+  <script src="/motion-hub-utils.js"></script>
+  <style>
+    :root {
+      --accent: var(--blue);
+    }
+    .panel::before {
+      background: linear-gradient(90deg, var(--blue), var(--purple), var(--rose));
+    }
+    .panel-brand {
+      color: var(--blue);
+      background: rgba(96,165,250,0.12);
+      border: 1px solid rgba(96,165,250,0.25);
+    }
+    .panel-icon {
+      background: rgba(96,165,250,0.1);
+      box-shadow: 0 0 30px rgba(96,165,250,0.2);
+    }
+
+    /* Filmstrip Container */
+    .filmstrip-container {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 6px;
+      margin: 16px 0;
+      overflow: hidden;
+      height: 72px;
+    }
+    .filmstrip-frame {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    /* Range highlights */
+    .range-inputs {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="panel">
+    <div class="panel-nav">
+      <a class="back-link" href="/editor">← Back to hub</a>
+      <span class="panel-brand">Video Studio</span>
+    </div>
+
+    <div class="panel-icon">🎥</div>
+    <h1>Video Trimmer</h1>
+    <p class="subtitle">Cut or trim a video clip locally inside your browser. Mark starting and ending points, preview selection, and export instantly.</p>
+
+    <!-- Step 1: Upload -->
+    <div class="sub-card">
+      <h2>📁 Select Video</h2>
+      <div class="drop" id="dropZone">
+        <div id="dropText">Drag and drop a video file here, or click to browse</div>
+        <div class="filename" id="fileName"></div>
+      </div>
+      <input type="file" id="videoInput" accept="video/*" style="display: none;">
+    </div>
+
+    <!-- Step 2: Workspace -->
+    <div class="sub-card" id="workspaceCard" style="display: none;">
+      <h2>⚙️ Trim Workspace</h2>
+      
+      <video id="previewPlayer" controls style="width: 100%; max-height: 340px; border-radius: 12px; background: #000; display: block; margin-bottom: 16px;"></video>
+      
+      <!-- Filmstrip Visualization -->
+      <label>Visual Timeline Filmstrip</label>
+      <div class="filmstrip-container" id="filmstripContainer">
+        <div class="filmstrip-frame"></div>
+        <div class="filmstrip-frame"></div>
+        <div class="filmstrip-frame"></div>
+        <div class="filmstrip-frame"></div>
+        <div class="filmstrip-frame"></div>
+      </div>
+
+      <!-- Playback selection helpers -->
+      <div class="range-inputs">
+        <div class="row">
+          <div class="field">
+            <label>Start Time (seconds)</label>
+            <input type="number" id="startTimeInput" class="time-field" step="0.1" value="0">
+          </div>
+          <div class="field" style="flex: none; width: auto;">
+            <button class="btn" id="markStartBtn" style="padding: 10px 14px;">📍 Mark Start</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>End Time (seconds)</label>
+            <input type="number" id="endTimeInput" class="time-field" step="0.1" value="0">
+          </div>
+          <div class="field" style="flex: none; width: auto;">
+            <button class="btn" id="markEndBtn" style="padding: 10px 14px;">📍 Mark End</button>
+          </div>
+        </div>
+        
+        <div style="display: flex; gap: 8px; margin-top: 14px;">
+          <button class="btn" id="btnPreviewTrim" style="flex: 1;">⏯️ Preview Selection</button>
+          <button class="btn" id="btnResetTrim">🔄 Reset Selection</button>
+        </div>
+      </div>
+
+      <button class="generate-btn" id="btnTrimExport">Export Trimmed Video</button>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-area" id="progressArea" style="display: none;">
+      <div class="progress-step" id="progressStep">📥 Initialising engine...</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressBarFill"></div>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div class="result-card" id="resultCard" style="display: none;">
+      <div class="result-title">✅ Video Trimmed!</div>
+      <div class="result-desc">Your cropped clip is ready. Download it below.</div>
+      <a class="download-link" id="downloadLink" href="#" download="trimmed_video.mp4">⬇️ Download Trimmed Video</a>
+    </div>
+  </div>
+
+  <script>
+    let videoFile = null;
+    let videoDuration = 0;
+
+    const dropZone = document.getElementById('dropZone');
+    const videoInput = document.getElementById('videoInput');
+    const fileName = document.getElementById('fileName');
+    const workspaceCard = document.getElementById('workspaceCard');
+    const previewPlayer = document.getElementById('previewPlayer');
+    const filmstripContainer = document.getElementById('filmstripContainer');
+
+    const startTimeInput = document.getElementById('startTimeInput');
+    const endTimeInput = document.getElementById('endTimeInput');
+    const markStartBtn = document.getElementById('markStartBtn');
+    const markEndBtn = document.getElementById('markEndBtn');
+    const btnPreviewTrim = document.getElementById('btnPreviewTrim');
+    const btnResetTrim = document.getElementById('btnResetTrim');
+    const btnTrimExport = document.getElementById('btnTrimExport');
+
+    const progressArea = document.getElementById('progressArea');
+    const progressStep = document.getElementById('progressStep');
+    const progressBarFill = document.getElementById('progressBarFill');
+    const resultCard = document.getElementById('resultCard');
+    const downloadLink = document.getElementById('downloadLink');
+
+    // Restore user settings
+    const lastStart = parseFloat(getHubSetting('video_trimmer', 'start_time', 0));
+    
+    dropZone.addEventListener('click', () => videoInput.click());
+    
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    videoInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+      if (!file.type.startsWith('video/')) {
+        alert('Please choose a valid video file.');
+        return;
+      }
+      videoFile = file;
+      fileName.textContent = `${file.name} (${formatBytes(file.size)})`;
+      
+      const objectUrl = URL.createObjectURL(file);
+      previewPlayer.src = objectUrl;
+      
+      previewPlayer.onloadedmetadata = () => {
+        videoDuration = previewPlayer.duration;
+        startTimeInput.value = 0;
+        endTimeInput.value = videoDuration.toFixed(1);
+        
+        generateFilmstrip(objectUrl);
+        workspaceCard.style.display = 'block';
+        resultCard.style.display = 'none';
+      };
+    }
+
+    function generateFilmstrip(videoUrl) {
+      filmstripContainer.innerHTML = '';
+      const probe = document.createElement('video');
+      probe.src = videoUrl;
+      probe.preload = 'auto';
+      probe.muted = true;
+      probe.playsInline = true;
+
+      probe.onloadedmetadata = () => {
+        const interval = probe.duration / 6;
+        let loadedFrames = 0;
+
+        const captureFrame = (timeIndex) => {
+          probe.currentTime = timeIndex;
+          probe.onseeked = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 160;
+            canvas.height = 90;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(probe, 0, 0, canvas.width, canvas.height);
+            
+            const img = document.createElement('img');
+            img.className = 'filmstrip-frame';
+            img.src = canvas.toDataURL('image/jpeg', 0.5);
+            filmstripContainer.appendChild(img);
+            
+            loadedFrames++;
+            if (loadedFrames < 5) {
+              captureFrame(interval * (loadedFrames + 1));
+            }
+          };
+        };
+        captureFrame(interval);
+      };
+    }
+
+    markStartBtn.addEventListener('click', () => {
+      startTimeInput.value = previewPlayer.currentTime.toFixed(1);
+      setHubSetting('video_trimmer', 'start_time', startTimeInput.value);
+    });
+
+    markEndBtn.addEventListener('click', () => {
+      endTimeInput.value = previewPlayer.currentTime.toFixed(1);
+    });
+
+    btnResetTrim.addEventListener('click', () => {
+      startTimeInput.value = 0;
+      endTimeInput.value = videoDuration.toFixed(1);
+    });
+
+    let isPreviewLooping = false;
+    let previewInterval = null;
+    
+    btnPreviewTrim.addEventListener('click', () => {
+      const start = parseFloat(startTimeInput.value) || 0;
+      const end = parseFloat(endTimeInput.value) || videoDuration;
+      
+      previewPlayer.currentTime = start;
+      previewPlayer.play();
+      
+      if (previewInterval) clearInterval(previewInterval);
+      previewInterval = setInterval(() => {
+        if (previewPlayer.currentTime >= end || previewPlayer.paused) {
+          previewPlayer.pause();
+          clearInterval(previewInterval);
+        }
+      }, 100);
+    });
+
+    btnTrimExport.addEventListener('click', async () => {
+      if (!videoFile) return;
+      
+      const start = parseFloat(startTimeInput.value) || 0;
+      const end = parseFloat(endTimeInput.value) || videoDuration;
+      
+      resultCard.style.display = 'none';
+      progressArea.style.display = 'block';
+      progressBarFill.style.width = '0%';
+      btnTrimExport.disabled = true;
+      
+      const setStep = (t) => { progressStep.textContent = t; };
+      
+      try {
+        const ffmpeg = await getSharedFfmpeg(setStep);
+        
+        ffmpeg.setProgress(({ ratio }) => {
+          progressBarFill.style.width = Math.min(100, Math.round(ratio * 100)) + '%';
+        });
+        
+        setStep('📂 Loading video to memory…');
+        progressBarFill.style.width = '15%';
+        const { fetchFile } = FFmpeg;
+        ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(videoFile));
+        
+        setStep('🎬 Trimming video clip...');
+        progressBarFill.style.width = '40%';
+        
+        // Fast trim using stream copy
+        await ffmpeg.run(
+          '-ss', start.toString(),
+          '-to', end.toString(),
+          '-i', 'input.mp4',
+          '-c', 'copy',
+          'output.mp4'
+        );
+        
+        setStep('📦 Packaging trimmed video…');
+        progressBarFill.style.width = '90%';
+        
+        const data = ffmpeg.FS('readFile', 'output.mp4');
+        
+        // Cleanup virtual FS
+        try { ffmpeg.FS('unlink', 'input.mp4'); } catch(_) {}
+        try { ffmpeg.FS('unlink', 'output.mp4'); } catch(_) {}
+        
+        const outBlob = new Blob([data.buffer], { type: 'video/mp4' });
+        downloadLink.href = URL.createObjectURL(outBlob);
+        
+        progressBarFill.style.width = '100%';
+        progressArea.style.display = 'none';
+        resultCard.style.display = 'block';
+        downloadLink.click();
+        
+      } catch (err) {
+        progressArea.style.display = 'none';
+        alert('Video trimming failed: ' + err.message);
+      } finally {
+        btnTrimExport.disabled = false;
+      }
+    });
+
+    // ─── INDEXEDDB BLOB TRANSFER RECEIVER ───
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('motion_hub_db', 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('shared_blob')) {
+            db.createObjectStore('shared_blob', { keyPath: 'id' });
+          }
+        };
+        req.onsuccess = (e) => resolve(e.target.result);
+        req.onerror = (e) => reject(e.target.error);
+      });
+    }
+
+    function checkSharedBlob(db) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('shared_blob', 'readonly');
+        const store = tx.objectStore('shared_blob');
+        const req = store.get('transfer');
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function deleteSharedBlob(db) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('shared_blob', 'readwrite');
+        const store = tx.objectStore('shared_blob');
+        const req = store.delete('transfer');
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const db = await openDB();
+        const shared = await checkSharedBlob(db);
+        if (shared && shared.file) {
+          handleFile(shared.file);
+          await deleteSharedBlob(db);
+        }
+      } catch (e) {
+        console.warn('No incoming shared recording found.', e);
+      }
+    });
+  </script>
+</body>
+</html>

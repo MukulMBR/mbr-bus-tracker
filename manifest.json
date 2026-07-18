@@ -1,0 +1,22 @@
+{
+  "name": "MBR Motion Hub",
+  "short_name": "Motion Hub",
+  "description": "Browser-only, zero-server-cost creator studio & travel toolkit.",
+  "start_url": "/editor",
+  "display": "standalone",
+  "background_color": "#06070c",
+  "theme_color": "#06070c",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/libs/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/libs/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

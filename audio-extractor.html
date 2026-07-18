@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MBR Creator Studio - Audio Extractor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/motion-hub-core.css">
+  <script src="/motion-hub-utils.js"></script>
+  <style>
+    :root {
+      --accent: var(--purple);
+    }
+    .panel::before {
+      background: linear-gradient(90deg, var(--purple), var(--rose), var(--cyan));
+    }
+    .panel-brand {
+      color: var(--purple);
+      background: rgba(167,139,250,0.12);
+      border: 1px solid rgba(167,139,250,0.25);
+    }
+    .panel-icon {
+      background: rgba(167,139,250,0.1);
+      box-shadow: 0 0 30px rgba(167,139,250,0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="panel">
+    <div class="panel-nav">
+      <a class="back-link" href="/editor">← Back to hub</a>
+      <span class="panel-brand">Media Extractor</span>
+    </div>
+
+    <div class="panel-icon">📻</div>
+    <h1>Audio Extractor</h1>
+    <p class="subtitle">Extract the soundtrack of any video file directly inside your browser. No server bandwidth cost, completely private.</p>
+
+    <!-- Step 1: Upload -->
+    <div class="sub-card">
+      <h2>📁 Select Video</h2>
+      <div class="drop" id="dropZone">
+        <div id="dropText">Drag and drop a video file here, or click to browse</div>
+        <div class="filename" id="fileName"></div>
+      </div>
+      <input type="file" id="videoInput" accept="video/*" style="display: none;">
+    </div>
+
+    <!-- Step 2: Settings -->
+    <div class="sub-card" id="settingsCard" style="display: none;">
+      <h2>⚙️ Extraction Settings</h2>
+      
+      <div class="row">
+        <div class="field">
+          <label>Target Format</label>
+          <select id="formatSelect" class="select-input">
+            <option value="mp3" selected>MP3 (MPEG Audio, compressed)</option>
+            <option value="wav">WAV (Waveform Audio, lossless)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row" id="bitrateRow">
+        <div class="field">
+          <label>Audio Bitrate</label>
+          <select id="bitrateSelect" class="select-input">
+            <option value="320k">320 kbps (High Quality)</option>
+            <option value="256k">256 kbps</option>
+            <option value="192k" selected>192 kbps (Standard)</option>
+            <option value="128k">128 kbps</option>
+            <option value="96k">96 kbps (Compact)</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="generate-btn" id="btnExtract">Extract Audio Track</button>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-area" id="progressArea" style="display: none;">
+      <div class="progress-step" id="progressStep">📥 Initialising engine...</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressBarFill"></div>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div class="result-card" id="resultCard" style="display: none;">
+      <div class="result-title">✅ Audio Extracted!</div>
+      <div class="result-desc">The audio track was successfully isolated. Download it below.</div>
+      <a class="download-link" id="downloadLink" href="#" download="extracted_audio.mp3">⬇️ Download Audio Track</a>
+    </div>
+  </div>
+
+  <script>
+    let videoFile = null;
+
+    const dropZone = document.getElementById('dropZone');
+    const videoInput = document.getElementById('videoInput');
+    const fileName = document.getElementById('fileName');
+    const settingsCard = document.getElementById('settingsCard');
+    const formatSelect = document.getElementById('formatSelect');
+    const bitrateSelect = document.getElementById('bitrateSelect');
+    const bitrateRow = document.getElementById('bitrateRow');
+    const btnExtract = document.getElementById('btnExtract');
+
+    const progressArea = document.getElementById('progressArea');
+    const progressStep = document.getElementById('progressStep');
+    const progressBarFill = document.getElementById('progressBarFill');
+    const resultCard = document.getElementById('resultCard');
+    const downloadLink = document.getElementById('downloadLink');
+
+    // Restore user settings
+    const lastFormat = getHubSetting('audio_extractor', 'format', 'mp3');
+    formatSelect.value = lastFormat;
+    if (lastFormat === 'wav') {
+      bitrateRow.style.display = 'none';
+    }
+
+    dropZone.addEventListener('click', () => videoInput.click());
+    
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    videoInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+      if (!file.type.startsWith('video/')) {
+        alert('Please choose a valid video file.');
+        return;
+      }
+      videoFile = file;
+      fileName.textContent = `${file.name} (${formatBytes(file.size)})`;
+      settingsCard.style.display = 'block';
+      resultCard.style.display = 'none';
+    }
+
+    formatSelect.addEventListener('change', (e) => {
+      const isWav = e.target.value === 'wav';
+      bitrateRow.style.display = isWav ? 'none' : 'block';
+      setHubSetting('audio_extractor', 'format', e.target.value);
+    });
+
+    btnExtract.addEventListener('click', async () => {
+      if (!videoFile) return;
+      
+      const format = formatSelect.value;
+      const bitrate = bitrateSelect.value;
+      const outName = 'output.' + format;
+      
+      resultCard.style.display = 'none';
+      progressArea.style.display = 'block';
+      progressBarFill.style.width = '0%';
+      btnExtract.disabled = true;
+      
+      const setStep = (t) => { progressStep.textContent = t; };
+      
+      try {
+        const ffmpeg = await getSharedFfmpeg(setStep);
+        
+        ffmpeg.setProgress(({ ratio }) => {
+          progressBarFill.style.width = Math.min(100, Math.round(ratio * 100)) + '%';
+        });
+        
+        setStep('📂 Loading video to memory…');
+        progressBarFill.style.width = '15%';
+        const { fetchFile } = FFmpeg;
+        ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(videoFile));
+        
+        setStep('🔊 Extracting audio track...');
+        progressBarFill.style.width = '45%';
+        
+        if (format === 'mp3') {
+          await ffmpeg.run(
+            '-i', 'input.mp4',
+            '-vn',
+            '-acodec', 'libmp3lame',
+            '-ab', bitrate,
+            outName
+          );
+        } else {
+          await ffmpeg.run(
+            '-i', 'input.mp4',
+            '-vn',
+            '-acodec', 'pcm_s16le',
+            outName
+          );
+        }
+        
+        setStep('📦 Packaging output file…');
+        progressBarFill.style.width = '90%';
+        
+        const data = ffmpeg.FS('readFile', outName);
+        
+        // Cleanup virtual FS
+        try { ffmpeg.FS('unlink', 'input.mp4'); } catch(_) {}
+        try { ffmpeg.FS('unlink', outName); } catch(_) {}
+        
+        const mime = format === 'mp3' ? 'audio/mp3' : 'audio/wav';
+        const outBlob = new Blob([data.buffer], { type: mime });
+        
+        const baseName = videoFile.name.substring(0, videoFile.name.lastIndexOf('.')) || videoFile.name;
+        downloadLink.download = `${baseName}_audio.${format}`;
+        downloadLink.href = URL.createObjectURL(outBlob);
+        downloadLink.textContent = `⬇️ Download extracted ${format.toUpperCase()}`;
+        
+        progressBarFill.style.width = '100%';
+        progressArea.style.display = 'none';
+        resultCard.style.display = 'block';
+        downloadLink.click();
+        
+      } catch (err) {
+        progressArea.style.display = 'none';
+        alert('Audio extraction failed: ' + err.message);
+      } finally {
+        btnExtract.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -405,8 +405,18 @@ const server = http.createServer((req, res) => {
       fileSegment = 'audio-trimmer.html';
     } else if (pathname === '/video-downloader' || pathname === '/downloader') {
       fileSegment = 'downloader.html';
-
+    } else if (pathname === '/video-trimmer') {
+      fileSegment = 'video-trimmer.html';
+    } else if (pathname === '/audio-extractor') {
+      fileSegment = 'audio-extractor.html';
+    } else if (pathname === '/video-compressor') {
+      fileSegment = 'video-compressor.html';
+    } else if (pathname === '/gif-maker') {
+      fileSegment = 'gif-maker.html';
+    } else if (pathname === '/screen-recorder') {
+      fileSegment = 'screen-recorder.html';
     }
+    
     let filePath = path.join(__dirname, fileSegment);
     const ext = path.extname(filePath);
     let contentType = 'text/html';
@@ -416,6 +426,8 @@ const server = http.createServer((req, res) => {
     else if (ext === '.png') contentType = 'image/png';
     else if (ext === '.jpg') contentType = 'image/jpeg';
     else if (ext === '.ico') contentType = 'image/x-icon';
+    else if (ext === '.wasm') contentType = 'application/wasm';
+    else if (ext === '.json') contentType = 'application/json';
 
     fs.readFile(filePath, (err, content) => {
       if (err) {
