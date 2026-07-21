@@ -270,8 +270,8 @@
         
         setStep('📂 Loading video to memory…');
         progressBarFill.style.width = '15%';
-        const { fetchFile } = FFmpeg;
-        ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(videoFile));
+        const buf = new Uint8Array(await videoFile.arrayBuffer());
+        ffmpeg.FS('writeFile', 'input.mp4', buf);
         
         setStep('🎨 Generating optimized GIF palette & frames…');
         progressBarFill.style.width = '35%';

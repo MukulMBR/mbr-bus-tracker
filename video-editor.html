@@ -447,21 +447,26 @@
       setStep('📂 Preparing video files…');
       progressBarFill.style.width = '10%';
       
-      const { fetchFile } = FFmpeg;
       for (let i = 0; i < videoClips.length; i++) {
         setStep(`📂 Writing clip ${i + 1}/${videoClips.length} to memory…`);
-        ffmpeg.FS('writeFile', `input${i}.mp4`, await fetchFile(videoClips[i].file));
+        const file = videoClips[i].file;
+        const ext = file.name.split('.').pop() || 'mp4';
+        const vName = `input${i}.${ext}`;
+        videoClips[i].vName = vName;
+        
+        const buf = new Uint8Array(await file.arrayBuffer());
+        ffmpeg.FS('writeFile', vName, buf);
       }
 
       const hasAnyTransform = videoClips.some(c => c.rotation !== 0 || c.mirror);
 
-      if (hasAnyTransform) {
-        setStep('⚙️ Applying transformations and merging (takes a moment)…');
-        progressBarFill.style.width = '35%';
+      const runReencodeConcat = async () => {
+        setStep('⚙️ Re-encoding & matching formats for seamless merge…');
+        progressBarFill.style.width = '40%';
         
         const args = [];
         for (let i = 0; i < videoClips.length; i++) {
-          args.push('-i', `input${i}.mp4`);
+          args.push('-i', videoClips[i].vName);
         }
         
         const filters = [];
@@ -480,7 +485,7 @@
           vFilters.push('scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1');
           
           filters.push(`[${i}:v]${vFilters.join(',')}[v${i}]`);
-          concatInputs.push(`[v${i}][${i}:a]`);
+          concatInputs.push(`[v${i}][${i}:a?]`);
         }
         
         filters.push(`${concatInputs.join('')}concat=n=${videoClips.length}:v=1:a=1[outv][outa]`);
@@ -496,25 +501,34 @@
         );
         
         await ffmpeg.run(...args);
+      };
+
+      if (hasAnyTransform) {
+        await runReencodeConcat();
       } else {
         // Generate concat list
         setStep('📝 Configuring merge sequence…');
         progressBarFill.style.width = '25%';
         
-        const concatList = videoClips.map((_, i) => `file 'input${i}.mp4'`).join('\n');
+        const concatList = videoClips.map(c => `file '${c.vName}'`).join('\n');
         ffmpeg.FS('writeFile', 'concat.txt', new TextEncoder().encode(concatList));
 
         // Execute merge
         setStep('⚙️ Concatenating video streams...');
         progressBarFill.style.width = '45%';
         
-        await ffmpeg.run(
-          '-f', 'concat',
-          '-safe', '0',
-          '-i', 'concat.txt',
-          '-c', 'copy',
-          'output.mp4'
-        );
+        try {
+          await ffmpeg.run(
+            '-f', 'concat',
+            '-safe', '0',
+            '-i', 'concat.txt',
+            '-c', 'copy',
+            'output.mp4'
+          );
+        } catch (copyErr) {
+          console.warn('Fast copy concat failed, falling back to re-encoding filtergraph:', copyErr);
+          await runReencodeConcat();
+        }
       }
 
       setStep('📦 Packaging output...');
@@ -523,8 +537,8 @@
       const data = ffmpeg.FS('readFile', 'output.mp4');
 
       // Cleanup virtual FS
-      videoClips.forEach((_, i) => {
-        try { ffmpeg.FS('unlink', `input${i}.mp4`); } catch(_) {}
+      videoClips.forEach(c => {
+        try { ffmpeg.FS('unlink', c.vName); } catch(_) {}
       });
       try { ffmpeg.FS('unlink', 'concat.txt'); } catch(_) {}
       try { ffmpeg.FS('unlink', 'output.mp4'); } catch(_) {}

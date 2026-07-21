@@ -595,9 +595,10 @@ browserMergeBtn.addEventListener('click', async () => {
     setStep('📂 Reading files…');
     mergeProgBar.style.width = '10%';
 
-    const { fetchFile } = FFmpeg;
-    ffmpeg.FS('writeFile', 'input_video.mp4', await fetchFile(vFile));
-    ffmpeg.FS('writeFile', 'input_audio.mp3', await fetchFile(aFile));
+    const vBuf = new Uint8Array(await vFile.arrayBuffer());
+    const aBuf = new Uint8Array(await aFile.arrayBuffer());
+    ffmpeg.FS('writeFile', 'input_video.mp4', vBuf);
+    ffmpeg.FS('writeFile', 'input_audio.mp3', aBuf);
 
     setStep('⚙️ Merging — copy video + encode audio as AAC…');
     mergeProgBar.style.width = '30%';

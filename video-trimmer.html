@@ -300,20 +300,33 @@
         
         setStep('📂 Loading video to memory…');
         progressBarFill.style.width = '15%';
-        const { fetchFile } = FFmpeg;
-        ffmpeg.FS('writeFile', 'input.mp4', await fetchFile(videoFile));
+        const buf = new Uint8Array(await videoFile.arrayBuffer());
+        ffmpeg.FS('writeFile', 'input.mp4', buf);
         
         setStep('🎬 Trimming video clip...');
         progressBarFill.style.width = '40%';
         
-        // Fast trim using stream copy
-        await ffmpeg.run(
-          '-ss', start.toString(),
-          '-to', end.toString(),
-          '-i', 'input.mp4',
-          '-c', 'copy',
-          'output.mp4'
-        );
+        try {
+          // Fast trim using stream copy
+          await ffmpeg.run(
+            '-ss', start.toString(),
+            '-to', end.toString(),
+            '-i', 'input.mp4',
+            '-c', 'copy',
+            'output.mp4'
+          );
+        } catch (copyErr) {
+          console.warn('Fast copy trim failed, re-encoding clip:', copyErr);
+          await ffmpeg.run(
+            '-ss', start.toString(),
+            '-to', end.toString(),
+            '-i', 'input.mp4',
+            '-c:v', 'libx264',
+            '-preset', 'ultrafast',
+            '-c:a', 'aac',
+            'output.mp4'
+          );
+        }
         
         setStep('📦 Packaging trimmed video…');
         progressBarFill.style.width = '90%';
