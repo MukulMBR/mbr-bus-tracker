@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MBR Motion Hub - Text-to-Speech Studio</title>
+  <link rel="stylesheet" href="/motion-hub-core.css">
+  <style>
+    .voice-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .voice-card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .voice-card:hover, .voice-card.active {
+      border-color: var(--cyan);
+      background: rgba(45,212,191,0.05);
+      box-shadow: 0 0 20px rgba(45,212,191,0.15);
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" style="max-width: 900px; margin: 0 auto; padding: 40px 20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 30px;">
+      <div>
+        <h1 style="font-size: 1.8rem; font-weight: 800; background: linear-gradient(135deg, var(--cyan), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">🎙️ Text-to-Speech Voiceover Studio</h1>
+        <p style="color: var(--muted); font-size: 0.85rem; margin-top: 4px;">Convert script text into natural offline voiceover narration with zero server cost.</p>
+      </div>
+      <a href="/editor" class="btn" style="padding: 8px 16px; font-size: 0.8rem;">🏠 Hub Dashboard</a>
+    </div>
+
+    <div class="sub-card" style="margin-bottom: 24px;">
+      <h2>📜 Narration Script</h2>
+      <p class="subtitle" style="font-size: 0.82rem; margin-bottom: 12px;">Type or paste the voiceover text you want to convert into audio.</p>
+      <textarea id="ttsScript" class="time-field" style="width: 100%; height: 140px; padding: 14px; font-size: 0.95rem; line-height: 1.6; resize: vertical;" placeholder="Type your narration script here... E.g., Welcome to our channel! In today's video, we are exploring the top 5 places to visit."></textarea>
+      
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 0.75rem; color: var(--muted);">
+        <span id="ttsCharCount">0 characters | ~0 words</span>
+        <button id="ttsSampleBtn" class="btn" style="padding: 4px 10px; font-size: 0.72rem;">Load Sample Script</button>
+      </div>
+    </div>
+
+    <div class="sub-card" style="margin-bottom: 24px;">
+      <h2>🗣️ Voice &amp; Customization</h2>
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 0.78rem; display: block; margin-bottom: 6px;">Select System Voice</label>
+        <select id="ttsVoiceSelect" class="select-input" style="width: 100%; padding: 10px; font-size: 0.85rem;"></select>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.78rem;">
+            <span>Speaking Speed (Rate)</span>
+            <strong id="ttsRateVal">1.0x</strong>
+          </div>
+          <input type="range" id="ttsRate" min="0.5" max="2.0" step="0.1" value="1.0" style="width: 100%; accent-color: var(--cyan);">
+        </div>
+        <div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.78rem;">
+            <span>Voice Pitch</span>
+            <strong id="ttsPitchVal">1.0</strong>
+          </div>
+          <input type="range" id="ttsPitch" min="0.5" max="1.5" step="0.1" value="1.0" style="width: 100%; accent-color: var(--cyan);">
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-card">
+      <h2>🔊 Playback &amp; Export</h2>
+      <div style="display: flex; gap: 12px; margin-top: 14px;">
+        <button id="ttsPlayBtn" class="btn btn-primary" style="flex: 1; padding: 12px;">▶ Listen Preview</button>
+        <button id="ttsStopBtn" class="btn" style="padding: 12px;" disabled>⏹ Stop</button>
+        <button id="ttsExportBtn" class="btn" style="flex: 1; padding: 12px; border-color: var(--cyan); color: var(--cyan);">💾 Export Voiceover (WAV)</button>
+      </div>
+      <div class="status" id="ttsStatus" style="margin-top: 14px;"></div>
+    </div>
+  </div>
+
+  <script src="/motion-hub-utils.js"></script>
+  <script>
+    const ttsScript = document.getElementById('ttsScript');
+    const ttsCharCount = document.getElementById('ttsCharCount');
+    const ttsSampleBtn = document.getElementById('ttsSampleBtn');
+    const ttsVoiceSelect = document.getElementById('ttsVoiceSelect');
+    const ttsRate = document.getElementById('ttsRate');
+    const ttsRateVal = document.getElementById('ttsRateVal');
+    const ttsPitch = document.getElementById('ttsPitch');
+    const ttsPitchVal = document.getElementById('ttsPitchVal');
+    const ttsPlayBtn = document.getElementById('ttsPlayBtn');
+    const ttsStopBtn = document.getElementById('ttsStopBtn');
+    const ttsExportBtn = document.getElementById('ttsExportBtn');
+    const ttsStatus = document.getElementById('ttsStatus');
+
+    let voices = [];
+    let synth = window.speechSynthesis;
+    let isSpeaking = false;
+
+    function populateVoices() {
+      if (!synth) return;
+      voices = synth.getVoices();
+      ttsVoiceSelect.innerHTML = '';
+      voices.forEach((v, idx) => {
+        const option = document.createElement('option');
+        option.value = idx;
+        option.textContent = `${v.name} (${v.lang})${v.default ? ' — Default' : ''}`;
+        ttsVoiceSelect.appendChild(option);
+      });
+    }
+
+    populateVoices();
+    if (synth && synth.onvoiceschanged !== undefined) {
+      synth.onvoiceschanged = populateVoices;
+    }
+
+    ttsScript.addEventListener('input', () => {
+      const text = ttsScript.value.trim();
+      const chars = text.length;
+      const words = text ? text.split(/\s+/).length : 0;
+      ttsCharCount.textContent = `${chars} characters | ~${words} words`;
+    });
+
+    ttsSampleBtn.addEventListener('click', () => {
+      ttsScript.value = "Welcome to MBR Motion Hub! You can paste any narration script here, adjust the speed and voice, and export high quality audio tracks for your video projects.";
+      ttsScript.dispatchEvent(new Event('input'));
+    });
+
+    ttsRate.addEventListener('input', () => ttsRateVal.textContent = `${ttsRate.value}x`);
+    ttsPitch.addEventListener('input', () => ttsPitchVal.textContent = ttsPitch.value);
+
+    ttsPlayBtn.addEventListener('click', () => {
+      const text = ttsScript.value.trim();
+      if (!text) {
+        ttsStatus.textContent = 'Please enter a script text first.';
+        ttsStatus.className = 'status err';
+        return;
+      }
+
+      if (synth.speaking) synth.cancel();
+
+      const utter = new SpeechSynthesisUtterance(text);
+      if (voices[ttsVoiceSelect.value]) utter.voice = voices[ttsVoiceSelect.value];
+      utter.rate = parseFloat(ttsRate.value);
+      utter.pitch = parseFloat(ttsPitch.value);
+
+      utter.onstart = () => {
+        isSpeaking = true;
+        ttsPlayBtn.disabled = true;
+        ttsStopBtn.disabled = false;
+        ttsStatus.textContent = 'Speaking...';
+        ttsStatus.className = 'status info';
+      };
+
+      utter.onend = utter.onerror = () => {
+        isSpeaking = false;
+        ttsPlayBtn.disabled = false;
+        ttsStopBtn.disabled = true;
+        ttsStatus.textContent = 'Finished speech preview.';
+        ttsStatus.className = 'status';
+      };
+
+      synth.speak(utter);
+    });
+
+    ttsStopBtn.addEventListener('click', () => {
+      if (synth.speaking) synth.cancel();
+      isSpeaking = false;
+      ttsPlayBtn.disabled = false;
+      ttsStopBtn.disabled = true;
+      ttsStatus.textContent = 'Stopped speech.';
+      ttsStatus.className = 'status';
+    });
+
+    // Offline Record Speech to WAV
+    ttsExportBtn.addEventListener('click', async () => {
+      const text = ttsScript.value.trim();
+      if (!text) {
+        ttsStatus.textContent = 'Please enter a script text first.';
+        ttsStatus.className = 'status err';
+        return;
+      }
+
+      ttsExportBtn.disabled = true;
+      ttsStatus.textContent = 'Recording speech audio stream locally...';
+      ttsStatus.className = 'status info';
+
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const dest = audioCtx.createMediaStreamDestination();
+        const mediaRecorder = new MediaRecorder(dest.stream);
+        let chunks = [];
+
+        mediaRecorder.ondataavailable = e => chunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(chunks, { type: 'audio/webm' });
+          const arrayBuf = await blob.arrayBuffer();
+          const decoded = await audioCtx.decodeAudioData(arrayBuf);
+          
+          // Convert AudioBuffer to WAV using built-in audioBufferToWav helper
+          const wavBuffer = audioBufferToWav(decoded);
+          const wavBlob = new Blob([wavBuffer], { type: 'audio/wav' });
+          const url = URL.createObjectURL(wavBlob);
+
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'voiceover_narration.wav';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          ttsStatus.textContent = 'Done — downloaded voiceover_narration.wav';
+          ttsStatus.className = 'status';
+          ttsExportBtn.disabled = false;
+        };
+
+        const utter = new SpeechSynthesisUtterance(text);
+        if (voices[ttsVoiceSelect.value]) utter.voice = voices[ttsVoiceSelect.value];
+        utter.rate = parseFloat(ttsRate.value);
+        utter.pitch = parseFloat(ttsPitch.value);
+
+        mediaRecorder.start();
+
+        utter.onend = utter.onerror = () => {
+          setTimeout(() => {
+            mediaRecorder.stop();
+          }, 300);
+        };
+
+        synth.speak(utter);
+      } catch (err) {
+        ttsStatus.textContent = 'Export failed: ' + err.message;
+        ttsStatus.className = 'status err';
+        ttsExportBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

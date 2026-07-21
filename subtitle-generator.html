@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MBR Motion Hub - Auto Subtitle & SRT Studio</title>
+  <link rel="stylesheet" href="/motion-hub-core.css">
+  <style>
+    .srt-row {
+      display: grid;
+      grid-template-columns: 80px 80px 1fr 40px;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" style="max-width: 900px; margin: 0 auto; padding: 40px 20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 30px;">
+      <div>
+        <h1 style="font-size: 1.8rem; font-weight: 800; background: linear-gradient(135deg, var(--cyan), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">📝 Auto Subtitle & SRT Studio</h1>
+        <p style="color: var(--muted); font-size: 0.85rem; margin-top: 4px;">Transcribe speech offline, edit timed captions, export .SRT files, or burn subtitles into MP4 videos.</p>
+      </div>
+      <a href="/editor" class="btn" style="padding: 8px 16px; font-size: 0.8rem;">🏠 Hub Dashboard</a>
+    </div>
+
+    <!-- Step 1: Video/Audio Upload -->
+    <div class="sub-card" style="margin-bottom: 24px;">
+      <h2>🎬 Step 1: Upload Video or Audio Track</h2>
+      <div class="drop" id="dropFile" style="margin-top: 12px;">
+        <div id="dropText">Click to choose a Video or Audio file, or drag here</div>
+        <div class="filename" id="filenameDisplay"></div>
+      </div>
+      <input type="file" id="mediaInput" accept="video/*,audio/*" style="display:none">
+      <video id="videoPlayer" controls style="width: 100%; border-radius: 12px; margin-top: 14px; display: none; background: #000;"></video>
+    </div>
+
+    <!-- Step 2: Auto Speech Recognition & Manual Editor -->
+    <div class="sub-card" id="subCard" style="display:none; margin-bottom: 24px;">
+      <h2>🎙️ Step 2: Transcribe Speech & Edit Captions</h2>
+      <div style="display: flex; gap: 10px; margin: 14px 0;">
+        <button id="transcribeBtn" class="btn btn-primary" style="flex: 1;">🔴 Auto-Transcribe Speech (Live)</button>
+        <button id="addLineBtn" class="btn" style="padding: 10px 14px;">➕ Add Line</button>
+      </div>
+
+      <div class="status" id="transcribeStatus" style="margin-bottom: 14px;"></div>
+
+      <div style="font-size: 0.72rem; color: var(--muted); display: grid; grid-template-columns: 80px 80px 1fr 40px; gap: 10px; margin-bottom: 6px; padding: 0 4px; font-weight: 700; text-transform: uppercase;">
+        <span>Start</span>
+        <span>End</span>
+        <span>Caption Text</span>
+        <span>Del</span>
+      </div>
+
+      <div id="srtList" style="max-height: 280px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 10px; padding: 10px; border: 1px solid var(--line);"></div>
+    </div>
+
+    <!-- Step 3: Export SRT & Burn Subtitles -->
+    <div class="sub-card" id="exportCard" style="display:none;">
+      <h2>💾 Step 3: Export Captions or Hardcode Subtitles</h2>
+      <div style="display: flex; gap: 12px; margin-top: 16px;">
+        <button id="exportSrtBtn" class="btn" style="flex: 1; padding: 14px; border-color: var(--cyan); color: var(--cyan);">📄 Download .SRT Subtitle File</button>
+        <button id="burnSubtitlesBtn" class="btn btn-primary" style="flex: 1; padding: 14px;">🔥 Hardcode Subtitles into MP4</button>
+      </div>
+      <div class="status" id="exportStatus" style="margin-top: 14px;"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+  <script src="/motion-hub-utils.js"></script>
+  <script>
+    const dropFile = document.getElementById('dropFile');
+    const mediaInput = document.getElementById('mediaInput');
+    const filenameDisplay = document.getElementById('filenameDisplay');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const subCard = document.getElementById('subCard');
+    const exportCard = document.getElementById('exportCard');
+
+    const transcribeBtn = document.getElementById('transcribeBtn');
+    const addLineBtn = document.getElementById('addLineBtn');
+    const transcribeStatus = document.getElementById('transcribeStatus');
+    const srtList = document.getElementById('srtList');
+    const exportSrtBtn = document.getElementById('exportSrtBtn');
+    const burnSubtitlesBtn = document.getElementById('burnSubtitlesBtn');
+    const exportStatus = document.getElementById('exportStatus');
+
+    let mediaFile = null;
+    let recognition = null;
+    let captions = [];
+    let ffmpeg = null;
+
+    dropFile.addEventListener('click', () => mediaInput.click());
+    mediaInput.addEventListener('change', () => {
+      if (mediaInput.files.length) {
+        mediaFile = mediaInput.files[0];
+        filenameDisplay.textContent = mediaFile.name;
+        videoPlayer.src = URL.createObjectURL(mediaFile);
+        videoPlayer.style.display = 'block';
+        subCard.style.display = 'block';
+        exportCard.style.display = 'block';
+      }
+    });
+
+    // Check SpeechRecognition support
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = false;
+
+      let lastTime = 0;
+
+      recognition.onstart = () => {
+        transcribeStatus.textContent = 'Listening and transcribing... Play your video/audio file now.';
+        transcribeStatus.className = 'status info';
+        transcribeBtn.textContent = '⏹ Stop Transcribing';
+      };
+
+      recognition.onresult = event => {
+        const current = videoPlayer.currentTime;
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            const text = event.results[i][0].transcript.trim();
+            if (text) {
+              const start = Math.max(0, lastTime);
+              const end = Math.max(start + 1.5, current);
+              captions.push({ start, end, text });
+              lastTime = end;
+              renderSrtList();
+            }
+          }
+        }
+      };
+
+      recognition.onend = () => {
+        transcribeStatus.textContent = 'Transcription stopped.';
+        transcribeStatus.className = 'status';
+        transcribeBtn.textContent = '🔴 Auto-Transcribe Speech (Live)';
+      };
+    } else {
+      transcribeBtn.disabled = true;
+      transcribeStatus.textContent = 'Speech recognition not supported in this browser. You can add caption lines manually below.';
+      transcribeStatus.className = 'status err';
+    }
+
+    transcribeBtn.addEventListener('click', () => {
+      if (!recognition) return;
+      if (transcribeBtn.textContent.includes('Stop')) {
+        recognition.stop();
+        videoPlayer.pause();
+      } else {
+        captions = [];
+        lastTime = videoPlayer.currentTime;
+        videoPlayer.play();
+        recognition.start();
+      }
+    });
+
+    addLineBtn.addEventListener('click', () => {
+      const cur = videoPlayer.currentTime;
+      captions.push({ start: cur, end: cur + 3, text: 'New caption line' });
+      renderSrtList();
+    });
+
+    function renderSrtList() {
+      srtList.innerHTML = '';
+      captions.forEach((cap, idx) => {
+        const row = document.createElement('div');
+        row.className = 'srt-row';
+
+        const inStart = document.createElement('input');
+        inStart.type = 'text';
+        inStart.className = 'time-field';
+        inStart.value = formatTime(cap.start);
+        inStart.style.padding = '4px';
+        inStart.style.fontSize = '0.75rem';
+        inStart.onchange = () => { cap.start = parseTime(inStart.value) || 0; };
+
+        const inEnd = document.createElement('input');
+        inEnd.type = 'text';
+        inEnd.className = 'time-field';
+        inEnd.value = formatTime(cap.end);
+        inEnd.style.padding = '4px';
+        inEnd.style.fontSize = '0.75rem';
+        inEnd.onchange = () => { cap.end = parseTime(inEnd.value) || 0; };
+
+        const inText = document.createElement('input');
+        inText.type = 'text';
+        inText.className = 'time-field';
+        inText.value = cap.text;
+        inText.style.padding = '4px 8px';
+        inText.style.fontSize = '0.8rem';
+        inText.onchange = () => { cap.text = inText.value; };
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '❌';
+        delBtn.style.border = 'none';
+        delBtn.style.background = 'none';
+        delBtn.style.cursor = 'pointer';
+        delBtn.onclick = () => {
+          captions.splice(idx, 1);
+          renderSrtList();
+        };
+
+        row.appendChild(inStart);
+        row.appendChild(inEnd);
+        row.appendChild(inText);
+        row.appendChild(delBtn);
+        srtList.appendChild(row);
+      });
+    }
+
+    function generateSrtContent() {
+      let srt = '';
+      captions.forEach((cap, idx) => {
+        const formatSrtTime = sec => {
+          const d = new Date(sec * 1000);
+          const hh = String(d.getUTCHours()).padStart(2, '0');
+          const mm = String(d.getUTCMinutes()).padStart(2, '0');
+          const ss = String(d.getUTCSeconds()).padStart(2, '0');
+          const ms = String(d.getUTCMilliseconds()).padStart(3, '0');
+          return `${hh}:${mm}:${ss},${ms}`;
+        };
+        srt += `${idx + 1}\n${formatSrtTime(cap.start)} --> ${formatSrtTime(cap.end)}\n${cap.text}\n\n`;
+      });
+      return srt;
+    }
+
+    exportSrtBtn.addEventListener('click', () => {
+      const srt = generateSrtContent();
+      if (!srt) {
+        exportStatus.textContent = 'No captions to export.';
+        exportStatus.className = 'status err';
+        return;
+      }
+      const blob = new Blob([srt], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'captions.srt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      exportStatus.textContent = 'Downloaded captions.srt';
+      exportStatus.className = 'status';
+    });
+
+    burnSubtitlesBtn.addEventListener('click', async () => {
+      if (!mediaFile || captions.length === 0) {
+        exportStatus.textContent = 'Please load a video and add captions first.';
+        exportStatus.className = 'status err';
+        return;
+      }
+
+      burnSubtitlesBtn.disabled = true;
+      exportStatus.textContent = 'Loading video engine...';
+      exportStatus.className = 'status info';
+
+      try {
+        if (!ffmpeg) {
+          const { createFFmpeg } = FFmpeg;
+          ffmpeg = createFFmpeg({
+            log: false,
+            progress: p => {
+              if (p.ratio >= 0 && p.ratio <= 1) {
+                exportStatus.textContent = `Hardcoding subtitles... ${Math.round(p.ratio * 100)}%`;
+              }
+            }
+          });
+          await ffmpeg.load();
+        }
+
+        const vData = new Uint8Array(await mediaFile.arrayBuffer());
+        const srtText = generateSrtContent();
+
+        ffmpeg.FS('writeFile', 'in.mp4', vData);
+        ffmpeg.FS('writeFile', 'subs.srt', new TextEncoder().encode(srtText));
+
+        // Use FFmpeg drawtext for first line or subtitles filter
+        exportStatus.textContent = 'Baking subtitles into video...';
+
+        await ffmpeg.run('-i', 'in.mp4', '-vf', 'subtitles=subs.srt', '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'copy', 'subtitled.mp4');
+
+        const data = ffmpeg.FS('readFile', 'subtitled.mp4');
+        const blob = new Blob([data.buffer], { type: 'video/mp4' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'video_with_subtitles.mp4';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        exportStatus.textContent = 'Done — downloaded video_with_subtitles.mp4';
+        exportStatus.className = 'status';
+        burnSubtitlesBtn.disabled = false;
+
+        try { ffmpeg.FS('unlink', 'in.mp4'); ffmpeg.FS('unlink', 'subs.srt'); ffmpeg.FS('unlink', 'subtitled.mp4'); } catch (e) {}
+      } catch (err) {
+        exportStatus.textContent = 'Subtitles burn failed: ' + err.message;
+        exportStatus.className = 'status err';
+        burnSubtitlesBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

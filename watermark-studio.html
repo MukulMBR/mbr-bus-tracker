@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MBR Motion Hub - Watermark & Title Overlay Studio</title>
+  <link rel="stylesheet" href="/motion-hub-core.css">
+</head>
+<body>
+  <div class="shell" style="max-width: 900px; margin: 0 auto; padding: 40px 20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 30px;">
+      <div>
+        <h1 style="font-size: 1.8rem; font-weight: 800; background: linear-gradient(135deg, var(--cyan), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">🏷️ Watermark & Title Overlay Studio</h1>
+        <p style="color: var(--muted); font-size: 0.85rem; margin-top: 4px;">Place logos, social handles, or titles over your videos with 100% offline FFmpeg rendering.</p>
+      </div>
+      <a href="/editor" class="btn" style="padding: 8px 16px; font-size: 0.8rem;">🏠 Hub Dashboard</a>
+    </div>
+
+    <!-- Upload Video & Watermark Card -->
+    <div class="sub-card" style="margin-bottom: 24px;">
+      <h2>📹 Step 1: Load Video & Media</h2>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px;">
+        <div>
+          <label style="font-size: 0.78rem; display: block; margin-bottom: 6px;">Source Video</label>
+          <div class="drop" id="dropVideo">
+            <div id="dropTextVideo">Click to choose Video file</div>
+            <div class="filename" id="filenameVideo"></div>
+          </div>
+          <input type="file" id="videoInput" accept="video/*" style="display:none">
+        </div>
+        <div>
+          <label style="font-size: 0.78rem; display: block; margin-bottom: 6px;">Watermark Logo Image (Optional PNG)</label>
+          <div class="drop" id="dropLogo">
+            <div id="dropTextLogo">Click to choose PNG Logo</div>
+            <div class="filename" id="filenameLogo"></div>
+          </div>
+          <input type="file" id="logoInput" accept="image/*" style="display:none">
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Preview & Overlay Settings Card -->
+    <div class="sub-card" id="settingsCard" style="display:none; margin-bottom: 24px;">
+      <h2>⚙️ Step 2: Overlay Settings & Real-Time Preview</h2>
+      
+      <!-- Video + Canvas Preview -->
+      <div style="position: relative; width: 100%; max-height: 420px; background: #000; border-radius: 14px; overflow: hidden; margin: 16px 0;">
+        <video id="videoPreview" muted playsinline style="width: 100%; max-height: 420px; display: block;"></video>
+        <canvas id="overlayCanvas" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events: none;"></canvas>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+        <!-- Text Overlay Options -->
+        <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--line); border-radius: 12px; padding: 14px;">
+          <h3 style="font-size: 0.85rem; margin-bottom: 10px; color: var(--cyan);">💬 Text / Social Handle Overlay</h3>
+          <div style="margin-bottom: 10px;">
+            <label style="font-size: 0.75rem;">Overlay Text</label>
+            <input type="text" id="textOverlay" class="time-field" style="width: 100%; padding: 8px;" placeholder="E.g. @your_channel_name">
+          </div>
+          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <div style="flex: 1;">
+              <label style="font-size: 0.75rem;">Font Size</label>
+              <input type="number" id="textSize" class="time-field" style="width: 100%; padding: 6px;" value="32" min="12" max="100">
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 0.75rem;">Text Color</label>
+              <input type="color" id="textColor" value="#ffffff" style="width: 100%; height: 32px; border: none; background: transparent; cursor: pointer;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Position & Opacity Options -->
+        <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--line); border-radius: 12px; padding: 14px;">
+          <h3 style="font-size: 0.85rem; margin-bottom: 10px; color: var(--orange);">📍 Layout Position & Opacity</h3>
+          <div style="margin-bottom: 10px;">
+            <label style="font-size: 0.75rem;">Preset Position</label>
+            <select id="presetPos" class="select-input" style="width: 100%; padding: 8px;">
+              <option value="bottom-right" selected>Bottom-Right Corner</option>
+              <option value="top-right">Top-Right Corner</option>
+              <option value="bottom-left">Bottom-Left Corner</option>
+              <option value="top-left">Top-Left Corner</option>
+              <option value="center">Center</option>
+            </select>
+          </div>
+          <div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.75rem;">
+              <span>Watermark Opacity</span>
+              <strong id="opacityVal">80%</strong>
+            </div>
+            <input type="range" id="opacitySlider" min="10" max="100" value="80" style="width: 100%; accent-color: var(--orange);">
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="exportBtn" style="width: 100%; margin-top: 24px; padding: 14px;">Export Watermarked Video (MP4)</button>
+      <div class="status" id="exportStatus" style="margin-top: 12px;"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+  <script src="/motion-hub-utils.js"></script>
+  <script>
+    const dropVideo = document.getElementById('dropVideo');
+    const videoInput = document.getElementById('videoInput');
+    const filenameVideo = document.getElementById('filenameVideo');
+    const dropLogo = document.getElementById('dropLogo');
+    const logoInput = document.getElementById('logoInput');
+    const filenameLogo = document.getElementById('filenameLogo');
+
+    const settingsCard = document.getElementById('settingsCard');
+    const videoPreview = document.getElementById('videoPreview');
+    const overlayCanvas = document.getElementById('overlayCanvas');
+    const ctx = overlayCanvas.getContext('2d');
+
+    const textOverlay = document.getElementById('textOverlay');
+    const textSize = document.getElementById('textSize');
+    const textColor = document.getElementById('textColor');
+    const presetPos = document.getElementById('presetPos');
+    const opacitySlider = document.getElementById('opacitySlider');
+    const opacityVal = document.getElementById('opacityVal');
+    const exportBtn = document.getElementById('exportBtn');
+    const exportStatus = document.getElementById('exportStatus');
+
+    let videoFile = null;
+    let logoImage = null;
+    let ffmpeg = null;
+
+    dropVideo.addEventListener('click', () => videoInput.click());
+    videoInput.addEventListener('change', () => {
+      if (videoInput.files.length) {
+        videoFile = videoInput.files[0];
+        filenameVideo.textContent = videoFile.name;
+        videoPreview.src = URL.createObjectURL(videoFile);
+        settingsCard.style.display = 'block';
+        videoPreview.onloadedmetadata = () => {
+          overlayCanvas.width = videoPreview.videoWidth;
+          overlayCanvas.height = videoPreview.videoHeight;
+          drawOverlay();
+        };
+      }
+    });
+
+    dropLogo.addEventListener('click', () => logoInput.click());
+    logoInput.addEventListener('change', () => {
+      if (logoInput.files.length) {
+        const file = logoInput.files[0];
+        filenameLogo.textContent = file.name;
+        const img = new Image();
+        img.onload = () => {
+          logoImage = img;
+          drawOverlay();
+        };
+        img.src = URL.createObjectURL(file);
+      }
+    });
+
+    textOverlay.addEventListener('input', drawOverlay);
+    textSize.addEventListener('input', drawOverlay);
+    textColor.addEventListener('input', drawOverlay);
+    presetPos.addEventListener('change', drawOverlay);
+    opacitySlider.addEventListener('input', () => {
+      opacityVal.textContent = opacitySlider.value + '%';
+      drawOverlay();
+    });
+
+    function drawOverlay() {
+      if (!overlayCanvas.width) return;
+      ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+      const op = parseFloat(opacitySlider.value) / 100;
+      ctx.globalAlpha = op;
+
+      const pos = presetPos.value;
+      const margin = 30;
+
+      // Draw Logo if loaded
+      if (logoImage) {
+        const logoW = Math.min(200, overlayCanvas.width * 0.25);
+        const logoH = (logoImage.height / logoImage.width) * logoW;
+        let lx = margin, ly = margin;
+
+        if (pos === 'top-right') { lx = overlayCanvas.width - logoW - margin; }
+        else if (pos === 'bottom-left') { ly = overlayCanvas.height - logoH - margin; }
+        else if (pos === 'bottom-right') { lx = overlayCanvas.width - logoW - margin; ly = overlayCanvas.height - logoH - margin; }
+        else if (pos === 'center') { lx = (overlayCanvas.width - logoW) / 2; ly = (overlayCanvas.height - logoH) / 2; }
+
+        ctx.drawImage(logoImage, lx, ly, logoW, logoH);
+      }
+
+      // Draw Text if entered
+      const text = textOverlay.value.trim();
+      if (text) {
+        const size = parseInt(textSize.value) || 32;
+        ctx.font = `bold ${size}px sans-serif`;
+        ctx.fillStyle = textColor.value;
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = 8;
+
+        const metrics = ctx.measureText(text);
+        let tx = margin, ty = margin + size;
+
+        if (pos === 'top-right') { tx = overlayCanvas.width - metrics.width - margin; }
+        else if (pos === 'bottom-left') { ty = overlayCanvas.height - margin; }
+        else if (pos === 'bottom-right') { tx = overlayCanvas.width - metrics.width - margin; ty = overlayCanvas.height - margin; }
+        else if (pos === 'center') { tx = (overlayCanvas.width - metrics.width) / 2; ty = overlayCanvas.height / 2; }
+
+        ctx.fillText(text, tx, ty);
+      }
+    }
+
+    exportBtn.addEventListener('click', async () => {
+      if (!videoFile) return;
+      exportBtn.disabled = true;
+      exportStatus.textContent = 'Preparing video engine...';
+      exportStatus.className = 'status info';
+
+      try {
+        if (!ffmpeg) {
+          const { createFFmpeg } = FFmpeg;
+          ffmpeg = createFFmpeg({
+            log: false,
+            progress: p => {
+              if (p.ratio >= 0 && p.ratio <= 1) {
+                exportStatus.textContent = `Rendering video... ${Math.round(p.ratio * 100)}%`;
+              }
+            }
+          });
+          await ffmpeg.load();
+        }
+
+        const vData = new Uint8Array(await videoFile.arrayBuffer());
+        ffmpeg.FS('writeFile', 'in.mp4', vData);
+
+        const text = textOverlay.value.trim();
+        const pos = presetPos.value;
+        const op = (parseFloat(opacitySlider.value) / 100).toFixed(2);
+        
+        let vf = '';
+        if (text) {
+          const size = parseInt(textSize.value) || 32;
+          let x = '30', y = '30';
+          if (pos === 'top-right') { x = 'w-tw-30'; y = '30'; }
+          else if (pos === 'bottom-left') { x = '30'; y = 'h-th-30'; }
+          else if (pos === 'bottom-right') { x = 'w-tw-30'; y = 'h-th-30'; }
+          else if (pos === 'center') { x = '(w-tw)/2'; y = '(h-th)/2'; }
+
+          const safeText = text.replace(/'/g, "'\\''").replace(/:/g, '\\:');
+          vf = `drawtext=text='${safeText}':fontsize=${size}:fontcolor=white@${op}:x=${x}:y=${y}:shadowcolor=black@0.8:shadowx=2:shadowy=2`;
+        }
+
+        exportStatus.textContent = 'Processing watermark overlay...';
+
+        if (vf) {
+          await ffmpeg.run('-i', 'in.mp4', '-vf', vf, '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'copy', 'out.mp4');
+        } else {
+          await ffmpeg.run('-i', 'in.mp4', '-c:v', 'copy', '-c:a', 'copy', 'out.mp4');
+        }
+
+        const data = ffmpeg.FS('readFile', 'out.mp4');
+        const blob = new Blob([data.buffer], { type: 'video/mp4' });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'watermarked_video.mp4';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        exportStatus.textContent = 'Done — downloaded watermarked_video.mp4';
+        exportStatus.className = 'status';
+        exportBtn.disabled = false;
+        try { ffmpeg.FS('unlink', 'in.mp4'); ffmpeg.FS('unlink', 'out.mp4'); } catch (e) {}
+      } catch (err) {
+        exportStatus.textContent = 'Export failed: ' + err.message;
+        exportStatus.className = 'status err';
+        exportBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

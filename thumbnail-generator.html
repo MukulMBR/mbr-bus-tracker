@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MBR Motion Hub - Thumbnail & Batch Converter</title>
+  <link rel="stylesheet" href="/motion-hub-core.css">
+  <style>
+    .thumb-card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 12px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" style="max-width: 900px; margin: 0 auto; padding: 40px 20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 30px;">
+      <div>
+        <h1 style="font-size: 1.8rem; font-weight: 800; background: linear-gradient(135deg, var(--amber), var(--orange)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">🖼️ Thumbnail & Batch Converter</h1>
+        <p style="color: var(--muted); font-size: 0.85rem; margin-top: 4px;">Extract high-res frame thumbnails and convert video formats in batch mode offline.</p>
+      </div>
+      <a href="/editor" class="btn" style="padding: 8px 16px; font-size: 0.8rem;">🏠 Hub Dashboard</a>
+    </div>
+
+    <!-- Upload Multi Videos -->
+    <div class="sub-card" style="margin-bottom: 24px;">
+      <h2>📁 Step 1: Upload Videos (Batch Mode Supported)</h2>
+      <div class="drop" id="dropArea" style="margin-top: 14px;">
+        <div id="dropText">Click or Drag video files here</div>
+        <div class="filename" id="fileCountText"></div>
+      </div>
+      <input type="file" id="videoInputs" accept="video/*" multiple style="display:none">
+    </div>
+
+    <!-- Batch Videos Workspace -->
+    <div class="sub-card" id="workspaceCard" style="display:none;">
+      <h2>⚙️ Step 2: Thumbnail Extraction & Batch Conversion</h2>
+      <div id="videoList" style="margin-top: 16px;"></div>
+
+      <div style="display: flex; gap: 12px; margin-top: 20px;">
+        <button id="batchThumbBtn" class="btn btn-primary" style="flex: 1; padding: 14px;">📸 Extract All HD Thumbnails (PNG)</button>
+        <button id="batchConvertBtn" class="btn" style="flex: 1; padding: 14px; border-color: var(--amber); color: var(--amber);">🔄 Convert All to MP4</button>
+      </div>
+      <div class="status" id="batchStatus" style="margin-top: 14px;"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+  <script src="/motion-hub-utils.js"></script>
+  <script>
+    const dropArea = document.getElementById('dropArea');
+    const videoInputs = document.getElementById('videoInputs');
+    const fileCountText = document.getElementById('fileCountText');
+    const workspaceCard = document.getElementById('workspaceCard');
+    const videoList = document.getElementById('videoList');
+    const batchThumbBtn = document.getElementById('batchThumbBtn');
+    const batchConvertBtn = document.getElementById('batchConvertBtn');
+    const batchStatus = document.getElementById('batchStatus');
+
+    let loadedFiles = [];
+    let ffmpeg = null;
+
+    dropArea.addEventListener('click', () => videoInputs.click());
+    videoInputs.addEventListener('change', () => {
+      if (videoInputs.files.length) {
+        loadedFiles = Array.from(videoInputs.files);
+        fileCountText.textContent = `${loadedFiles.length} video file(s) selected`;
+        workspaceCard.style.display = 'block';
+        renderVideoList();
+      }
+    });
+
+    function renderVideoList() {
+      videoList.innerHTML = '';
+      loadedFiles.forEach((file, idx) => {
+        const card = document.createElement('div');
+        card.className = 'thumb-card';
+
+        const videoElem = document.createElement('video');
+        videoElem.src = URL.createObjectURL(file);
+        videoElem.muted = true;
+        videoElem.style.width = '120px';
+        videoElem.style.borderRadius = '8px';
+
+        const info = document.createElement('div');
+        info.style.flex = '1';
+
+        const title = document.createElement('strong');
+        title.style.display = 'block';
+        title.style.fontSize = '0.9rem';
+        title.textContent = file.name;
+
+        const size = document.createElement('small');
+        size.style.color = 'var(--muted)';
+        size.textContent = `${(file.size / (1024*1024)).toFixed(1)} MB`;
+
+        info.appendChild(title);
+        info.appendChild(size);
+
+        const dlSingleBtn = document.createElement('button');
+        dlSingleBtn.className = 'btn';
+        dlSingleBtn.style.padding = '6px 12px';
+        dlSingleBtn.style.fontSize = '0.75rem';
+        dlSingleBtn.textContent = '📸 Frame PNG';
+
+        dlSingleBtn.onclick = () => {
+          captureFramePNG(videoElem, file.name);
+        };
+
+        card.appendChild(videoElem);
+        card.appendChild(info);
+        card.appendChild(dlSingleBtn);
+        videoList.appendChild(card);
+      });
+    }
+
+    function captureFramePNG(videoElem, filename) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoElem.videoWidth || 1280;
+      canvas.height = videoElem.videoHeight || 720;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename.split('.')[0] + '_thumbnail.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }, 'image/png');
+    }
+
+    batchThumbBtn.addEventListener('click', () => {
+      const videos = videoList.querySelectorAll('video');
+      videos.forEach((v, idx) => {
+        captureFramePNG(v, loadedFiles[idx].name);
+      });
+      batchStatus.textContent = 'Downloaded thumbnails for all videos!';
+      batchStatus.className = 'status';
+    });
+
+    batchConvertBtn.addEventListener('click', async () => {
+      if (loadedFiles.length === 0) return;
+      batchConvertBtn.disabled = true;
+      batchStatus.textContent = 'Loading video conversion engine...';
+      batchStatus.className = 'status info';
+
+      try {
+        if (!ffmpeg) {
+          const { createFFmpeg } = FFmpeg;
+          ffmpeg = createFFmpeg({
+            log: false,
+            progress: p => {
+              if (p.ratio >= 0 && p.ratio <= 1) {
+                batchStatus.textContent = `Batch converting... ${Math.round(p.ratio * 100)}%`;
+              }
+            }
+          });
+          await ffmpeg.load();
+        }
+
+        for (let i = 0; i < loadedFiles.length; i++) {
+          const file = loadedFiles[i];
+          batchStatus.textContent = `Converting (${i + 1}/${loadedFiles.length}): ${file.name}...`;
+
+          const data = new Uint8Array(await file.arrayBuffer());
+          ffmpeg.FS('writeFile', 'in_batch', data);
+
+          await ffmpeg.run('-i', 'in_batch', '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'aac', 'out_batch.mp4');
+
+          const outData = ffmpeg.FS('readFile', 'out_batch.mp4');
+          const blob = new Blob([outData.buffer], { type: 'video/mp4' });
+          const url = URL.createObjectURL(blob);
+
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = file.name.split('.')[0] + '_converted.mp4';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          try { ffmpeg.FS('unlink', 'in_batch'); ffmpeg.FS('unlink', 'out_batch.mp4'); } catch (e) {}
+        }
+
+        batchStatus.textContent = 'Done — all batch videos converted!';
+        batchStatus.className = 'status';
+        batchConvertBtn.disabled = false;
+      } catch (err) {
+        batchStatus.textContent = 'Batch conversion failed: ' + err.message;
+        batchStatus.className = 'status err';
+        batchConvertBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

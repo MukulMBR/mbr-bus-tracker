@@ -415,6 +415,14 @@ const server = http.createServer((req, res) => {
       fileSegment = 'gif-maker.html';
     } else if (pathname === '/screen-recorder') {
       fileSegment = 'screen-recorder.html';
+    } else if (pathname === '/tts-studio') {
+      fileSegment = 'tts-studio.html';
+    } else if (pathname === '/watermark') {
+      fileSegment = 'watermark-studio.html';
+    } else if (pathname === '/subtitles') {
+      fileSegment = 'subtitle-generator.html';
+    } else if (pathname === '/thumbnails') {
+      fileSegment = 'thumbnail-generator.html';
     }
     
     let filePath = path.join(__dirname, fileSegment);
