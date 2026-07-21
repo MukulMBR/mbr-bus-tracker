@@ -485,11 +485,20 @@
       <div id="cacheStatusMessage" style="font-size: 0.8rem; color: var(--muted); margin-top: -4px; display: none;"></div>
     </div>
 
+    <!-- Category Filter Bar -->
+    <div style="max-width: 900px; margin: 0 auto 24px auto; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;" id="categoryFilterBar">
+      <button class="nav-badge filter-tab active" data-filter="all" style="cursor: pointer; padding: 8px 18px; font-size: 0.8rem; border-radius: 12px; background: rgba(45,212,191,0.15); border-color: var(--cyan);">All Tools (11)</button>
+      <button class="nav-badge filter-tab" data-filter="video" style="cursor: pointer; padding: 8px 18px; font-size: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.03); color: var(--muted); border-color: var(--line);">📹 Video Studio (6)</button>
+      <button class="nav-badge filter-tab" data-filter="audio" style="cursor: pointer; padding: 8px 18px; font-size: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.03); color: var(--muted); border-color: var(--line);">🎙️ Audio Studio (3)</button>
+      <button class="nav-badge filter-tab" data-filter="speech" style="cursor: pointer; padding: 8px 18px; font-size: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.03); color: var(--muted); border-color: var(--line);">📝 Speech &amp; Text (2)</button>
+      <button class="nav-badge filter-tab" data-filter="utility" style="cursor: pointer; padding: 8px 18px; font-size: 0.8rem; border-radius: 12px; background: rgba(255,255,255,0.03); color: var(--muted); border-color: var(--line);">⚡ Utilities &amp; Live (3)</button>
+    </div>
+
     <!-- Cards Grid -->
-    <div class="cards">
+    <div class="cards" id="cardsGrid">
 
       <!-- Tracker (Original server tool) -->
-      <a class="card card-tracker" href="/">
+      <a class="card card-tracker" href="/" data-category="utility">
         <div class="card-accent"></div>
         <div class="card-icon">📡</div>
         <span class="card-kicker">Live Trips</span>
@@ -499,7 +508,7 @@
       </a>
 
       <!-- Downloader -->
-      <a class="card card-downloader" href="/downloader">
+      <a class="card card-downloader" href="/downloader" data-category="utility">
         <div class="card-accent"></div>
         <div class="card-icon">⬇️</div>
         <span class="card-kicker">Media Capture</span>
@@ -510,7 +519,7 @@
       </a>
 
       <!-- Video Merger -->
-      <a class="card card-editor" href="/video-editor">
+      <a class="card card-editor" href="/video-editor" data-category="video">
         <div class="card-accent"></div>
         <div class="card-icon">🎬</div>
         <span class="card-kicker">Creator Studio</span>
@@ -521,7 +530,7 @@
       </a>
 
       <!-- Audio Trimmer -->
-      <a class="card card-trimmer" href="/audio-trimmer">
+      <a class="card card-trimmer" href="/audio-trimmer" data-category="audio">
         <div class="card-accent"></div>
         <div class="card-icon">✂️</div>
         <span class="card-kicker">Audio Studio</span>
@@ -532,7 +541,7 @@
       </a>
 
       <!-- Video Trimmer -->
-      <a class="card card-vtrimmer" href="/video-trimmer">
+      <a class="card card-vtrimmer" href="/video-trimmer" data-category="video">
         <div class="card-accent"></div>
         <div class="card-icon">🎥</div>
         <span class="card-kicker">Video Studio</span>
@@ -543,7 +552,7 @@
       </a>
 
       <!-- Audio Extractor -->
-      <a class="card card-extractor" href="/audio-extractor">
+      <a class="card card-extractor" href="/audio-extractor" data-category="audio">
         <div class="card-accent"></div>
         <div class="card-icon">📻</div>
         <span class="card-kicker">Media Extractor</span>
@@ -554,7 +563,7 @@
       </a>
 
       <!-- Video Compressor -->
-      <a class="card card-compressor" href="/video-compressor">
+      <a class="card card-compressor" href="/video-compressor" data-category="video">
         <div class="card-accent"></div>
         <div class="card-icon">🗜️</div>
         <span class="card-kicker">Video Optimizer</span>
@@ -565,7 +574,7 @@
       </a>
 
       <!-- GIF Maker -->
-      <a class="card card-gif" href="/gif-maker">
+      <a class="card card-gif" href="/gif-maker" data-category="video">
         <div class="card-accent"></div>
         <div class="card-icon">🖼️</div>
         <span class="card-kicker">Animation</span>
@@ -576,7 +585,7 @@
       </a>
 
       <!-- Screen Recorder -->
-      <a class="card card-recorder" href="/screen-recorder">
+      <a class="card card-recorder" href="/screen-recorder" data-category="utility">
         <div class="card-accent"></div>
         <div class="card-icon">📹</div>
         <span class="card-kicker">Live Capture</span>
@@ -587,7 +596,7 @@
       </a>
 
       <!-- TTS Voiceover Studio -->
-      <a class="card card-editor" href="/tts-studio">
+      <a class="card card-editor" href="/tts-studio" data-category="audio speech">
         <div class="card-accent"></div>
         <div class="card-icon">🎙️</div>
         <span class="card-kicker">Speech AI</span>
@@ -598,7 +607,7 @@
       </a>
 
       <!-- Watermark Studio -->
-      <a class="card card-compressor" href="/watermark">
+      <a class="card card-compressor" href="/watermark" data-category="video">
         <div class="card-accent"></div>
         <div class="card-icon">🏷️</div>
         <span class="card-kicker">Brand Overlay</span>
@@ -609,7 +618,7 @@
       </a>
 
       <!-- Auto Subtitles -->
-      <a class="card card-trimmer" href="/subtitles">
+      <a class="card card-trimmer" href="/subtitles" data-category="speech">
         <div class="card-accent"></div>
         <div class="card-icon">📝</div>
         <span class="card-kicker">Speech-to-Text</span>
@@ -620,7 +629,7 @@
       </a>
 
       <!-- Thumbnail & Batch Converter -->
-      <a class="card card-gif" href="/thumbnails">
+      <a class="card card-gif" href="/thumbnails" data-category="video">
         <div class="card-accent"></div>
         <div class="card-icon">🖼️</div>
         <span class="card-kicker">Batch Processing</span>
@@ -637,6 +646,34 @@
   </div>
 
   <script>
+    // ─── Category Filter Tabs ───
+    const filterTabs = document.querySelectorAll('.filter-tab');
+    const cards = document.querySelectorAll('#cardsGrid .card');
+
+    filterTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        filterTabs.forEach(t => {
+          t.classList.remove('active');
+          t.style.background = 'rgba(255,255,255,0.03)';
+          t.style.color = 'var(--muted)';
+          t.style.borderColor = 'var(--line)';
+        });
+        tab.classList.add('active');
+        tab.style.background = 'rgba(45,212,191,0.15)';
+        tab.style.color = 'var(--cyan)';
+        tab.style.borderColor = 'var(--cyan)';
+
+        const cat = tab.dataset.filter;
+        cards.forEach(card => {
+          if (cat === 'all' || card.dataset.category.includes(cat)) {
+            card.style.display = 'flex';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    });
+
     // ─── Particle system ───
     const canvas = document.getElementById('particleCanvas');
     const ctx = canvas.getContext('2d');

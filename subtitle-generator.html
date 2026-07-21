@@ -58,9 +58,10 @@
 
     <!-- Step 3: Export SRT & Burn Subtitles -->
     <div class="sub-card" id="exportCard" style="display:none;">
-      <h2>💾 Step 3: Export Captions or Hardcode Subtitles</h2>
-      <div style="display: flex; gap: 12px; margin-top: 16px;">
-        <button id="exportSrtBtn" class="btn" style="flex: 1; padding: 14px; border-color: var(--cyan); color: var(--cyan);">📄 Download .SRT Subtitle File</button>
+      <h2>💾 Step 3: Export Captions, Transcript &amp; Video</h2>
+      <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+        <button id="exportTxtBtn" class="btn" style="flex: 1; padding: 14px; border-color: var(--amber); color: var(--amber);">📄 Download Transcript (.TXT)</button>
+        <button id="exportSrtBtn" class="btn" style="flex: 1; padding: 14px; border-color: var(--cyan); color: var(--cyan);">📄 Download .SRT Subtitles</button>
         <button id="burnSubtitlesBtn" class="btn btn-primary" style="flex: 1; padding: 14px;">🔥 Hardcode Subtitles into MP4</button>
       </div>
       <div class="status" id="exportStatus" style="margin-top: 14px;"></div>
@@ -81,6 +82,7 @@
     const addLineBtn = document.getElementById('addLineBtn');
     const transcribeStatus = document.getElementById('transcribeStatus');
     const srtList = document.getElementById('srtList');
+    const exportTxtBtn = document.getElementById('exportTxtBtn');
     const exportSrtBtn = document.getElementById('exportSrtBtn');
     const burnSubtitlesBtn = document.getElementById('burnSubtitlesBtn');
     const exportStatus = document.getElementById('exportStatus');
@@ -226,6 +228,29 @@
       });
       return srt;
     }
+
+    function generateTxtContent() {
+      return captions.map(c => c.text).join('\n');
+    }
+
+    exportTxtBtn.addEventListener('click', () => {
+      const txt = generateTxtContent();
+      if (!txt) {
+        exportStatus.textContent = 'No transcript text available to export.';
+        exportStatus.className = 'status err';
+        return;
+      }
+      const blob = new Blob([txt], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (mediaFile ? mediaFile.name.split('.')[0] : 'audio') + '_transcript.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      exportStatus.textContent = 'Downloaded transcript .TXT file!';
+      exportStatus.className = 'status';
+    });
 
     exportSrtBtn.addEventListener('click', () => {
       const srt = generateSrtContent();
