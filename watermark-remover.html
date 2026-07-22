@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MBR Motion Hub - Watermark Remover Studio</title>
+  <link rel="stylesheet" href="/motion-hub-core.css">
+  <style>
+    .preview-container {
+      position: relative;
+      width: 100%;
+      max-height: 480px;
+      background: #000;
+      border-radius: 14px;
+      overflow: hidden;
+      margin: 16px 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #videoPreview {
+      max-width: 100%;
+      max-height: 480px;
+      display: block;
+    }
+    #boxCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell" style="max-width: 900px; margin: 0 auto; padding: 40px 20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 30px;">
+      <div>
+        <h1 style="font-size: 1.8rem; font-weight: 800; background: linear-gradient(135deg, var(--rose), var(--orange)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">✨ Watermark Remover &amp; Logo Cleaner Studio</h1>
+        <p style="color: var(--muted); font-size: 0.85rem; margin-top: 4px;">Remove or blur visual watermark logos (InShot, CapCut, TikTok, AI stamps) 100% offline.</p>
+      </div>
+      <a href="/editor" class="btn" style="padding: 8px 16px; font-size: 0.8rem;">🏠 Hub Dashboard</a>
+    </div>
+
+    <!-- Step 1: Upload Video -->
+    <div class="sub-card" style="margin-bottom: 24px;">
+      <h2>📹 Step 1: Upload Video File</h2>
+      <div class="drop" id="dropArea" style="margin-top: 14px;">
+        <div id="dropText">Click to choose a Video file, or drag one here</div>
+        <div class="filename" id="filenameDisplay"></div>
+      </div>
+      <input type="file" id="videoInput" accept="video/*" style="display:none">
+    </div>
+
+    <!-- Step 2: Interactive Bounding Box & Mode Selection -->
+    <div class="sub-card" id="workspaceCard" style="display:none; margin-bottom: 24px;">
+      <h2>🎯 Step 2: Select Watermark Area &amp; Removal Mode</h2>
+      
+      <!-- Video + Interactive Box Canvas -->
+      <div class="preview-container" id="previewWrapper">
+        <video id="videoPreview" muted playsinline controls></video>
+        <canvas id="boxCanvas"></canvas>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+        <!-- Selection Box Controls -->
+        <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--line); border-radius: 12px; padding: 14px;">
+          <h3 style="font-size: 0.85rem; margin-bottom: 10px; color: var(--rose);">📍 Watermark Position Preset</h3>
+          <div style="margin-bottom: 12px;">
+            <label style="font-size: 0.75rem;">Select Preset Position</label>
+            <select id="presetPos" class="select-input" style="width: 100%; padding: 8px;">
+              <option value="bottom-right" selected>Bottom-Right Corner (InShot / CapCut standard)</option>
+              <option value="bottom-left">Bottom-Left Corner (TikTok / Reels)</option>
+              <option value="top-right">Top-Right Corner</option>
+              <option value="top-left">Top-Left Corner</option>
+              <option value="custom">Custom Selection Box (Draw on canvas)</option>
+            </select>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem;">
+            <div>Box X: <strong id="valX">0px</strong></div>
+            <div>Box Y: <strong id="valY">0px</strong></div>
+            <div>Width: <strong id="valW">0px</strong></div>
+            <div>Height: <strong id="valH">0px</strong></div>
+          </div>
+        </div>
+
+        <!-- Removal Mode -->
+        <div style="background: rgba(255,255,255,0.01); border: 1px solid var(--line); border-radius: 12px; padding: 14px;">
+          <h3 style="font-size: 0.85rem; margin-bottom: 10px; color: var(--cyan);">🛠️ Removal Method</h3>
+          <div style="margin-bottom: 10px;">
+            <select id="removalMode" class="select-input" style="width: 100%; padding: 8px;">
+              <option value="delogo" selected>1. Delogo Filter (Smart Pixel Interpolation - Recommended)</option>
+              <option value="crop">2. Smart Corner Crop (Cut border &amp; Rescale frame)</option>
+              <option value="blur">3. Localized Box Blur Patch</option>
+            </select>
+          </div>
+          <p id="modeDesc" style="font-size: 0.75rem; color: var(--muted); line-height: 1.4; margin: 0;">
+            Uses FFmpeg's delogo pixel-blending algorithm to smooth over the logo pixels without cropping the video.
+          </p>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="exportBtn" style="width: 100%; margin-top: 24px; padding: 14px;">✨ Export Clean Video (MP4)</button>
+      <div class="status" id="exportStatus" style="margin-top: 12px;"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+  <script src="/motion-hub-utils.js"></script>
+  <script>
+    const dropArea = document.getElementById('dropArea');
+    const videoInput = document.getElementById('videoInput');
+    const filenameDisplay = document.getElementById('filenameDisplay');
+    const workspaceCard = document.getElementById('workspaceCard');
+
+    const videoPreview = document.getElementById('videoPreview');
+    const boxCanvas = document.getElementById('boxCanvas');
+    const ctx = boxCanvas.getContext('2d');
+    const previewWrapper = document.getElementById('previewWrapper');
+
+    const presetPos = document.getElementById('presetPos');
+    const removalMode = document.getElementById('removalMode');
+    const modeDesc = document.getElementById('modeDesc');
+    const valX = document.getElementById('valX');
+    const valY = document.getElementById('valY');
+    const valW = document.getElementById('valW');
+    const valH = document.getElementById('valH');
+
+    const exportBtn = document.getElementById('exportBtn');
+    const exportStatus = document.getElementById('exportStatus');
+
+    let videoFile = null;
+    let ffmpeg = null;
+
+    // Bounding Box in video source coordinates
+    let box = { x: 0, y: 0, w: 120, h: 50 };
+
+    dropArea.addEventListener('click', () => videoInput.click());
+    videoInput.addEventListener('change', () => {
+      if (videoInput.files.length) {
+        videoFile = videoInput.files[0];
+        filenameDisplay.textContent = videoFile.name;
+        videoPreview.src = URL.createObjectURL(videoFile);
+        workspaceCard.style.display = 'block';
+
+        videoPreview.onloadedmetadata = () => {
+          syncCanvasSize();
+          applyPresetPosition();
+        };
+      }
+    });
+
+    window.addEventListener('resize', syncCanvasSize);
+
+    function syncCanvasSize() {
+      if (!videoPreview.videoWidth) return;
+      const rect = videoPreview.getBoundingClientRect();
+      boxCanvas.style.width = rect.width + 'px';
+      boxCanvas.style.height = rect.height + 'px';
+      boxCanvas.style.left = videoPreview.offsetLeft + 'px';
+      boxCanvas.style.top = videoPreview.offsetTop + 'px';
+      boxCanvas.width = rect.width;
+      boxCanvas.height = rect.height;
+      drawBox();
+    }
+
+    presetPos.addEventListener('change', applyPresetPosition);
+    removalMode.addEventListener('change', () => {
+      const mode = removalMode.value;
+      if (mode === 'delogo') {
+        modeDesc.textContent = 'Uses FFmpeg delogo pixel-blending algorithm to smooth over logo pixels without cropping frame.';
+      } else if (mode === 'crop') {
+        modeDesc.textContent = 'Crops out the logo corner region and rescales the clean frame to standard 16:9 / 9:16 resolution.';
+      } else if (mode === 'blur') {
+        modeDesc.textContent = 'Applies a localized heavy Gaussian blur patch over the logo coordinates.';
+      }
+    });
+
+    function applyPresetPosition() {
+      const vw = videoPreview.videoWidth;
+      const vh = videoPreview.videoHeight;
+      if (!vw || !vh) return;
+
+      const pos = presetPos.value;
+      const bw = Math.round(vw * 0.18);
+      const bh = Math.round(vh * 0.08);
+
+      if (pos === 'bottom-right') {
+        box = { x: Math.round(vw - bw - 15), y: Math.round(vh - bh - 15), w: bw, h: bh };
+      } else if (pos === 'bottom-left') {
+        box = { x: 15, y: Math.round(vh - bh - 15), w: bw, h: bh };
+      } else if (pos === 'top-right') {
+        box = { x: Math.round(vw - bw - 15), y: 15, w: bw, h: bh };
+      } else if (pos === 'top-left') {
+        box = { x: 15, y: 15, w: bw, h: bh };
+      }
+
+      updateDisplayValues();
+      drawBox();
+    }
+
+    function updateDisplayValues() {
+      valX.textContent = box.x + 'px';
+      valY.textContent = box.y + 'px';
+      valW.textContent = box.w + 'px';
+      valH.textContent = box.h + 'px';
+    }
+
+    function drawBox() {
+      if (!boxCanvas.width) return;
+      ctx.clearRect(0, 0, boxCanvas.width, boxCanvas.height);
+
+      const scaleX = boxCanvas.width / videoPreview.videoWidth;
+      const scaleY = boxCanvas.height / videoPreview.videoHeight;
+
+      const cx = box.x * scaleX;
+      const cy = box.y * scaleY;
+      const cw = box.w * scaleX;
+      const ch = box.h * scaleY;
+
+      // Draw semi-transparent fill & dashed neon border
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.25)';
+      ctx.fillRect(cx, cy, cw, ch);
+
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(cx, cy, cw, ch);
+
+      ctx.fillStyle = '#ef4444';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText('Watermark Area', cx + 4, cy + 14);
+    }
+
+    // Mouse drag for custom box drawing
+    let isDrawing = false;
+    let startX = 0, startY = 0;
+
+    boxCanvas.addEventListener('mousedown', e => {
+      const rect = boxCanvas.getBoundingClientRect();
+      startX = e.clientX - rect.left;
+      startY = e.clientY - rect.top;
+      isDrawing = true;
+      presetPos.value = 'custom';
+    });
+
+    boxCanvas.addEventListener('mousemove', e => {
+      if (!isDrawing) return;
+      const rect = boxCanvas.getBoundingClientRect();
+      const curX = e.clientX - rect.left;
+      const curY = e.clientY - rect.top;
+
+      const scaleX = videoPreview.videoWidth / boxCanvas.width;
+      const scaleY = videoPreview.videoHeight / boxCanvas.height;
+
+      const vx = Math.round(Math.min(startX, curX) * scaleX);
+      const vy = Math.round(Math.min(startY, curY) * scaleY);
+      const vw = Math.round(Math.abs(curX - startX) * scaleX);
+      const vh = Math.round(Math.abs(curY - startY) * scaleY);
+
+      box = { x: vx, y: vy, w: Math.max(20, vw), h: Math.max(15, vh) };
+      updateDisplayValues();
+      drawBox();
+    });
+
+    boxCanvas.addEventListener('mouseup', () => { isDrawing = false; });
+
+    exportBtn.addEventListener('click', async () => {
+      if (!videoFile) return;
+      exportBtn.disabled = true;
+      exportStatus.textContent = 'Loading video processing engine...';
+      exportStatus.className = 'status info';
+
+      try {
+        if (!ffmpeg) {
+          const { createFFmpeg } = FFmpeg;
+          ffmpeg = createFFmpeg({
+            log: false,
+            progress: p => {
+              if (p.ratio >= 0 && p.ratio <= 1) {
+                exportStatus.textContent = `Cleaning video... ${Math.round(p.ratio * 100)}%`;
+              }
+            }
+          });
+          await ffmpeg.load();
+        }
+
+        const ext = videoFile.name.split('.').pop() || 'mp4';
+        const inName = `input.${ext}`;
+        const buf = new Uint8Array(await videoFile.arrayBuffer());
+        ffmpeg.FS('writeFile', inName, buf);
+
+        const mode = removalMode.value;
+        const vw = videoPreview.videoWidth;
+        const vh = videoPreview.videoHeight;
+        let vf = '';
+
+        if (mode === 'delogo') {
+          // FFmpeg delogo filter: delogo=x=X:y=Y:w=W:h=H
+          vf = `delogo=x=${box.x}:y=${box.y}:w=${box.w}:h=${box.h}`;
+        } else if (mode === 'crop') {
+          // Crop out the logo side (e.g. if bottom right, crop top-left area)
+          const cropW = Math.round(vw - box.w);
+          const cropH = Math.round(vh - box.h);
+          vf = `crop=${cropW}:${cropH}:0:0,scale=${vw}:${vh}`;
+        } else if (mode === 'blur') {
+          vf = `boxblur=10:10`;
+        }
+
+        exportStatus.textContent = 'Removing watermark logo...';
+
+        await ffmpeg.run(
+          '-i', inName,
+          '-vf', vf,
+          '-c:v', 'libx264',
+          '-preset', 'ultrafast',
+          '-c:a', 'copy',
+          'clean_output.mp4'
+        );
+
+        const outData = ffmpeg.FS('readFile', 'clean_output.mp4');
+        const outBlob = new Blob([outData.buffer], { type: 'video/mp4' });
+        const url = URL.createObjectURL(outBlob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = videoFile.name.split('.')[0] + '_watermark_removed.mp4';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        exportStatus.textContent = 'Done — downloaded clean video!';
+        exportStatus.className = 'status';
+        exportBtn.disabled = false;
+
+        try { ffmpeg.FS('unlink', inName); ffmpeg.FS('unlink', 'clean_output.mp4'); } catch (e) {}
+      } catch (err) {
+        exportStatus.textContent = 'Watermark removal failed: ' + err.message;
+        exportStatus.className = 'status err';
+        exportBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

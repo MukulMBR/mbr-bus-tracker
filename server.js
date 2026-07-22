@@ -423,6 +423,8 @@ const server = http.createServer((req, res) => {
       fileSegment = 'subtitle-generator.html';
     } else if (pathname === '/thumbnails') {
       fileSegment = 'thumbnail-generator.html';
+    } else if (pathname === '/watermark-remover') {
+      fileSegment = 'watermark-remover.html';
     }
     
     let filePath = path.join(__dirname, fileSegment);
