@@ -1162,14 +1162,17 @@ function triggerStasisWarning(lat, lng) {
     busMarker.getElement().classList.add('stasis');
   }
   
-  const alertMsg = `STASIS ALERT: Bus stationary at coordinates [${lat.toFixed(5)}, ${lng.toFixed(5)}] for 20 minutes.`;
+  const secondsStationary = isLiveMode ? (stasisCount * 10) : (stasisCount * 2);
+  const timeStr = secondsStationary >= 60 ? `${Math.floor(secondsStationary / 60)} minutes` : `${secondsStationary} seconds`;
+
+  const alertMsg = `STASIS ALERT: Bus stationary at coordinates [${lat.toFixed(5)}, ${lng.toFixed(5)}] for ${timeStr}.`;
   logToConsole(alertMsg, "error");
   
   if (!stasisAlertSpoken) {
-    speakVoiceAlert("Warning: The bus has been stationary for 20 minutes. There may be a traffic delay or breakdown ahead.");
+    speakVoiceAlert(`Warning: The bus has been stationary for ${timeStr}. There may be a traffic delay or stop ahead.`);
     stasisAlertSpoken = true;
   }
-  sendWhatsAppAlert(`STASIS WARNING: Bus is stationary at coordinates [${lat.toFixed(5)}, ${lng.toFixed(5)}] for 20 minutes.`);
+  sendWhatsAppAlert(`STASIS WARNING: Bus is stationary at coordinates [${lat.toFixed(5)}, ${lng.toFixed(5)}] for ${timeStr}.`);
 }
 
 function formatDuration(mins) {
