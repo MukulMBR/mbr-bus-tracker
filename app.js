@@ -57,6 +57,7 @@ let simCoords = []; // Interpolated path coordinates
 let lastLat = null;
 let lastLng = null;
 let stasisCount = 0; // Cycles without movement
+let stasisAlertSent = false;
 let isStasisSimulated = false;
 
 let alarmActive = false;
@@ -437,16 +438,23 @@ function renderHistoryList() {
   const listEl = document.getElementById('historyList');
   if (!listEl) return;
   
+  const historyContainer = document.getElementById('historyContainer');
+  const historyHeaderBtn = `
+    <div style="margin-bottom: 10px; display: flex; justify-content: flex-end;">
+      <button onclick="generateAiTripSummary()" class="share-btn" style="border-color: var(--accent-gold); color: var(--accent-gold); font-size: 0.72rem;">🤖 AI Trip Summary</button>
+    </div>
+  `;
+
   const history = JSON.parse(localStorage.getItem('tripHistory') || '[]');
   if (history.length === 0) {
-    listEl.innerHTML = `
+    listEl.innerHTML = historyHeaderBtn + `
       <div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.85rem;" data-i18n="historyEmpty">
-        No completed trips in history yet.
+        No completed trips in history yet. Click above to generate real-time AI summary.
       </div>`;
     return;
   }
   
-  listEl.innerHTML = history.map(item => `
+  listEl.innerHTML = historyHeaderBtn + history.map(item => `
     <div class="history-item">
       <div class="history-header">
         <span>📅 ${item.date}</span>
@@ -458,6 +466,44 @@ function renderHistoryList() {
       </div>
     </div>
   `).join('');
+}
+
+function generateAiTripSummary() {
+  const listEl = document.getElementById('historyList');
+  if (!listEl) return;
+
+  const stasisLogs = logHistory.filter(l => l.includes('STASIS'));
+  const gpsLogs = logHistory.filter(l => l.includes('GPS Update'));
+  
+  const opName = (currentJourneyData && currentJourneyData.operator_name) ? currentJourneyData.operator_name : "Bus Operator";
+  const vehicleNum = (currentJourneyData && currentJourneyData.vehicle_number) ? currentJourneyData.vehicle_number : "Live Bus";
+  const dropName = selectedDropPoint ? selectedDropPoint.name : "Destination Station";
+
+  let summaryText = `🤖 <strong style="color: var(--accent-gold);">AI Trip Summary Report:</strong><br>`;
+  summaryText += `• <strong>Vehicle:</strong> ${vehicleNum} (${opName})<br>`;
+  summaryText += `• <strong>Target Station:</strong> ${dropName}<br>`;
+  summaryText += `• <strong>GPS Telemetry Pings:</strong> ${gpsLogs.length} live location updates<br>`;
+  
+  if (stasisLogs.length > 0) {
+    summaryText += `• <strong>Delays Detected:</strong> ${stasisLogs.length} stasis delay event(s) recorded.<br>`;
+  } else {
+    summaryText += `• <strong>Pace & Traffic:</strong> Smooth travel detected with 0 stasis traffic delays.<br>`;
+  }
+  summaryText += `• <strong>Telemetry Status:</strong> Active monitoring drop alert geofence.`;
+
+  logToConsole("AI Trip Summary generated.", "success");
+  
+  const existingSummary = listEl.querySelector('.ai-summary-card');
+  if (existingSummary) existingSummary.remove();
+
+  const summaryBox = document.createElement('div');
+  summaryBox.className = 'history-item ai-summary-card';
+  summaryBox.style.borderColor = 'var(--accent-gold)';
+  summaryBox.style.background = 'rgba(45,212,191,0.08)';
+  summaryBox.style.marginBottom = '12px';
+  summaryBox.innerHTML = summaryText;
+
+  listEl.insertBefore(summaryBox, listEl.firstChild.nextSibling || listEl.firstChild);
 }
 
 // Restore state from localStorage on startup
@@ -860,11 +906,24 @@ async function handleUrlSubmit() {
       const routeEl = document.getElementById('busRouteText');
       const callBtn = document.getElementById('btnCallOperator');
 
-      if (regEl) regEl.textContent = data.journey_details.vehicle_number || "MP41ZL5976";
-      if (opEl) opEl.textContent = data.journey_details.operator_name || "DHRITI TRAVELS";
-      if (routeEl) routeEl.textContent = `${data.journey_details.source || 'Tirupati'} - ${data.journey_details.destination || 'Koteshwara'}`;
-      if (callBtn && data.journey_details.contact_number) {
-        callBtn.href = `tel:${data.journey_details.contact_number}`;
+      if (regEl) regEl.textContent = data.journey_details.vehicle_number || "Vehicle # unavailable";
+      if (opEl) opEl.textContent = data.journey_details.operator_name || "Operator info unavailable";
+      if (routeEl) routeEl.textContent = `${data.journey_details.source || 'Start'} ➔ ${data.journey_details.destination || 'Destination'}`;
+      
+      if (callBtn) {
+        if (data.journey_details.contact_number && data.journey_details.contact_number.trim() !== '') {
+          callBtn.href = `tel:${data.journey_details.contact_number}`;
+          callBtn.style.pointerEvents = 'auto';
+          callBtn.style.opacity = '1';
+          callBtn.style.borderColor = 'var(--accent-gold)';
+          callBtn.style.color = 'var(--accent-gold)';
+        } else {
+          callBtn.href = '#';
+          callBtn.style.pointerEvents = 'none';
+          callBtn.style.opacity = '0.4';
+          callBtn.style.borderColor = 'var(--border-color)';
+          callBtn.style.color = 'var(--text-muted)';
+        }
       }
 
       // Redraw map and list dropping points
@@ -883,19 +942,20 @@ async function handleUrlSubmit() {
       // Start live polling loop (every 10 seconds)
       startLiveTrackingLoop();
     } else {
-      const errorMsg = "This tracking link couldn't be found or is no longer active.";
+      const errorMsg = "This tracking link has expired or is no longer active — please request a new tracking link from your bus operator.";
       logToConsole(errorMsg, "error");
       alert(errorMsg);
       updateSystemStatus('error');
-      loadDemoRoute();
+      
+      const opEl = document.getElementById('busOperatorText');
+      if (opEl) opEl.textContent = "Tracking link expired / inactive";
     }
   } catch (error) {
-    console.error("CORS Proxy fetch failed", error);
-    const errorMsg = "This tracking link couldn't be found or is no longer active.";
+    console.error("Tracking proxy fetch failed", error);
+    const errorMsg = "This tracking link has expired or is no longer active — please request a new link from your bus operator.";
     logToConsole(errorMsg, "error");
     alert(errorMsg);
     updateSystemStatus('error');
-    loadDemoRoute();
   }
 }
 
@@ -1135,16 +1195,18 @@ function updateBusPosition(lat, lng, speed, timestamp) {
     timeEl.classList.remove('hud-placeholder');
   }
 
-  // Stasis checking
+  // Stasis checking & alert deduplication
   if (lastLat === lat && lastLng === lng) {
     stasisCount++;
-    if (stasisCount >= 2) {
+    if (stasisCount >= 2 && !stasisAlertSent) {
+      stasisAlertSent = true;
       triggerStasisWarning(lat, lng);
     }
   } else {
     stasisCount = 0;
+    stasisAlertSent = false;
     stasisAlertSpoken = false; // Reset stasis voice lock when movement resumes
-    if (busMarker.getElement()) {
+    if (busMarker && busMarker.getElement()) {
       busMarker.getElement().classList.remove('stasis');
     }
   }
@@ -1425,6 +1487,68 @@ function logToConsole(message, type = "") {
   logHistory.push(`[${timestamp}] [${type.toUpperCase() || "INFO"}] ${message}`);
 }
 
+let userLocationMarker = null;
+let watchPositionId = null;
+let userCoords = null;
+
+function toggleUserGeolocation() {
+  const btn = document.getElementById('btnUserLocation');
+  if (!navigator.geolocation) {
+    alert("Geolocation is not supported by your browser.");
+    return;
+  }
+
+  if (watchPositionId !== null) {
+    navigator.geolocation.clearWatch(watchPositionId);
+    watchPositionId = null;
+    if (userLocationMarker && map) {
+      map.removeLayer(userLocationMarker);
+      userLocationMarker = null;
+    }
+    if (btn) {
+      btn.textContent = '📍 My Location: OFF';
+      btn.style.borderColor = 'rgba(255,255,255,0.2)';
+      btn.style.color = 'var(--text-muted)';
+    }
+    logToConsole("User geolocation tracking stopped.", "info");
+  } else {
+    watchPositionId = navigator.geolocation.watchPosition((pos) => {
+      userCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      
+      if (!userLocationMarker && map) {
+        const userIcon = L.divIcon({
+          className: 'user-marker-container',
+          html: `<div style="background: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid #ffffff; box-shadow: 0 0 12px #3b82f6;"></div>`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8]
+        });
+        userLocationMarker = L.marker([userCoords.lat, userCoords.lng], { icon: userIcon }).addTo(map);
+        userLocationMarker.bindPopup("📍 <strong>Your Live Location</strong>");
+      } else if (userLocationMarker) {
+        userLocationMarker.setLatLng([userCoords.lat, userCoords.lng]);
+      }
+
+      // Calculate distance to boarding station if available
+      const boardingPoint = currentRoutePoints.find(pt => pt.type === 'boarding') || currentRoutePoints[0];
+      if (boardingPoint) {
+        const distKm = getDistance(userCoords.lat, userCoords.lng, boardingPoint.lat, boardingPoint.lng);
+        const travelMins = Math.round((distKm / 30) * 60); // Est 30 km/h city travel
+        logToConsole(`📍 You are ${distKm.toFixed(1)} km from ${boardingPoint.name} (Est. ${travelMins} mins travel time).`, "info");
+      }
+    }, (err) => {
+      console.warn("Geolocation error:", err.message);
+      logToConsole("Could not access your location. Please grant location permissions in your browser.", "error");
+    }, { enableHighAccuracy: true });
+
+    if (btn) {
+      btn.textContent = '📍 My Location: ON';
+      btn.style.borderColor = '#3b82f6';
+      btn.style.color = '#60a5fa';
+    }
+    logToConsole("User geolocation active. Showing your live position on map.", "success");
+  }
+}
+
 function setupEventListeners() {
   document.getElementById('btnSubmitUrl').addEventListener('click', handleUrlSubmit);
   document.getElementById('btnStart').addEventListener('click', () => {
@@ -1434,6 +1558,12 @@ function setupEventListeners() {
   document.getElementById('btnStasis').addEventListener('click', toggleStasis);
   document.getElementById('btnStopAlarm').addEventListener('click', stopAlarm);
   
+  // User Geolocation Toggle Listener
+  const btnUserLoc = document.getElementById('btnUserLocation');
+  if (btnUserLoc) {
+    btnUserLoc.addEventListener('click', toggleUserGeolocation);
+  }
+
   // Auto-Center Bus Camera Toggle Listener
   updateAutoFocusUI();
   const btnAutoFocus = document.getElementById('btnAutoFocus');

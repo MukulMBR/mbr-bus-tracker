@@ -76,7 +76,8 @@
           
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 6px;">
             <h3 style="color: var(--accent-gold); font-size: 1.02rem; margin: 0; font-weight: bold; letter-spacing: 0.5px;" data-i18n="hudTitle">Live Telemetry HUD</h3>
-            <div style="display: flex; gap: 6px; align-items: center;">
+            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+              <button id="btnUserLocation" class="share-btn" title="Show your live location on map">📍 My Location: OFF</button>
               <button id="btnAutoFocus" class="share-btn" title="Toggle Auto-Center on Bus Movement">🎯 Auto-Center: ON</button>
               <button id="btnShareTrip" class="share-btn">🔗 <span data-i18n="shareTrip">Share</span></button>
             </div>
@@ -124,12 +125,12 @@
         <!-- Card: Live Bus & Operator Call Banner (Matches original YourBus design) -->
         <div class="cyber-card glow-gold" id="busOperatorCard" style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-radius: 12px;">
           <div>
-            <div style="font-size: 0.95rem; font-weight: 800; color: var(--accent-gold); letter-spacing: 0.5px;" id="busRegText">MP41ZL5976</div>
-            <div style="font-size: 0.82rem; font-weight: 700; color: #ffffff; margin-top: 2px;" id="busOperatorText">DHRITI TRAVELS</div>
-            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;" id="busRouteText">Tirupati - Koteshwara</div>
+            <div style="font-size: 0.95rem; font-weight: 800; color: var(--accent-gold); letter-spacing: 0.5px;" id="busRegText">Vehicle # --</div>
+            <div style="font-size: 0.82rem; font-weight: 700; color: #ffffff; margin-top: 2px;" id="busOperatorText">Connect tracking link for live details</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;" id="busRouteText">Route info pending</div>
           </div>
           <div>
-            <a id="btnCallOperator" href="tel:9110402163" style="display: flex; align-items: center; gap: 6px; background: rgba(45,212,191,0.1); border: 1px solid var(--accent-gold); color: var(--accent-gold); padding: 6px 16px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; text-decoration: none; transition: all 0.2s ease;">
+            <a id="btnCallOperator" href="#" style="display: flex; align-items: center; gap: 6px; background: rgba(45,212,191,0.05); border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 16px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; text-decoration: none; transition: all 0.2s ease; pointer-events: none; opacity: 0.4;">
               <span>📞</span> CALL
             </a>
           </div>

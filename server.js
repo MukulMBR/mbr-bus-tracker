@@ -181,21 +181,22 @@ function handleYourBusJourney(inputUrl, key, res) {
       }
 
       const vInfo = data.vehicleInfo || {};
-      const operatorName = vInfo.operatorName || (s.operatorId ? `${s.operatorId} - ${s.name}` : (s.name || "DHRITI TRAVELS"));
-      const vehicleNum = vInfo.registrationNumber || v.number || "MP41ZL5976";
-      const contactNum = (Array.isArray(vInfo.contactNumber) && vInfo.contactNumber.length > 0) ? vInfo.contactNumber[0] : (v.contact || "9110402163");
+      const operatorName = vInfo.operatorName || (s.name ? s.name : (s.operatorId ? `${s.operatorId} Bus Service` : "Operator info unavailable"));
+      const vehicleNum = vInfo.registrationNumber || v.number || "Vehicle # unavailable";
+      const rawContact = (Array.isArray(vInfo.contactNumber) && vInfo.contactNumber.length > 0) ? vInfo.contactNumber[0] : (v.contact || "");
+      const contactNum = rawContact ? String(rawContact) : "";
 
       const responseObj = {
         status: 200,
         journey_details: {
-          service_number: s.number || s.name || data.ybServiceNo || "AIDVTIRUPATI-KOTESHWARA-0730PM",
+          service_number: s.number || data.ybServiceNo || s.name || "Live Service",
           operator_name: operatorName,
           vehicle_number: vehicleNum,
-          contact_number: String(contactNum),
-          source: s.source || "Tirupati",
-          destination: s.destination || "Koteshwara",
-          start_time: s.startTime || "19:30:00",
-          end_time: s.endTime || "08:55:00",
+          contact_number: contactNum,
+          source: s.source || "Boarding Point",
+          destination: s.destination || "Dropping Point",
+          start_time: s.startTime || "",
+          end_time: s.endTime || "",
           date: data.doj || ""
         },
         all_service_places: servicePlaces
