@@ -43,9 +43,14 @@
         <!-- Global Sound Mute Toggle -->
         <button id="btnSoundToggle" class="sound-toggle-btn" title="Toggle Alarm Sounds">🔊</button>
         
-        <div id="telemetryBadge" class="telemetry-badge" style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-gold); border: 1px solid var(--border-color); padding: 4px 12px; border-radius: 20px; background: rgba(245, 158, 11, 0.05); display: flex; align-items: center; gap: 6px; transition: all 0.3s ease;">
-          <span class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-gold); display: inline-block; transition: background 0.3s ease;"></span>
-          <span data-i18n="badgeLabel" id="badgeText">Telemetry Link Active</span>
+        <!-- Telemetry Badge with Mobile Status Dot & Hover Tooltip -->
+        <div id="telemetryBadge" class="telemetry-badge" title="Telemetry Signal Status">
+          <span class="status-dot"></span>
+          <span data-i18n="badgeLabel" id="badgeText" class="badge-text">Telemetry Active</span>
+          <div id="badgeTooltip" class="badge-tooltip">
+            <strong id="tooltipTitle">Telemetry Signal: Active</strong>
+            <div id="tooltipSub" style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">Live 10s GPS Auto-Sync Active</div>
+          </div>
         </div>
       </div>
     </div>
@@ -69,9 +74,12 @@
           <div class="cyber-corner corner-bl"></div>
           <div class="cyber-corner corner-br"></div>
           
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 6px;">
             <h3 style="color: var(--accent-gold); font-size: 1.02rem; margin: 0; font-weight: bold; letter-spacing: 0.5px;" data-i18n="hudTitle">Live Telemetry HUD</h3>
-            <button id="btnShareTrip" class="share-btn">🔗 <span data-i18n="shareTrip">Share Trip</span></button>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button id="btnAutoFocus" class="share-btn" title="Toggle Auto-Center on Bus Movement">🎯 Auto-Center: ON</button>
+              <button id="btnShareTrip" class="share-btn">🔗 <span data-i18n="shareTrip">Share</span></button>
+            </div>
           </div>
           
           <div class="hud-grid">
@@ -104,9 +112,12 @@
             </div>
           </div>
           
-          <div style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted);">
+          <div style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; color: var(--text-muted); flex-wrap: wrap; gap: 6px;">
             <span><span data-i18n="targetLabel">Target point</span>: <strong id="targetValue" style="color: var(--accent-gold);">None</strong></span>
-            <span id="timeValue" class="hud-placeholder" data-i18n="waiting">Waiting...</span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <button id="btnSelectDropLocation" class="share-btn" style="padding: 2px 8px; font-size: 0.72rem; border-color: var(--accent-gold); color: var(--accent-gold);">📍 Select Location</button>
+              <span id="timeValue" class="hud-placeholder" data-i18n="waiting">Waiting...</span>
+            </div>
           </div>
         </div>
 

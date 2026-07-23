@@ -1099,3 +1099,78 @@ header {
 .glowing-geofence.danger {
   animation: geofence-pulse 1s infinite ease-in-out;
 }
+
+/* Telemetry Badge & Hover Tooltip */
+.telemetry-badge {
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--accent-gold);
+  border: 1px solid var(--border-color);
+  padding: 5px 12px;
+  border-radius: 20px;
+  background: rgba(45, 212, 191, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: all 0.25s ease;
+}
+
+.telemetry-badge .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  display: inline-block;
+  box-shadow: 0 0 8px var(--accent-gold);
+  transition: background 0.3s ease;
+}
+
+.telemetry-badge .badge-tooltip {
+  position: absolute;
+  top: 125%;
+  right: 0;
+  background: #0b1622;
+  border: 1px solid var(--border-active);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  color: #fff;
+  white-space: nowrap;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.85);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  z-index: 2500;
+  pointer-events: none;
+}
+
+.telemetry-badge:hover .badge-tooltip,
+.telemetry-badge.active-tooltip .badge-tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Compact status dot button on mobile screens (max 640px) */
+@media (max-width: 640px) {
+  .telemetry-badge {
+    padding: 6px;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    justify-content: center;
+  }
+  .telemetry-badge .badge-text {
+    display: none;
+  }
+  .telemetry-badge .status-dot {
+    width: 10px;
+    height: 10px;
+  }
+  .telemetry-badge .badge-tooltip {
+    right: -10px;
+  }
+}

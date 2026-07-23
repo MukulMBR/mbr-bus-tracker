@@ -36,6 +36,17 @@ let currentRoutePoints = [...BRS_ROUTE];
 let currentTrackingKey = null;
 let currentTrackingDomain = 'trkg.in';
 let audioEnabled = true;
+let autoFocusBus = localStorage.getItem('autoFocusBus') !== 'false';
+let currentJourneyData = null;
+
+function updateAutoFocusUI() {
+  const btn = document.getElementById('btnAutoFocus');
+  if (btn) {
+    btn.textContent = autoFocusBus ? '🎯 Auto-Center: ON' : '🎯 Auto-Center: OFF';
+    btn.style.borderColor = autoFocusBus ? 'var(--accent-gold)' : 'rgba(255,255,255,0.2)';
+    btn.style.color = autoFocusBus ? 'var(--accent-gold)' : 'var(--text-muted)';
+  }
+}
 
 let isLiveMode = false;
 let isSimulationActive = false;
@@ -272,6 +283,9 @@ function updateSystemStatus(status) {
   const badge = document.getElementById('telemetryBadge');
   const dot = badge ? badge.querySelector('.status-dot') : null;
   const connectBtn = document.getElementById('btnSubmitUrl');
+  const badgeText = document.getElementById('badgeText');
+  const tooltipTitle = document.getElementById('tooltipTitle');
+  const tooltipSub = document.getElementById('tooltipSub');
   
   if (!badge || !dot) return;
   
@@ -279,30 +293,39 @@ function updateSystemStatus(status) {
     badge.style.color = 'var(--status-green)';
     badge.style.borderColor = 'var(--status-green)';
     dot.style.background = 'var(--status-green)';
+    dot.style.boxShadow = '0 0 10px var(--status-green)';
     if (connectBtn) {
       connectBtn.style.borderColor = 'var(--status-green)';
       connectBtn.style.color = 'var(--status-green)';
     }
-    document.getElementById('badgeText').textContent = translations[currentLanguage].badgeLabel + " (Active)";
+    if (badgeText) badgeText.textContent = "Telemetry Active";
+    if (tooltipTitle) tooltipTitle.textContent = "🟢 Telemetry Signal: Active";
+    if (tooltipSub) tooltipSub.textContent = "Live 10s GPS Auto-Sync Active";
   } else if (status === 'error') {
     badge.style.color = 'var(--status-red)';
     badge.style.borderColor = 'var(--status-red)';
     dot.style.background = 'var(--status-red)';
+    dot.style.boxShadow = '0 0 10px var(--status-red)';
     if (connectBtn) {
       connectBtn.style.borderColor = 'var(--status-red)';
       connectBtn.style.color = 'var(--status-red)';
     }
-    document.getElementById('badgeText').textContent = "Signal Disconnected / Error";
+    if (badgeText) badgeText.textContent = "Signal Disconnected";
+    if (tooltipTitle) tooltipTitle.textContent = "🔴 Telemetry Signal: Offline / Error";
+    if (tooltipSub) tooltipSub.textContent = "Link inactive or connection dropped";
   } else {
     // pending
     badge.style.color = 'var(--accent-gold)';
     badge.style.borderColor = 'var(--border-color)';
     dot.style.background = 'var(--accent-gold)';
+    dot.style.boxShadow = '0 0 8px var(--accent-gold)';
     if (connectBtn) {
       connectBtn.style.borderColor = '';
       connectBtn.style.color = '';
     }
-    document.getElementById('badgeText').textContent = translations[currentLanguage].badgeLabel;
+    if (badgeText) badgeText.textContent = "Telemetry Standby";
+    if (tooltipTitle) tooltipTitle.textContent = "🟡 Telemetry Signal: Standby";
+    if (tooltipSub) tooltipSub.textContent = "Connect a tracking URL to begin";
   }
   
   checkWhatsAppConfiguration();
@@ -524,32 +547,31 @@ function initMap(routeData) {
     scrollWheelZoom: true
   }).setView([avgLat, avgLng], 8);
 
-  // CartoDB Dark Matter base map tiles (Sleek dark theme)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  // CartoDB Dark Matter base map tiles with OSM Fallback for mobile reliability
+  const cartoTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
     subdomains: 'abcd',
     maxZoom: 20
-  }).addTo(map);
+  });
 
-  // Bounding box lock for route region (Karnataka/Andhra Pradesh) to prevent map drift
-  if (routeData && routeData.length > 0) {
-    const lats = routeData.map(p => p.lat);
-    const lngs = routeData.map(p => p.lng);
-    const minLat = Math.min(...lats);
-    const maxLat = Math.max(...lats);
-    const minLng = Math.min(...lngs);
-    const maxLng = Math.max(...lngs);
-    
-    // Bounds with 1.5 degrees of padding
-    const bounds = L.latLngBounds(
-      [minLat - 1.5, minLng - 1.5],
-      [maxLat + 1.5, maxLng + 1.5]
-    );
-    map.setMaxBounds(bounds);
-    map.on('drag', () => {
-      map.panInsideBounds(bounds, { animate: false });
-    });
-  }
+  const osmFallback = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19
+  });
+
+  cartoTiles.on('tileerror', () => {
+    console.warn("CartoDB tile error, activating OSM fallback tiles");
+    if (!map.hasLayer(osmFallback)) {
+      map.addLayer(osmFallback);
+    }
+  });
+
+  cartoTiles.addTo(map);
+
+  // Invalidate size after layout completes to ensure 100% map tile rendering on mobile
+  setTimeout(() => {
+    if (map) map.invalidateSize();
+  }, 250);
 
   // Plot stations
   routeData.forEach((pt, index) => {
@@ -801,6 +823,7 @@ async function handleUrlSubmit() {
     const data = await response.json();
 
     if (data.status === 200 && data.journey_details) {
+      currentJourneyData = data.journey_details;
       logToConsole(`Connected successfully. Service: ${data.journey_details.service_number} (${data.journey_details.operator_name})`, "success");
       updateSystemStatus('healthy');
       
@@ -819,6 +842,15 @@ async function handleUrlSubmit() {
       // Redraw map and list dropping points
       initMap(currentRoutePoints);
       populateDropPoints(currentRoutePoints);
+
+      // Auto-select destination dropping station automatically if user hasn't selected one
+      const dropoffPoints = currentRoutePoints.filter(pt => pt.type === 'dropoff');
+      if (dropoffPoints.length > 0) {
+        const defaultDrop = dropoffPoints[dropoffPoints.length - 1];
+        const defaultIndex = currentRoutePoints.indexOf(defaultDrop);
+        selectDropPoint(defaultDrop, defaultIndex);
+        logToConsole(`📍 Auto-selected Destination: ${defaultDrop.name}`, "success");
+      }
 
       // Start live polling loop (every 10 seconds)
       startLiveTrackingLoop();
@@ -998,13 +1030,50 @@ function startDemoSimulation() {
 function updateBusPosition(lat, lng, speed, timestamp) {
   if (!busMarker) {
     busMarker = L.marker([lat, lng], { icon: createBusIcon() }).addTo(map);
-    map.setView([lat, lng], 12);
+    if (autoFocusBus) {
+      map.setView([lat, lng], 12);
+    }
   } else {
     busMarker.setLatLng([lat, lng]);
-    const currentZoom = map.getZoom();
-    const targetZoom = currentZoom < 12 ? 12 : currentZoom;
-    map.setView([lat, lng], targetZoom);
+    if (autoFocusBus) {
+      const currentZoom = map.getZoom();
+      const targetZoom = currentZoom < 12 ? 12 : currentZoom;
+      map.panTo([lat, lng], { animate: true });
+    }
   }
+
+  // Bind rich popup card when clicking on the bus marker
+  const operatorStr = (currentJourneyData && currentJourneyData.operator_name) ? currentJourneyData.operator_name : "Dhriti Travels / Telemetry Operator";
+  const vehicleNum = (currentJourneyData && currentJourneyData.vehicle_number && currentJourneyData.vehicle_number !== 'N/A') ? currentJourneyData.vehicle_number : "MP41ZL5976";
+
+  let nearestStation = "On Highway Route";
+  if (currentRoutePoints && currentRoutePoints.length > 0) {
+    let minD = Infinity;
+    currentRoutePoints.forEach(pt => {
+      const d = getDistance(lat, lng, pt.lat, pt.lng);
+      if (d < minD) {
+        minD = d;
+        nearestStation = pt.name;
+      }
+    });
+  }
+
+  busMarker.bindPopup(`
+    <div style="font-family: var(--font-sans); padding: 4px; color: #fff; max-width: 240px;">
+      <div style="font-size: 0.92rem; font-weight: 800; color: #2dd4bf; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+        <span>🚌</span> <span>${vehicleNum}</span>
+      </div>
+      <div style="font-size: 0.78rem; color: #f3f4f6; font-weight: 600;">${operatorStr}</div>
+      <div style="font-size: 0.76rem; color: #60a5fa; margin-top: 6px; background: rgba(96,165,250,0.12); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(96,165,250,0.2);">
+        📍 Location: <strong>${nearestStation}</strong>
+      </div>
+      <div style="font-size: 0.72rem; color: #9ca3af; margin-top: 6px; display: flex; justify-content: space-between;">
+        <span>🌐 ${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
+        <span style="color: #2dd4bf; font-weight: bold;">⚡ ${speed} km/h</span>
+      </div>
+      <div style="font-size: 0.7rem; color: #6b7280; margin-top: 4px;">⏱️ Signal: ${timestamp || 'Live'}</div>
+    </div>
+  `);
 
   // Calculate movement angle for rotation (bearing in degrees)
   let angle = 0;
@@ -1333,6 +1402,45 @@ function setupEventListeners() {
   });
   document.getElementById('btnStasis').addEventListener('click', toggleStasis);
   document.getElementById('btnStopAlarm').addEventListener('click', stopAlarm);
+  
+  // Auto-Center Bus Camera Toggle Listener
+  updateAutoFocusUI();
+  const btnAutoFocus = document.getElementById('btnAutoFocus');
+  if (btnAutoFocus) {
+    btnAutoFocus.addEventListener('click', () => {
+      autoFocusBus = !autoFocusBus;
+      localStorage.setItem('autoFocusBus', autoFocusBus);
+      updateAutoFocusUI();
+      logToConsole(`Auto-Center Bus camera: ${autoFocusBus ? 'ENABLED' : 'DISABLED'}`, "info");
+      if (autoFocusBus && busMarker && map) {
+        map.panTo(busMarker.getLatLng(), { animate: true });
+      }
+    });
+  }
+
+  // Select / Change Location Button Listener
+  const btnSelectDrop = document.getElementById('btnSelectDropLocation');
+  if (btnSelectDrop) {
+    btnSelectDrop.addEventListener('click', () => {
+      selectTab('Drop');
+      const searchBox = document.getElementById('searchDropPoints');
+      if (searchBox) {
+        searchBox.focus();
+      }
+    });
+  }
+
+  // Mobile Telemetry Badge Tooltip Tap Toggle
+  const telemetryBadge = document.getElementById('telemetryBadge');
+  if (telemetryBadge) {
+    telemetryBadge.addEventListener('click', (e) => {
+      telemetryBadge.classList.toggle('active-tooltip');
+      e.stopPropagation();
+    });
+    document.addEventListener('click', () => {
+      telemetryBadge.classList.remove('active-tooltip');
+    });
+  }
   
   // Save input changes dynamically to localStorage to prevent tab unload resets
   document.getElementById('waPhone').addEventListener('input', (e) => {
