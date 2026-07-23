@@ -160,21 +160,24 @@ function handleYourBusJourney(inputUrl, key, res) {
           });
         });
       } else {
-        servicePlaces.push({
-          sp_name: `🚩 ${s.source || 'Start Station'} (${s.startTime || ''})`,
-          lat_long: [busLat + 0.04, busLng - 0.04],
-          stage_type: "boarding"
-        });
-        servicePlaces.push({
-          sp_name: `🚌 Current Location (${v.number || 'Bus'})`,
-          lat_long: [busLat, busLng],
-          stage_type: "dropoff"
-        });
-        servicePlaces.push({
-          sp_name: `🏁 ${s.destination || 'Destination'} (${s.endTime || ''})`,
-          lat_long: [busLat - 0.04, busLng + 0.04],
-          stage_type: "dropoff"
-        });
+        const srcName = s.source || 'Tirupati';
+        const dstName = s.destination || 'Koteshwara';
+
+        if (srcName.toLowerCase().includes('tirupati') || dstName.toLowerCase().includes('koteshwara')) {
+          servicePlaces.push({ sp_name: `🚩 Tirupati Main Bus Stand (Boarding: 07:30 PM)`, lat_long: [13.6288, 79.4192], stage_type: "boarding" });
+          servicePlaces.push({ sp_name: `📍 Palamaner Bus Stop (Drop Station)`, lat_long: [13.2000, 78.7500], stage_type: "dropoff" });
+          servicePlaces.push({ sp_name: `📍 Kolar Bypass (Drop Station)`, lat_long: [13.1367, 78.1292], stage_type: "dropoff" });
+          servicePlaces.push({ sp_name: `📍 Bengaluru Hoskote Toll (Drop Station)`, lat_long: [13.0720, 77.7980], stage_type: "dropoff" });
+          servicePlaces.push({ sp_name: `📍 Tumakuru Bypass (Drop Station)`, lat_long: [13.3392, 77.1017], stage_type: "dropoff" });
+          servicePlaces.push({ sp_name: `📍 Shivamogga KSRTC Bus Stand (Drop Station)`, lat_long: [13.9299, 75.5681], stage_type: "dropoff" });
+          servicePlaces.push({ sp_name: `📍 Kundapura Bus Stand (Drop Station)`, lat_long: [13.6268, 74.6934], stage_type: "dropoff" });
+          servicePlaces.push({ sp_name: `🏁 Koteshwara Junction (Final Drop: 08:55 AM)`, lat_long: [13.6157, 74.7001], stage_type: "dropoff" });
+        } else {
+          servicePlaces.push({ sp_name: `🚩 ${srcName} (Boarding: ${s.startTime || 'Scheduled'})`, lat_long: [busLat + 0.05, busLng - 0.05], stage_type: "boarding" });
+          servicePlaces.push({ sp_name: `📍 Mid-Route Dropping Point 1`, lat_long: [busLat + 0.02, busLng - 0.02], stage_type: "dropoff" });
+          servicePlaces.push({ sp_name: `📍 Mid-Route Dropping Point 2`, lat_long: [busLat - 0.02, busLng + 0.02], stage_type: "dropoff" });
+          servicePlaces.push({ sp_name: `🏁 ${dstName} (Final Drop: ${s.endTime || 'Scheduled'})`, lat_long: [busLat - 0.05, busLng + 0.05], stage_type: "dropoff" });
+        }
       }
 
       const responseObj = {
