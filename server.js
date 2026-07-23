@@ -210,6 +210,42 @@ function handleYourBusJourney(inputUrl, key, res) {
     });
 }
 
+function handleTileProxy(pathname, res) {
+  const parts = pathname.replace('/api/tile/', '').split('/');
+  if (parts.length === 3) {
+    const z = parts[0];
+    const x = parts[1];
+    const y = parts[2].replace('.png', '');
+    const tileUrl = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
+    
+    const reqOpts = {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) MBR-Trip-Radar/1.0'
+      }
+    };
+
+    https.get(tileUrl, reqOpts, (tRes) => {
+      if (tRes.statusCode === 200) {
+        res.writeHead(200, {
+          'Content-Type': 'image/png',
+          'Cache-Control': 'public, max-age=86400',
+          'Access-Control-Allow-Origin': '*'
+        });
+        tRes.pipe(res);
+      } else {
+        res.writeHead(tRes.statusCode || 404);
+        res.end();
+      }
+    }).on('error', () => {
+      res.writeHead(500);
+      res.end();
+    });
+  } else {
+    res.writeHead(400);
+    res.end();
+  }
+}
+
 function handleYourBusEta(inputUrl, key, res) {
   const target = inputUrl || key;
   fetchYourBusHtml(target)
@@ -289,6 +325,8 @@ const server = http.createServer((req, res) => {
     } else {
       proxyRequest(`https://${domain || 'trkg.in'}/api/live/eta_map?current_status=true&key=${key}`, res);
     }
+  } else if (pathname.startsWith('/api/tile/')) {
+    handleTileProxy(pathname, res);
   } else if (pathname === '/api/send-whatsapp') {
     const phone = parsedUrl.searchParams.get('phone');
     const apikey = parsedUrl.searchParams.get('apikey');

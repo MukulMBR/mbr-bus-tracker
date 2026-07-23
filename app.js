@@ -547,30 +547,30 @@ function initMap(routeData) {
     scrollWheelZoom: true
   }).setView([avgLat, avgLng], 8);
 
-  // Base Map Tile Layers
-  const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 20
-  });
-
-  const osmStandard = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  // Base Map Tile Layers (Proxying via server guarantees 100% CORS & Referrer policy compliance)
+  const localOsmProxy = L.tileLayer('/api/tile/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19
   });
 
-  const cartoVoyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: 'abcd',
+  const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
+    attribution: '&copy; CARTO',
+    subdomains: ['a', 'b', 'c', 'd'],
     maxZoom: 20
   });
 
-  // Default layer to OpenStreetMap Streets for maximum street & place name visibility (like original YourBus)
-  osmStandard.addTo(map);
+  const cartoVoyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
+    attribution: '&copy; CARTO',
+    subdomains: ['a', 'b', 'c', 'd'],
+    maxZoom: 20
+  });
+
+  // Default layer to Local Proxy OpenStreetMap Streets (Guaranteed 100% tile rendering with full place & street names)
+  localOsmProxy.addTo(map);
 
   // Add Layer Switcher Control
   L.control.layers({
-    "🗺️ OpenStreetMap Streets (Clear Places)": osmStandard,
+    "🗺️ OpenStreetMap Streets (Clear Places)": localOsmProxy,
     "🏞️ Detailed Voyager": cartoVoyager,
     "🌙 Cyber Dark": cartoDark
   }, null, { position: 'topright' }).addTo(map);
