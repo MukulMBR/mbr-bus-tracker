@@ -329,10 +329,30 @@ const server = http.createServer((req, res) => {
   } else if (pathname.startsWith('/api/tile/')) {
     handleTileProxy(pathname, res);
   } else if (pathname === '/api/send-whatsapp') {
-    const phone = parsedUrl.searchParams.get('phone');
-    const apikey = parsedUrl.searchParams.get('apikey');
-    const text = parsedUrl.searchParams.get('text');
-    proxyRequest(`https://api.callmebot.com/whatsapp.php?phone=${phone}&apikey=${apikey}&text=${encodeURIComponent(text)}`, res);
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      let phone, apikey, text;
+      try {
+        const payload = JSON.parse(body);
+        phone = payload.phone;
+        apikey = payload.apikey;
+        text = payload.text;
+      } catch (e) {
+        phone = parsedUrl.searchParams.get('phone');
+        apikey = parsedUrl.searchParams.get('apikey');
+        text = parsedUrl.searchParams.get('text');
+      }
+
+      if (!phone || !apikey || !text) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing phone, apikey, or text' }));
+        return;
+      }
+
+      proxyRequest(`https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(phone)}&apikey=${encodeURIComponent(apikey)}&text=${encodeURIComponent(text)}`, res);
+    });
+    return;
   } else if (pathname === '/api/download-video') {
     const videoUrl = parsedUrl.searchParams.get('url');
     const type = parsedUrl.searchParams.get('type') || 'video'; // 'video' | 'audio'

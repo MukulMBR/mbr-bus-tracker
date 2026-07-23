@@ -291,9 +291,9 @@
   </div>
 
   <!-- Flashing red overlay when Alarm triggers -->
-  <div id="alarmOverlay" class="alarm-overlay" style="display: none;">
+  <div id="alarmOverlay" class="alarm-overlay" style="display: none;" role="alert" aria-live="assertive">
     <div class="alarm-card">
-      <span style="font-size: 4rem; display: block; margin-bottom: 12px;">🚨</span>
+      <span style="font-size: 4rem; display: block; margin-bottom: 12px;" aria-hidden="true">🚨</span>
       <h2 style="color: var(--accent-red); font-size: 1.5rem; font-weight: bold; margin-bottom: 8px;">DESTINATION APPROACHING!</h2>
       <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px;">The bus is under 5 kilometers from your selected dropping point.</p>
       <button id="btnStopAlarm" class="cyber-btn" style="background: var(--accent-red); color: white; width: 100%;">Stop Wakeup Alarm</button>

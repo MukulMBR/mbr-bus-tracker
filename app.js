@@ -714,10 +714,17 @@ function populateDropPoints(routeData) {
     const div = document.createElement('div');
     div.className = 'list-item';
     div.id = `drop-pt-${index}`;
-    div.innerHTML = `
-      <span>${pt.name}</span>
-      <span style="color: var(--accent-gold); font-size: 0.75rem;">Dropoff</span>
-    `;
+
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = pt.name;
+
+    const tagSpan = document.createElement('span');
+    tagSpan.style.color = 'var(--accent-gold)';
+    tagSpan.style.fontSize = '0.75rem';
+    tagSpan.textContent = 'Dropoff';
+
+    div.appendChild(nameSpan);
+    div.appendChild(tagSpan);
     div.addEventListener('click', () => selectDropPoint(pt, index));
     container.appendChild(div);
   });
@@ -1756,20 +1763,27 @@ function setupEventListeners() {
     history.forEach(url => {
       const row = document.createElement('div');
       row.className = 'dl-history-row';
-      row.innerHTML = `
-        <span class="dl-history-url" title="${url}">${url}</span>
-        <button class="dl-history-dl-btn" data-url="${url}" title="Re-download">📥 Download</button>
-      `;
 
-      // Attach re-download click event to row download button
-      row.querySelector('.dl-history-dl-btn').addEventListener('click', (e) => {
-        const targetUrl = e.target.getAttribute('data-url');
-        dlUrlInput.value = targetUrl;
+      const span = document.createElement('span');
+      span.className = 'dl-history-url';
+      span.title = url;
+      span.textContent = url;
+
+      const btn = document.createElement('button');
+      btn.className = 'dl-history-dl-btn';
+      btn.dataset.url = url;
+      btn.title = 'Re-download';
+      btn.textContent = '📥 Download';
+
+      btn.addEventListener('click', () => {
+        dlUrlInput.value = url;
         if (btnDlClear) btnDlClear.style.display = 'block';
         if (dlAutoDetectTooltip) dlAutoDetectTooltip.style.display = 'none';
         btnDlSubmit.click();
       });
 
+      row.appendChild(span);
+      row.appendChild(btn);
       list.appendChild(row);
     });
   }
