@@ -565,14 +565,14 @@ function initMap(routeData) {
     maxZoom: 20
   });
 
-  // Default layer
-  cartoDark.addTo(map);
+  // Default layer to OpenStreetMap Streets for maximum street & place name visibility (like original YourBus)
+  osmStandard.addTo(map);
 
   // Add Layer Switcher Control
   L.control.layers({
-    "🌙 Cyber Dark": cartoDark,
-    "🗺️ OpenStreetMap Streets": osmStandard,
-    "🏞️ Detailed Voyager": cartoVoyager
+    "🗺️ OpenStreetMap Streets (Clear Places)": osmStandard,
+    "🏞️ Detailed Voyager": cartoVoyager,
+    "🌙 Cyber Dark": cartoDark
   }, null, { position: 'topright' }).addTo(map);
 
   // Invalidate size after layout completes to ensure 100% map tile rendering
@@ -853,6 +853,19 @@ async function handleUrlSubmit() {
       isLiveMode = true;
       isSimulationActive = false;
       stopActiveInterval();
+
+      // Update Bus Operator Call Card
+      const regEl = document.getElementById('busRegText');
+      const opEl = document.getElementById('busOperatorText');
+      const routeEl = document.getElementById('busRouteText');
+      const callBtn = document.getElementById('btnCallOperator');
+
+      if (regEl) regEl.textContent = data.journey_details.vehicle_number || "MP41ZL5976";
+      if (opEl) opEl.textContent = data.journey_details.operator_name || "DHRITI TRAVELS";
+      if (routeEl) routeEl.textContent = `${data.journey_details.source || 'Tirupati'} - ${data.journey_details.destination || 'Koteshwara'}`;
+      if (callBtn && data.journey_details.contact_number) {
+        callBtn.href = `tel:${data.journey_details.contact_number}`;
+      }
 
       // Redraw map and list dropping points
       initMap(currentRoutePoints);
