@@ -85,21 +85,201 @@ function runProcess(cmd, args) {
   });
 }
 
-// Silently delete a file, ignore errors
-function tryUnlink(f) { try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch (_) {} }
+// Storage for tracking speed delta calculation
+const yourBusLastLocations = new Map();
+
+function fetchYourBusHtml(urlStr) {
+  let targetUrl = (urlStr || '').trim();
+  if (!targetUrl.startsWith('http')) {
+    if (targetUrl.length <= 6) {
+      targetUrl = `https://s.yourbus.in/?${targetUrl}`;
+    } else {
+      targetUrl = `http://reports.yourbus.in/trackbus/${targetUrl}`;
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    function follow(url, count = 0) {
+      if (count > 5) return reject(new Error('Too many redirects'));
+      const mod = url.startsWith('https:') ? https : http;
+      mod.get(url, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          let loc = res.headers.location;
+          if (!loc.startsWith('http')) {
+            const u = new URL(url);
+            loc = u.origin + loc;
+          }
+          follow(loc, count + 1);
+        } else {
+          let body = '';
+          res.on('data', c => body += c);
+          res.on('end', () => {
+            const mData = body.match(/const data = JSON\.parse\('(.*?)'\);/);
+            if (mData) {
+              try {
+                const parsed = JSON.parse(mData[1]);
+                resolve({ finalUrl: url, data: parsed });
+              } catch (e) {
+                reject(e);
+              }
+            } else {
+              reject(new Error('No embedded data JSON found in page'));
+            }
+          });
+        }
+      }).on('error', reject);
+    }
+    follow(targetUrl);
+  });
+}
+
+function handleYourBusJourney(inputUrl, key, res) {
+  const target = inputUrl || key;
+  fetchYourBusHtml(target)
+    .then(({ data }) => {
+      if (data.error) {
+        res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        return res.end(JSON.stringify({ status: 400, error: data.error }));
+      }
+
+      const s = data.service || {};
+      const v = data.vehicle || {};
+      const loc = v.location || {};
+
+      const busLat = parseFloat(loc.lat) || 0;
+      const busLng = parseFloat(loc.lng) || 0;
+
+      const servicePlaces = [];
+      
+      if (Array.isArray(data.positions) && data.positions.length > 0) {
+        data.positions.forEach(pt => {
+          servicePlaces.push({
+            sp_name: `${pt.name || 'Station'} (${pt.estimatedTime || pt.scheduleTime || ''})`,
+            lat_long: [parseFloat(pt.lat) || busLat, parseFloat(pt.lng) || busLng],
+            stage_type: pt.status === 'DEPARTED' ? 'boarding' : 'dropoff'
+          });
+        });
+      } else {
+        servicePlaces.push({
+          sp_name: `🚩 ${s.source || 'Start Station'} (${s.startTime || ''})`,
+          lat_long: [busLat + 0.04, busLng - 0.04],
+          stage_type: "boarding"
+        });
+        servicePlaces.push({
+          sp_name: `🚌 Current Location (${v.number || 'Bus'})`,
+          lat_long: [busLat, busLng],
+          stage_type: "dropoff"
+        });
+        servicePlaces.push({
+          sp_name: `🏁 ${s.destination || 'Destination'} (${s.endTime || ''})`,
+          lat_long: [busLat - 0.04, busLng + 0.04],
+          stage_type: "dropoff"
+        });
+      }
+
+      const responseObj = {
+        status: 200,
+        journey_details: {
+          service_number: s.number || s.name || "YourBus Service",
+          operator_name: `${s.operatorId || 'YourBus'} - ${s.name || 'Bus Service'} (${v.number || ''})`,
+          vehicle_number: v.number || "N/A",
+          source: s.source || "Source",
+          destination: s.destination || "Destination",
+          start_time: s.startTime || "",
+          end_time: s.endTime || "",
+          date: data.doj || ""
+        },
+        all_service_places: servicePlaces
+      };
+
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(responseObj));
+    })
+    .catch(err => {
+      res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ status: 500, error: err.message }));
+    });
+}
+
+function handleYourBusEta(inputUrl, key, res) {
+  const target = inputUrl || key;
+  fetchYourBusHtml(target)
+    .then(({ data }) => {
+      const s = data.service || {};
+      const v = data.vehicle || {};
+      const loc = v.location || {};
+
+      const busLat = parseFloat(loc.lat) || 0;
+      const busLng = parseFloat(loc.lng) || 0;
+
+      let calculatedSpeed = 45;
+      const prev = yourBusLastLocations.get(key || target);
+      const nowTs = loc.timeStamp ? loc.timeStamp * 1000 : Date.now();
+      if (prev && prev.ts && nowTs > prev.ts) {
+        const distKm = getDistanceKm(prev.lat, prev.lng, busLat, busLng);
+        const hours = (nowTs - prev.ts) / (1000 * 3600);
+        if (hours > 0) {
+          const spd = distKm / hours;
+          if (spd >= 0 && spd <= 140) calculatedSpeed = Math.round(spd);
+        }
+      }
+      yourBusLastLocations.set(key || target, { lat: busLat, lng: busLng, ts: nowTs });
+
+      const responseObj = {
+        status: 200,
+        current_status_details: {
+          lat_long: [busLat, busLng],
+          details: {
+            speed: calculatedSpeed,
+            location: `Bus ${v.number || ''} (${s.source || ''} ➔ ${s.destination || ''})`,
+            updated_at: loc.gpsTimeStamp || new Date().toISOString()
+          }
+        }
+      };
+
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify(responseObj));
+    })
+    .catch(err => {
+      res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ status: 500, error: err.message }));
+    });
+}
+
+function getDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
 
 const server = http.createServer((req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
   const pathname = parsedUrl.pathname;
 
   if (pathname === '/api/track-journey') {
-    const domain = parsedUrl.searchParams.get('domain') || 'trkg.in';
-    const key = parsedUrl.searchParams.get('key');
-    proxyRequest(`https://${domain}/api/live/journey_details?key=${key}&zoom_position=12&platform=mobile`, res);
+    const domain = parsedUrl.searchParams.get('domain') || '';
+    const key = parsedUrl.searchParams.get('key') || '';
+    const rawUrl = parsedUrl.searchParams.get('url') || '';
+
+    if (domain.includes('yourbus') || rawUrl.includes('yourbus') || key.startsWith('2N') || key.length === 4) {
+      handleYourBusJourney(rawUrl, key, res);
+    } else {
+      proxyRequest(`https://${domain || 'trkg.in'}/api/live/journey_details?key=${key}&zoom_position=12&platform=mobile`, res);
+    }
   } else if (pathname === '/api/track-eta') {
-    const domain = parsedUrl.searchParams.get('domain') || 'trkg.in';
-    const key = parsedUrl.searchParams.get('key');
-    proxyRequest(`https://${domain}/api/live/eta_map?current_status=true&key=${key}`, res);
+    const domain = parsedUrl.searchParams.get('domain') || '';
+    const key = parsedUrl.searchParams.get('key') || '';
+    const rawUrl = parsedUrl.searchParams.get('url') || '';
+
+    if (domain.includes('yourbus') || rawUrl.includes('yourbus') || key.startsWith('2N') || key.length === 4) {
+      handleYourBusEta(rawUrl, key, res);
+    } else {
+      proxyRequest(`https://${domain || 'trkg.in'}/api/live/eta_map?current_status=true&key=${key}`, res);
+    }
   } else if (pathname === '/api/send-whatsapp') {
     const phone = parsedUrl.searchParams.get('phone');
     const apikey = parsedUrl.searchParams.get('apikey');

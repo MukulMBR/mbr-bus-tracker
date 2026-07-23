@@ -697,6 +697,17 @@ function getDistance(lat1, lon1, lat2, lon2) {
 // Provider adapter list for future operator extensions
 const PROVIDER_ADAPTERS = [
   {
+    name: "YourBus",
+    match: (host) => host.includes('yourbus.in'),
+    extract: (urlObj) => {
+      if (urlObj.search && urlObj.search.length > 1) {
+        return urlObj.search.slice(1);
+      }
+      const paths = urlObj.pathname.split('/').filter(Boolean);
+      return paths.length > 0 ? paths[paths.length - 1] : null;
+    }
+  },
+  {
     name: "QueryParamsTracker",
     match: (host) => host.includes('special-tracker.com'),
     extract: (urlObj) => urlObj.searchParams.get('id') || urlObj.searchParams.get('key')
@@ -786,7 +797,7 @@ async function handleUrlSubmit() {
 
   try {
     // Call our CORS proxy backend to load journey details
-    const response = await fetch(`/api/track-journey?domain=${currentTrackingDomain}&key=${currentTrackingKey}`);
+    const response = await fetch(`/api/track-journey?domain=${currentTrackingDomain}&key=${currentTrackingKey}&url=${encodeURIComponent(urlInput)}`);
     const data = await response.json();
 
     if (data.status === 200 && data.journey_details) {
@@ -856,7 +867,8 @@ async function pollLiveGPS() {
   if (!currentTrackingKey) return;
   
   try {
-    const response = await fetch(`/api/track-eta?domain=${currentTrackingDomain}&key=${currentTrackingKey}`);
+    const rawUrl = localStorage.getItem('inputUrl') || '';
+    const response = await fetch(`/api/track-eta?domain=${currentTrackingDomain}&key=${currentTrackingKey}&url=${encodeURIComponent(rawUrl)}`);
     const data = await response.json();
 
     if (data.status === 200 && data.current_status_details) {
