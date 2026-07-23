@@ -547,46 +547,61 @@ function initMap(routeData) {
     scrollWheelZoom: true
   }).setView([avgLat, avgLng], 8);
 
-  // CartoDB Dark Matter base map tiles with OSM Fallback for mobile reliability
-  const cartoTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  // Base Map Tile Layers
+  const cartoDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
     subdomains: 'abcd',
     maxZoom: 20
   });
 
-  const osmFallback = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
+  const osmStandard = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19
   });
 
-  cartoTiles.on('tileerror', () => {
-    console.warn("CartoDB tile error, activating OSM fallback tiles");
-    if (!map.hasLayer(osmFallback)) {
-      map.addLayer(osmFallback);
-    }
+  const cartoVoyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 20
   });
 
-  cartoTiles.addTo(map);
+  // Default layer
+  cartoDark.addTo(map);
 
-  // Invalidate size after layout completes to ensure 100% map tile rendering on mobile
+  // Add Layer Switcher Control
+  L.control.layers({
+    "🌙 Cyber Dark": cartoDark,
+    "🗺️ OpenStreetMap Streets": osmStandard,
+    "🏞️ Detailed Voyager": cartoVoyager
+  }, null, { position: 'topright' }).addTo(map);
+
+  // Invalidate size after layout completes to ensure 100% map tile rendering
   setTimeout(() => {
     if (map) map.invalidateSize();
   }, 250);
 
-  // Plot stations
+  // Plot stations with Permanent Floating Location Text Labels
   routeData.forEach((pt, index) => {
     const isBoarding = pt.type === 'boarding';
     
-    L.circleMarker([pt.lat, pt.lng], {
+    const marker = L.circleMarker([pt.lat, pt.lng], {
       radius: isBoarding ? 8 : 6,
       fillColor: isBoarding ? '#f59e0b' : '#3b82f6',
       color: '#fff',
       weight: 2,
       opacity: 0.9,
       fillOpacity: 0.95
-    })
-    .bindPopup(`<strong>${pt.name}</strong><br>${isBoarding ? 'Boarding checkpoint' : 'Dropping destination'}`)
-    .addTo(map);
+    }).addTo(map);
+
+    // Bind permanent text label floating above station marker
+    marker.bindTooltip(pt.name, {
+      permanent: true,
+      direction: 'top',
+      offset: [0, -8],
+      className: 'station-map-label'
+    });
+
+    marker.bindPopup(`<strong>${pt.name}</strong><br>${isBoarding ? 'Boarding checkpoint' : 'Dropping destination'}`);
   });
 
   // Plot actual highway route geometry via OSRM
