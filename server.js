@@ -7,25 +7,34 @@ const { execSync } = require('child_process');
 const PORT = 3050;
 
 // Resolve yt-dlp executable path depending on platform (Windows local vs Linux Render container)
-let ytdlpPath = 'yt-dlp';
-
-if (process.platform === 'win32') {
-  ytdlpPath = 'C:\\Users\\motak\\.gemini\\antigravity-ide\\brain\\e4fa1d1d-76bd-4781-ba16-880dfeb5c54e\\scratch\\yt-dlp.exe';
-} else {
-  const localYtdlp = path.join(__dirname, 'yt-dlp');
-  console.log('Ensuring latest yt-dlp binary is installed...');
-  try {
-    if (fs.existsSync(localYtdlp)) {
-      fs.unlinkSync(localYtdlp);
+function tryUnlink(filePath) {
+  if (filePath && fs.existsSync(filePath)) {
+    try {
+      fs.unlinkSync(filePath);
+    } catch (e) {
+      // ignore
     }
-    execSync(`curl -L -o "${localYtdlp}" https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp`);
-    execSync(`chmod +x "${localYtdlp}"`);
+  }
+}
+
+let ytdlpPath = 'yt-dlp';
+const localYtdlp = path.join(__dirname, process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
+
+if (!fs.existsSync(localYtdlp)) {
+  try {
+    const isWin = process.platform === 'win32';
+    const dlUrl = isWin 
+      ? 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe' 
+      : 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp';
+    
+    execSync(`curl -L -o "${localYtdlp}" ${dlUrl}`);
+    if (!isWin) execSync(`chmod +x "${localYtdlp}"`);
     ytdlpPath = localYtdlp;
-    console.log('Latest yt-dlp downloaded and made executable successfully!');
   } catch (err) {
-    console.error('Failed to download latest yt-dlp, falling back to system command:', err);
     ytdlpPath = 'yt-dlp';
   }
+} else {
+  ytdlpPath = localYtdlp;
 }
 
 // Resolve ffmpeg path (needed for merge)
